@@ -1,0 +1,6 @@
+# SDK location - update with your Android SDK path
+sdk.dir=C\:\\Users\\YOUR_USER\\AppData\\Local\\Android\\Sdk
+
+# Supabase config (add these to local.properties, not this template)
+# SUPABASE_URL=https://your-project.supabase.co
+# SUPABASE_ANON_KEY=your-anon-key

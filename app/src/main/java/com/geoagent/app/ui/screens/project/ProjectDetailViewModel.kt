@@ -1,0 +1,50 @@
+package com.geoagent.app.ui.screens.project
+
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.geoagent.app.data.local.entity.ProjectEntity
+import com.geoagent.app.data.repository.ProjectRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
+import javax.inject.Inject
+
+@HiltViewModel
+class ProjectDetailViewModel @Inject constructor(
+    savedStateHandle: SavedStateHandle,
+    projectRepository: ProjectRepository,
+) : ViewModel() {
+
+    private val projectId: Long = savedStateHandle.get<Long>("projectId")
+        ?: throw IllegalArgumentException("projectId is required")
+
+    val project: StateFlow<ProjectEntity?> = projectRepository.getById(projectId)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = null,
+        )
+
+    val stationCount: StateFlow<Int> = projectRepository.getStationCount(projectId)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = 0,
+        )
+
+    val drillHoleCount: StateFlow<Int> = projectRepository.getDrillHoleCount(projectId)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = 0,
+        )
+
+    val sampleCount: StateFlow<Int> = projectRepository.getSampleCount(projectId)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = 0,
+        )
+}
