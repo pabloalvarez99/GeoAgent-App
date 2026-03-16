@@ -21,6 +21,7 @@ import com.geoagent.app.ui.screens.sample.SampleFormScreen
 import com.geoagent.app.ui.screens.station.StationCreateScreen
 import com.geoagent.app.ui.screens.station.StationDetailScreen
 import com.geoagent.app.ui.screens.station.StationListScreen
+import com.geoagent.app.ui.screens.settings.SettingsScreen
 import com.geoagent.app.ui.screens.structural.StructuralFormScreen
 
 @Composable
@@ -33,7 +34,8 @@ fun GeoAgentNavHost() {
     ) {
         composable<Route.Home> {
             HomeScreen(
-                onNavigateToProjects = { navController.navigate(Route.ProjectList) }
+                onNavigateToProjects = { navController.navigate(Route.ProjectList) },
+                onNavigateToSettings = { navController.navigate(Route.Settings) },
             )
         }
 
@@ -227,6 +229,17 @@ fun GeoAgentNavHost() {
             ExportScreen(
                 projectId = route.projectId,
                 onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable<Route.Settings> {
+            SettingsScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onLogout = {
+                    navController.navigate(Route.Home) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
             )
         }
     }

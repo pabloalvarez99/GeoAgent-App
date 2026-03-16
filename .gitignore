@@ -18,3 +18,7 @@ local.properties
 *.keystore
 google-services.json
 .superpowers/
+
+# Supabase
+supabase/.temp/
+supabase/.branches/

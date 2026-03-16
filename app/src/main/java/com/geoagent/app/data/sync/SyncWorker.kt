@@ -13,8 +13,20 @@ import com.geoagent.app.data.local.dao.ProjectDao
 import com.geoagent.app.data.local.dao.SampleDao
 import com.geoagent.app.data.local.dao.StationDao
 import com.geoagent.app.data.local.dao.StructuralDao
+import com.geoagent.app.data.local.entity.PhotoEntity
+import com.geoagent.app.data.remote.RemoteDataSource
+import com.geoagent.app.data.remote.dto.RemoteDrillHole
+import com.geoagent.app.data.remote.dto.RemoteDrillInterval
+import com.geoagent.app.data.remote.dto.RemoteLithology
+import com.geoagent.app.data.remote.dto.RemotePhoto
+import com.geoagent.app.data.remote.dto.RemoteProject
+import com.geoagent.app.data.remote.dto.RemoteSample
+import com.geoagent.app.data.remote.dto.RemoteStation
+import com.geoagent.app.data.remote.dto.RemoteStructural
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import kotlinx.coroutines.flow.firstOrNull
+import java.io.File
 
 @HiltWorker
 class SyncWorker @AssistedInject constructor(
@@ -28,49 +40,273 @@ class SyncWorker @AssistedInject constructor(
     private val drillHoleDao: DrillHoleDao,
     private val drillIntervalDao: DrillIntervalDao,
     private val photoDao: PhotoDao,
+    private val remoteDataSource: RemoteDataSource,
 ) : CoroutineWorker(context, workerParams) {
 
     companion object {
         private const val TAG = "SyncWorker"
+        private const val SYNC_STATUS_SYNCED = "SYNCED"
     }
 
+    // Maps local IDs to remote UUIDs, built during sync so child entities can reference parents
+    private val projectIdMap = mutableMapOf<Long, String>()
+    private val stationIdMap = mutableMapOf<Long, String>()
+    private val drillHoleIdMap = mutableMapOf<Long, String>()
+
     override suspend fun doWork(): Result {
-        return try {
-            Log.d(TAG, "Starting sync...")
+        Log.d(TAG, "Starting sync...")
+        var syncedCount = 0
+        var errorCount = 0
 
-            // Collect all pending items
+        try {
+            // 1. Sync projects first (no parent dependency)
             val pendingProjects = projectDao.getPendingSync()
+            Log.d(TAG, "Syncing ${pendingProjects.size} projects...")
+            for (project in pendingProjects) {
+                try {
+                    val dto = RemoteProject.fromEntity(project)
+                    val remoteId = remoteDataSource.upsertProject(dto)
+                    projectDao.updateSyncStatus(project.id, SYNC_STATUS_SYNCED, remoteId)
+                    projectIdMap[project.id] = remoteId
+                    syncedCount++
+                    Log.d(TAG, "Synced project '${project.name}' -> $remoteId")
+                } catch (e: Exception) {
+                    errorCount++
+                    Log.e(TAG, "Failed to sync project id=${project.id}: ${e.message}", e)
+                }
+            }
+
+            // 2. Sync stations (need project remote IDs)
             val pendingStations = stationDao.getPendingSync()
+            Log.d(TAG, "Syncing ${pendingStations.size} stations...")
+            for (station in pendingStations) {
+                try {
+                    val projectRemoteId = resolveProjectRemoteId(station.projectId)
+                    if (projectRemoteId == null) {
+                        Log.w(TAG, "Skipping station id=${station.id}: parent project id=${station.projectId} has no remote ID")
+                        errorCount++
+                        continue
+                    }
+                    val dto = RemoteStation.fromEntity(station, projectRemoteId)
+                    val remoteId = remoteDataSource.upsertStation(dto)
+                    stationDao.updateSyncStatus(station.id, SYNC_STATUS_SYNCED, remoteId)
+                    stationIdMap[station.id] = remoteId
+                    syncedCount++
+                    Log.d(TAG, "Synced station '${station.code}' -> $remoteId")
+                } catch (e: Exception) {
+                    errorCount++
+                    Log.e(TAG, "Failed to sync station id=${station.id}: ${e.message}", e)
+                }
+            }
+
+            // 3. Sync lithologies (need station remote IDs)
             val pendingLithologies = lithologyDao.getPendingSync()
+            Log.d(TAG, "Syncing ${pendingLithologies.size} lithologies...")
+            for (lithology in pendingLithologies) {
+                try {
+                    val stationRemoteId = resolveStationRemoteId(lithology.stationId)
+                    if (stationRemoteId == null) {
+                        Log.w(TAG, "Skipping lithology id=${lithology.id}: parent station id=${lithology.stationId} has no remote ID")
+                        errorCount++
+                        continue
+                    }
+                    val dto = RemoteLithology.fromEntity(lithology, stationRemoteId)
+                    val remoteId = remoteDataSource.upsertLithology(dto)
+                    lithologyDao.updateSyncStatus(lithology.id, SYNC_STATUS_SYNCED, remoteId)
+                    syncedCount++
+                    Log.d(TAG, "Synced lithology '${lithology.rockType}' -> $remoteId")
+                } catch (e: Exception) {
+                    errorCount++
+                    Log.e(TAG, "Failed to sync lithology id=${lithology.id}: ${e.message}", e)
+                }
+            }
+
+            // 4. Sync structural data (need station remote IDs)
             val pendingStructural = structuralDao.getPendingSync()
+            Log.d(TAG, "Syncing ${pendingStructural.size} structural records...")
+            for (structural in pendingStructural) {
+                try {
+                    val stationRemoteId = resolveStationRemoteId(structural.stationId)
+                    if (stationRemoteId == null) {
+                        Log.w(TAG, "Skipping structural id=${structural.id}: parent station id=${structural.stationId} has no remote ID")
+                        errorCount++
+                        continue
+                    }
+                    val dto = RemoteStructural.fromEntity(structural, stationRemoteId)
+                    val remoteId = remoteDataSource.upsertStructural(dto)
+                    structuralDao.updateSyncStatus(structural.id, SYNC_STATUS_SYNCED, remoteId)
+                    syncedCount++
+                    Log.d(TAG, "Synced structural '${structural.type}' -> $remoteId")
+                } catch (e: Exception) {
+                    errorCount++
+                    Log.e(TAG, "Failed to sync structural id=${structural.id}: ${e.message}", e)
+                }
+            }
+
+            // 5. Sync samples (need station remote IDs)
             val pendingSamples = sampleDao.getPendingSync()
+            Log.d(TAG, "Syncing ${pendingSamples.size} samples...")
+            for (sample in pendingSamples) {
+                try {
+                    val stationRemoteId = resolveStationRemoteId(sample.stationId)
+                    if (stationRemoteId == null) {
+                        Log.w(TAG, "Skipping sample id=${sample.id}: parent station id=${sample.stationId} has no remote ID")
+                        errorCount++
+                        continue
+                    }
+                    val dto = RemoteSample.fromEntity(sample, stationRemoteId)
+                    val remoteId = remoteDataSource.upsertSample(dto)
+                    sampleDao.updateSyncStatus(sample.id, SYNC_STATUS_SYNCED, remoteId)
+                    syncedCount++
+                    Log.d(TAG, "Synced sample '${sample.code}' -> $remoteId")
+                } catch (e: Exception) {
+                    errorCount++
+                    Log.e(TAG, "Failed to sync sample id=${sample.id}: ${e.message}", e)
+                }
+            }
+
+            // 6. Sync drill holes (need project remote IDs)
             val pendingDrillHoles = drillHoleDao.getPendingSync()
+            Log.d(TAG, "Syncing ${pendingDrillHoles.size} drill holes...")
+            for (drillHole in pendingDrillHoles) {
+                try {
+                    val projectRemoteId = resolveProjectRemoteId(drillHole.projectId)
+                    if (projectRemoteId == null) {
+                        Log.w(TAG, "Skipping drill hole id=${drillHole.id}: parent project id=${drillHole.projectId} has no remote ID")
+                        errorCount++
+                        continue
+                    }
+                    val dto = RemoteDrillHole.fromEntity(drillHole, projectRemoteId)
+                    val remoteId = remoteDataSource.upsertDrillHole(dto)
+                    drillHoleDao.updateSyncStatus(drillHole.id, SYNC_STATUS_SYNCED, remoteId)
+                    drillHoleIdMap[drillHole.id] = remoteId
+                    syncedCount++
+                    Log.d(TAG, "Synced drill hole '${drillHole.holeId}' -> $remoteId")
+                } catch (e: Exception) {
+                    errorCount++
+                    Log.e(TAG, "Failed to sync drill hole id=${drillHole.id}: ${e.message}", e)
+                }
+            }
+
+            // 7. Sync drill intervals (need drill hole remote IDs)
             val pendingIntervals = drillIntervalDao.getPendingSync()
+            Log.d(TAG, "Syncing ${pendingIntervals.size} drill intervals...")
+            for (interval in pendingIntervals) {
+                try {
+                    val drillHoleRemoteId = resolveDrillHoleRemoteId(interval.drillHoleId)
+                    if (drillHoleRemoteId == null) {
+                        Log.w(TAG, "Skipping drill interval id=${interval.id}: parent drill hole id=${interval.drillHoleId} has no remote ID")
+                        errorCount++
+                        continue
+                    }
+                    val dto = RemoteDrillInterval.fromEntity(interval, drillHoleRemoteId)
+                    val remoteId = remoteDataSource.upsertDrillInterval(dto)
+                    drillIntervalDao.updateSyncStatus(interval.id, SYNC_STATUS_SYNCED, remoteId)
+                    syncedCount++
+                    Log.d(TAG, "Synced drill interval ${interval.fromDepth}-${interval.toDepth} -> $remoteId")
+                } catch (e: Exception) {
+                    errorCount++
+                    Log.e(TAG, "Failed to sync drill interval id=${interval.id}: ${e.message}", e)
+                }
+            }
+
+            // 8. Sync photos (upload file bytes + create DB record)
             val pendingPhotos = photoDao.getPendingSync()
+            Log.d(TAG, "Syncing ${pendingPhotos.size} photos...")
+            for (photo in pendingPhotos) {
+                try {
+                    syncPhoto(photo)
+                    syncedCount++
+                    Log.d(TAG, "Synced photo '${photo.fileName}'")
+                } catch (e: Exception) {
+                    errorCount++
+                    Log.e(TAG, "Failed to sync photo id=${photo.id}: ${e.message}", e)
+                }
+            }
 
-            val totalPending = pendingProjects.size + pendingStations.size +
-                pendingLithologies.size + pendingStructural.size +
-                pendingSamples.size + pendingDrillHoles.size +
-                pendingIntervals.size + pendingPhotos.size
-
-            Log.d(TAG, "Found $totalPending pending items to sync")
-
-            // TODO: Implement Supabase sync when backend is configured
-            // For now, just log what needs syncing
-            // In production, this would:
-            // 1. Upload pending projects first (to get remote IDs)
-            // 2. Upload stations (with project remote IDs)
-            // 3. Upload lithology, structural, samples (with station remote IDs)
-            // 4. Upload drill holes (with project remote IDs)
-            // 5. Upload drill intervals (with drill hole remote IDs)
-            // 6. Upload photos to Supabase Storage
-            // 7. Update local syncStatus to "SYNCED" and store remoteId
-
-            Log.d(TAG, "Sync completed")
-            Result.success()
         } catch (e: Exception) {
-            Log.e(TAG, "Sync failed", e)
-            Result.retry()
+            Log.e(TAG, "Sync failed with unexpected error", e)
+            return Result.retry()
         }
+
+        Log.d(TAG, "Sync completed: $syncedCount synced, $errorCount errors")
+        return if (errorCount > 0 && syncedCount == 0) {
+            Result.retry()
+        } else {
+            Result.success()
+        }
+    }
+
+    // ---- Parent ID resolution helpers ----
+
+    /**
+     * Resolves the remote UUID for a project. Checks the in-memory map first (populated
+     * during this sync run), then falls back to reading the entity's stored remoteId
+     * from the local database (set during a previous sync run).
+     */
+    private suspend fun resolveProjectRemoteId(localId: Long): String? {
+        projectIdMap[localId]?.let { return it }
+        val entity = projectDao.getById(localId).firstOrNull()
+        return entity?.remoteId?.also { projectIdMap[localId] = it }
+    }
+
+    private suspend fun resolveStationRemoteId(localId: Long): String? {
+        stationIdMap[localId]?.let { return it }
+        val entity = stationDao.getById(localId).firstOrNull()
+        return entity?.remoteId?.also { stationIdMap[localId] = it }
+    }
+
+    private suspend fun resolveDrillHoleRemoteId(localId: Long): String? {
+        drillHoleIdMap[localId]?.let { return it }
+        val entity = drillHoleDao.getById(localId).firstOrNull()
+        return entity?.remoteId?.also { drillHoleIdMap[localId] = it }
+    }
+
+    // ---- Photo sync ----
+
+    private suspend fun syncPhoto(photo: PhotoEntity) {
+        // Resolve parent remote IDs
+        val stationRemoteId = if (photo.stationId != null) {
+            resolveStationRemoteId(photo.stationId)
+        } else null
+
+        val drillHoleRemoteId = if (photo.drillHoleId != null) {
+            resolveDrillHoleRemoteId(photo.drillHoleId)
+        } else null
+
+        // Validate that at least one parent is resolved when the local ID is set
+        if (photo.stationId != null && stationRemoteId == null) {
+            throw IllegalStateException(
+                "Parent station id=${photo.stationId} has no remote ID"
+            )
+        }
+        if (photo.drillHoleId != null && drillHoleRemoteId == null) {
+            throw IllegalStateException(
+                "Parent drill hole id=${photo.drillHoleId} has no remote ID"
+            )
+        }
+
+        // Upload the photo file to Supabase Storage if not already uploaded
+        var uploadedUrl = photo.remoteUrl
+        if (uploadedUrl == null) {
+            val file = File(photo.filePath)
+            if (file.exists()) {
+                val fileBytes = file.readBytes()
+                val storagePath = "${System.currentTimeMillis()}_${photo.fileName}"
+                uploadedUrl = remoteDataSource.uploadPhoto(storagePath, fileBytes)
+            } else {
+                Log.w(TAG, "Photo file not found at ${photo.filePath}, syncing record without file upload")
+            }
+        }
+
+        // Upsert the photo record in the Supabase database
+        val dto = RemotePhoto.fromEntity(
+            entity = photo,
+            stationRemoteId = stationRemoteId,
+            drillHoleRemoteId = drillHoleRemoteId,
+            uploadedUrl = uploadedUrl,
+        )
+        val remoteId = remoteDataSource.upsertPhoto(dto)
+        photoDao.updateSyncStatus(photo.id, SYNC_STATUS_SYNCED, remoteId, uploadedUrl)
     }
 }
