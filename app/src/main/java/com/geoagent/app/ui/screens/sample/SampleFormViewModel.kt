@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.geoagent.app.data.local.entity.SampleEntity
 import com.geoagent.app.data.repository.SampleRepository
+import com.geoagent.app.util.CodeGenerator
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
@@ -16,6 +17,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -58,6 +60,10 @@ class SampleFormViewModel @Inject constructor(
             loadExisting(sampleId)
         } else {
             captureGps()
+            viewModelScope.launch {
+                val existing = sampleRepository.getByStation(stationId).first()
+                _uiState.update { it.copy(code = CodeGenerator.generateSampleCode(existing.map { s -> s.code })) }
+            }
         }
     }
 

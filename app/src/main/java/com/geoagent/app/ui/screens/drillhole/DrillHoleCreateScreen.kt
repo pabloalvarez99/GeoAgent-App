@@ -64,6 +64,7 @@ fun DrillHoleCreateScreen(
 ) {
     val context = LocalContext.current
     val isSaving by viewModel.isSaving.collectAsState()
+    val suggestedHoleId by viewModel.suggestedHoleId.collectAsState()
 
     var holeId by remember { mutableStateOf("") }
     var selectedType by remember { mutableStateOf("Diamantina") }
@@ -84,6 +85,13 @@ fun DrillHoleCreateScreen(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
         hasLocationPermission = granted
+    }
+
+    // Pre-fill holeId with auto-generated code once available
+    LaunchedEffect(suggestedHoleId) {
+        if (holeId.isBlank() && suggestedHoleId.isNotBlank()) {
+            holeId = suggestedHoleId
+        }
     }
 
     // Check permission and auto-capture GPS

@@ -40,6 +40,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.geoagent.app.data.local.entity.StationEntity
+import com.geoagent.app.ui.components.GeoSearchBar
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -54,6 +55,7 @@ fun StationListScreen(
     viewModel: StationListViewModel = hiltViewModel(),
 ) {
     val stations by viewModel.stations.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
 
     Scaffold(
         topBar = {
@@ -97,52 +99,65 @@ fun StationListScreen(
             }
         },
     ) { innerPadding ->
-        if (stations.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+        ) {
+            GeoSearchBar(
+                query = searchQuery,
+                onQueryChange = viewModel::onSearchQueryChange,
+                placeholder = "Buscar por codigo, geologo...",
+            )
+
+            if (stations.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Place,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.outline,
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "Sin estaciones",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Presione + para crear una nueva estacion",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.outline,
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Place,
+                            contentDescription = null,
+                            modifier = Modifier.size(64.dp),
+                            tint = MaterialTheme.colorScheme.outline,
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = if (searchQuery.isBlank()) "Sin estaciones" else "Sin resultados",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = if (searchQuery.isBlank()) {
+                                "Presione + para crear una nueva estacion"
+                            } else {
+                                "Intenta con otro termino de busqueda"
+                            },
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.outline,
+                        )
+                    }
                 }
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                items(
-                    items = stations,
-                    key = { it.id },
-                ) { station ->
-                    StationCard(
-                        station = station,
-                        onClick = { onNavigateToStation(station.id) },
-                    )
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    items(
+                        items = stations,
+                        key = { it.id },
+                    ) { station ->
+                        StationCard(
+                            station = station,
+                            onClick = { onNavigateToStation(station.id) },
+                        )
+                    }
                 }
             }
         }

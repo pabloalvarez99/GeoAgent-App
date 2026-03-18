@@ -2,11 +2,15 @@ package com.geoagent.app.ui.screens.station
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.geoagent.app.data.repository.StationRepository
+import com.geoagent.app.util.CodeGenerator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
@@ -37,6 +41,13 @@ class StationCreateViewModel @Inject constructor(
 
     private val _altitude = MutableStateFlow<Double?>(null)
     val altitude: StateFlow<Double?> = _altitude.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            val existing = stationRepository.getByProject(projectId).first()
+            _code.value = CodeGenerator.generateStationCode(existing.map { it.code })
+        }
+    }
 
     fun onCodeChange(value: String) {
         _code.value = value

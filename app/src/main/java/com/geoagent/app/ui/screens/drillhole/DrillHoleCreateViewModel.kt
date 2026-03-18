@@ -4,10 +4,12 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.geoagent.app.data.repository.DrillHoleRepository
+import com.geoagent.app.util.CodeGenerator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -21,6 +23,16 @@ class DrillHoleCreateViewModel @Inject constructor(
 
     private val _isSaving = MutableStateFlow(false)
     val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
+
+    private val _suggestedHoleId = MutableStateFlow("")
+    val suggestedHoleId: StateFlow<String> = _suggestedHoleId.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            val existing = drillHoleRepository.getByProject(projectId).first()
+            _suggestedHoleId.value = CodeGenerator.generateDrillHoleCode(existing.map { it.holeId })
+        }
+    }
 
     fun create(
         holeId: String,

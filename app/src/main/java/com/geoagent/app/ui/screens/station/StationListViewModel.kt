@@ -6,8 +6,11 @@ import androidx.lifecycle.viewModelScope
 import com.geoagent.app.data.local.entity.StationEntity
 import com.geoagent.app.data.repository.StationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
@@ -19,10 +22,29 @@ class StationListViewModel @Inject constructor(
 
     private val projectId: Long = checkNotNull(savedStateHandle["projectId"])
 
-    val stations: StateFlow<List<StationEntity>> = stationRepository.getByProject(projectId)
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = emptyList(),
-        )
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    val stations: StateFlow<List<StationEntity>> = combine(
+        stationRepository.getByProject(projectId),
+        _searchQuery,
+    ) { stations, query ->
+        if (query.isBlank()) {
+            stations
+        } else {
+            stations.filter { station ->
+                station.code.contains(query, ignoreCase = true) ||
+                    station.geologist.contains(query, ignoreCase = true) ||
+                    station.description.contains(query, ignoreCase = true)
+            }
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = emptyList(),
+    )
+
+    fun onSearchQueryChange(query: String) {
+        _searchQuery.value = query
+    }
 }

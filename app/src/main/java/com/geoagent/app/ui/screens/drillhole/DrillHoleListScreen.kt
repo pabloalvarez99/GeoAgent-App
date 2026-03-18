@@ -37,6 +37,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.geoagent.app.data.local.entity.DrillHoleEntity
+import com.geoagent.app.ui.components.GeoSearchBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,6 +49,7 @@ fun DrillHoleListScreen(
     viewModel: DrillHoleListViewModel = hiltViewModel(),
 ) {
     val drillHoles by viewModel.drillHoles.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
 
     Scaffold(
         topBar = {
@@ -80,40 +82,53 @@ fun DrillHoleListScreen(
             }
         },
     ) { innerPadding ->
-        if (drillHoles.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "Sin sondajes",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Presiona + para crear un nuevo sondaje",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+        ) {
+            GeoSearchBar(
+                query = searchQuery,
+                onQueryChange = viewModel::onSearchQueryChange,
+                placeholder = "Buscar por ID, geologo, tipo...",
+            )
+
+            if (drillHoles.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = if (searchQuery.isBlank()) "Sin sondajes" else "Sin resultados",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = if (searchQuery.isBlank()) {
+                                "Presiona + para crear un nuevo sondaje"
+                            } else {
+                                "Intenta con otro termino de busqueda"
+                            },
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                items(drillHoles, key = { it.id }) { drillHole ->
-                    DrillHoleCard(
-                        drillHole = drillHole,
-                        onClick = { onNavigateToDrillHole(drillHole.id) },
-                    )
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    items(drillHoles, key = { it.id }) { drillHole ->
+                        DrillHoleCard(
+                            drillHole = drillHole,
+                            onClick = { onNavigateToDrillHole(drillHole.id) },
+                        )
+                    }
                 }
             }
         }
