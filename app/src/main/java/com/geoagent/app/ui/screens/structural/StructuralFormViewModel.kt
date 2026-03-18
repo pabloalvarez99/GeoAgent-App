@@ -3,8 +3,10 @@ package com.geoagent.app.ui.screens.structural
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.geoagent.app.data.GeoConstants
 import com.geoagent.app.data.local.entity.StructuralEntity
 import com.geoagent.app.data.repository.StructuralRepository
+import com.geoagent.app.util.FormValidation
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -120,29 +122,36 @@ class StructuralFormViewModel @Inject constructor(
         _uiState.update { it.copy(notes = value) }
     }
 
+    fun clearError() {
+        _uiState.update { it.copy(errorMessage = null) }
+    }
+
     fun save() {
         val state = _uiState.value
-        val strikeVal = state.strike.toDoubleOrNull()
-        val dipVal = state.dip.toDoubleOrNull()
+        if (state.isSaving) return
+        val strikeVal = FormValidation.parseDouble(state.strike)
+        val dipVal = FormValidation.parseDouble(state.dip)
 
-        if (state.type.isBlank()) {
-            _uiState.update { it.copy(errorMessage = "Seleccione el tipo de estructura") }
+        val validationError = FormValidation.validateRequired(state.type, "Tipo de estructura")
+            ?: FormValidation.validateStrike(strikeVal)
+            ?: FormValidation.validateDip(dipVal)
+            ?: FormValidation.validateRequired(state.dipDirection, "Direccion de manteo")
+            ?: FormValidation.validatePositive(FormValidation.parseDouble(state.thickness), "Espesor")
+
+        if (strikeVal == null) {
+            _uiState.update { it.copy(errorMessage = "Ingrese el rumbo") }
             return
         }
-        if (strikeVal == null || strikeVal < 0 || strikeVal > 360) {
-            _uiState.update { it.copy(errorMessage = "Rumbo debe ser entre 0 y 360") }
+        if (dipVal == null) {
+            _uiState.update { it.copy(errorMessage = "Ingrese el manteo") }
             return
         }
-        if (dipVal == null || dipVal < 0 || dipVal > 90) {
-            _uiState.update { it.copy(errorMessage = "Manteo debe ser entre 0 y 90") }
-            return
-        }
-        if (state.dipDirection.isBlank()) {
-            _uiState.update { it.copy(errorMessage = "Seleccione la direccion de manteo") }
+        if (validationError != null) {
+            _uiState.update { it.copy(errorMessage = validationError) }
             return
         }
 
-        val thicknessVal = state.thickness.toDoubleOrNull()
+        val thicknessVal = FormValidation.parseDouble(state.thickness)
 
         _uiState.update { it.copy(isSaving = true, errorMessage = null) }
 
@@ -188,17 +197,10 @@ class StructuralFormViewModel @Inject constructor(
     }
 
     companion object {
-        val structuralTypes = listOf(
-            "Falla", "Fractura", "Veta", "Foliacion",
-            "Estratificacion", "Contacto", "Diaclasa", "Clivaje",
-        )
-
-        val dipDirections = listOf("N", "NE", "E", "SE", "S", "SW", "W", "NW")
-
-        val movements = listOf("Normal", "Inversa", "Dextral", "Sinistral")
-
-        val roughnesses = listOf("Lisa", "Rugosa", "Escalonada", "Ondulada")
-
-        val continuities = listOf("Continua", "Discontinua", "Intermitente")
+        val structuralTypes = GeoConstants.structuralTypes
+        val dipDirections = GeoConstants.dipDirections
+        val movements = GeoConstants.faultMovements
+        val roughnesses = GeoConstants.roughness
+        val continuities = GeoConstants.continuity
     }
 }

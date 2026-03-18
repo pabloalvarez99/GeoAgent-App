@@ -67,9 +67,17 @@ fun ExportScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Exportar Datos") },
+                title = {
+                    Text(
+                        text = "Exportar Datos",
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(
+                        onClick = onNavigateBack,
+                        modifier = Modifier.size(48.dp),
+                    ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Volver",
@@ -79,6 +87,7 @@ fun ExportScreen(
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 ),
             )
         },
@@ -95,7 +104,7 @@ fun ExportScreen(
             ExportCard(
                 icon = Icons.Default.TableChart,
                 title = "Excel / CSV",
-                description = "Exporta todos los datos del proyecto (estaciones, sondajes) en formato CSV compatible con Excel.",
+                description = "Exporta todos los datos del proyecto en formato Excel (.xlsx) con hojas separadas para estaciones, litologia, estructural, muestras e intervalos de sondaje.",
                 isExporting = exportState.isExporting && exportState.currentExport == ExportType.EXCEL_CSV,
                 exportedFile = if (exportState.currentExport == ExportType.EXCEL_CSV) exportState.lastExportedFile else null,
                 onExport = { viewModel.export(ExportType.EXCEL_CSV) },
@@ -150,7 +159,7 @@ private fun ExportCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
@@ -173,7 +182,7 @@ private fun ExportCard(
                     text = title,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
 

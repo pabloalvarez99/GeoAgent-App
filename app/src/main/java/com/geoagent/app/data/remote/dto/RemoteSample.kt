@@ -47,15 +47,6 @@ data class RemoteSample(
 
     @SerialName("notes")
     val notes: String? = null,
-
-    @SerialName("created_at")
-    val createdAt: Long,
-
-    @SerialName("updated_at")
-    val updatedAt: Long,
-
-    @SerialName("local_id")
-    val localId: Long? = null,
 ) {
     companion object {
         fun fromEntity(
@@ -78,9 +69,6 @@ data class RemoteSample(
                 analysisRequested = entity.analysisRequested,
                 status = entity.status,
                 notes = entity.notes,
-                createdAt = entity.createdAt,
-                updatedAt = entity.updatedAt,
-                localId = entity.id,
             )
         }
     }

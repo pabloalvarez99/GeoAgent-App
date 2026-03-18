@@ -43,6 +43,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -83,17 +84,12 @@ dependencies {
     implementation(libs.androidx.work.runtime)
     implementation(libs.androidx.hilt.work)
 
-    // DataStore
-    implementation(libs.androidx.datastore)
+    // Google Maps
+    implementation(libs.maps.compose)
+    implementation(libs.play.services.maps)
 
     // Coil
     implementation(libs.coil.compose)
-
-    // CameraX
-    implementation(libs.camerax.core)
-    implementation(libs.camerax.camera2)
-    implementation(libs.camerax.lifecycle)
-    implementation(libs.camerax.view)
 
     // Location
     implementation(libs.play.services.location)
@@ -103,9 +99,6 @@ dependencies {
     implementation(libs.supabase.auth)
     implementation(libs.supabase.storage)
     implementation(libs.ktor.client.android)
-
-    // Accompanist
-    implementation(libs.accompanist.permissions)
 
     // Export
     implementation(libs.apache.poi)

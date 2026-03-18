@@ -3,6 +3,8 @@ package com.geoagent.app.ui.screens.drillhole
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,6 +19,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -31,19 +35,29 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.geoagent.app.ui.components.ConfirmDeleteDialog
+import com.geoagent.app.ui.components.SyncStatusBadge
+import com.geoagent.app.util.FormValidation
 import com.geoagent.app.data.local.entity.DrillHoleEntity
 import com.geoagent.app.data.local.entity.DrillIntervalEntity
 import java.text.SimpleDateFormat
@@ -57,27 +71,79 @@ fun DrillHoleDetailScreen(
     onNavigateToInterval: (Long?) -> Unit,
     onNavigateToPhotos: () -> Unit,
     onNavigateToCamera: () -> Unit,
+    onNavigateToEdit: () -> Unit,
     onNavigateBack: () -> Unit,
     viewModel: DrillHoleDetailViewModel = hiltViewModel(),
 ) {
     val drillHole by viewModel.drillHole.collectAsState()
     val intervals by viewModel.intervals.collectAsState()
+    val photoCount by viewModel.photoCount.collectAsState()
+    var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
+    var intervalToDelete by rememberSaveable { mutableStateOf<Long?>(null) }
+
+    if (showDeleteDialog) {
+        ConfirmDeleteDialog(
+            title = "Eliminar sondaje",
+            message = "Se eliminara el sondaje ${drillHole?.holeId ?: ""} y todos sus intervalos. Esta accion no se puede deshacer.",
+            onConfirm = {
+                showDeleteDialog = false
+                viewModel.deleteDrillHole(onNavigateBack)
+            },
+            onDismiss = { showDeleteDialog = false },
+        )
+    }
+
+    intervalToDelete?.let { intervalId ->
+        val interval = intervals.find { it.id == intervalId }
+        if (interval != null) {
+            ConfirmDeleteDialog(
+                title = "Eliminar intervalo",
+                message = "Se eliminara el intervalo ${"%.1f".format(interval.fromDepth)}-${"%.1f".format(interval.toDepth)} m. Esta accion no se puede deshacer.",
+                onConfirm = {
+                    viewModel.deleteInterval(interval)
+                    intervalToDelete = null
+                },
+                onDismiss = { intervalToDelete = null },
+            )
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(drillHole?.holeId ?: "Sondaje") },
+                title = {
+                    Text(
+                        text = drillHole?.holeId ?: "Sondaje",
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(
+                        onClick = onNavigateBack,
+                        modifier = Modifier.size(48.dp),
+                    ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Volver",
                         )
                     }
                 },
+                actions = {
+                    IconButton(
+                        onClick = onNavigateToEdit,
+                        modifier = Modifier.size(48.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Editar sondaje",
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 ),
             )
         },
@@ -116,6 +182,15 @@ fun DrillHoleDetailScreen(
                 )
             }
 
+            // Quick depth update
+            item {
+                DepthUpdateCard(
+                    currentDepth = hole.actualDepth ?: 0.0,
+                    plannedDepth = hole.plannedDepth,
+                    onUpdateDepth = { viewModel.updateActualDepth(it) },
+                )
+            }
+
             // Intervals section header
             item {
                 Row(
@@ -123,12 +198,24 @@ fun DrillHoleDetailScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        text = "Intervalos de Logging",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            text = "Intervalos de Logging",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        if (intervals.isNotEmpty()) {
+                            Text(
+                                text = "(${intervals.size})",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.outline,
+                            )
+                        }
+                    }
 
                     Button(
                         onClick = { onNavigateToInterval(null) },
@@ -169,6 +256,7 @@ fun DrillHoleDetailScreen(
                     IntervalCard(
                         interval = interval,
                         onClick = { onNavigateToInterval(interval.id) },
+                        onDeleteClick = { intervalToDelete = interval.id },
                     )
                 }
             }
@@ -207,9 +295,30 @@ fun DrillHoleDetailScreen(
                             modifier = Modifier.size(20.dp),
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Fotos")
+                        Text("Fotos ($photoCount)")
                     }
                 }
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Delete button
+                OutlinedButton(
+                    onClick = { showDeleteDialog = true },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error,
+                    ),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Eliminar sondaje")
+                }
+
                 Spacer(modifier = Modifier.height(24.dp))
             }
         }
@@ -304,6 +413,9 @@ private fun DrillHoleInfoCard(drillHole: DrillHoleEntity) {
             if (!drillHole.notes.isNullOrBlank()) {
                 DetailField(label = "Notas", value = drillHole.notes)
             }
+
+            HorizontalDivider()
+            SyncStatusBadge(syncStatus = drillHole.syncStatus)
         }
     }
 }
@@ -325,12 +437,13 @@ private fun DetailField(label: String, value: String) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun StatusSelector(
     currentStatus: String,
     onStatusSelected: (String) -> Unit,
 ) {
-    val statuses = listOf("En Progreso", "Completado", "Abandonado")
+    val statuses = listOf("En Progreso", "Completado", "Suspendido", "Abandonado")
 
     Column {
         Text(
@@ -340,9 +453,10 @@ private fun StatusSelector(
             color = MaterialTheme.colorScheme.onSurface,
         )
         Spacer(modifier = Modifier.height(8.dp))
-        Row(
+        FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             statuses.forEach { status ->
                 FilterChip(
@@ -358,6 +472,7 @@ private fun StatusSelector(
                         selectedContainerColor = when (status) {
                             "En Progreso" -> MaterialTheme.colorScheme.tertiaryContainer
                             "Completado" -> MaterialTheme.colorScheme.primaryContainer
+                            "Suspendido" -> MaterialTheme.colorScheme.secondaryContainer
                             "Abandonado" -> MaterialTheme.colorScheme.errorContainer
                             else -> MaterialTheme.colorScheme.surfaceVariant
                         },
@@ -373,6 +488,7 @@ private fun StatusSelector(
 private fun IntervalCard(
     interval: DrillIntervalEntity,
     onClick: () -> Unit,
+    onDeleteClick: () -> Unit,
 ) {
     Card(
         onClick = onClick,
@@ -385,7 +501,7 @@ private fun IntervalCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
+                .padding(start = 14.dp, top = 8.dp, bottom = 14.dp, end = 4.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -397,13 +513,28 @@ private fun IntervalCard(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.weight(1f),
                 )
                 Text(
                     text = interval.rockType,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
                 )
+                IconButton(
+                    onClick = onDeleteClick,
+                    modifier = Modifier.size(36.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Eliminar intervalo",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -438,6 +569,113 @@ private fun IntervalCard(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun DepthUpdateCard(
+    currentDepth: Double,
+    plannedDepth: Double,
+    onUpdateDepth: (Double) -> Unit,
+) {
+    var isEditing by rememberSaveable { mutableStateOf(false) }
+    var depthText by rememberSaveable { mutableStateOf("") }
+    val progress = if (plannedDepth > 0) (currentDepth / plannedDepth).toFloat().coerceIn(0f, 1f) else 0f
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "Profundidad Actual",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                )
+
+                if (!isEditing) {
+                    TextButton(
+                        onClick = {
+                            depthText = "%.1f".format(currentDepth)
+                            isEditing = true
+                        },
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Actualizar")
+                    }
+                }
+            }
+
+            if (isEditing) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    OutlinedTextField(
+                        value = depthText,
+                        onValueChange = { depthText = it },
+                        label = { Text("Metros") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                    )
+
+                    Button(
+                        onClick = {
+                            FormValidation.parseDouble(depthText)?.let { depth ->
+                                onUpdateDepth(depth)
+                                isEditing = false
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                        ),
+                    ) {
+                        Text("Guardar")
+                    }
+
+                    TextButton(onClick = { isEditing = false }) {
+                        Text("Cancelar")
+                    }
+                }
+            } else {
+                Text(
+                    text = "${"%.1f".format(currentDepth)} / ${"%.1f".format(plannedDepth)} m  (${"%.0f".format(progress * 100)}%)",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                )
+            }
+
+            androidx.compose.material3.LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(10.dp),
+                color = MaterialTheme.colorScheme.tertiary,
+                trackColor = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.15f),
+            )
         }
     }
 }

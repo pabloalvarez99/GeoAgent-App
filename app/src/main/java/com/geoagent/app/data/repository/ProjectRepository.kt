@@ -20,6 +20,10 @@ class ProjectRepository @Inject constructor(
 
     fun getById(id: Long): Flow<ProjectEntity?> = projectDao.getById(id)
 
+    fun getTotalCount(): Flow<Int> = projectDao.getTotalCount()
+
+    fun getPendingSyncCount(): Flow<Int> = projectDao.getPendingSyncCount()
+
     fun getStationCount(projectId: Long): Flow<Int> = stationDao.getCountByProject(projectId)
 
     fun getDrillHoleCount(projectId: Long): Flow<Int> = drillHoleDao.getCountByProject(projectId)

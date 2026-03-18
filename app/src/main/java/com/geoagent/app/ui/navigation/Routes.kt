@@ -20,7 +20,7 @@ sealed interface Route {
     data class StationDetail(val stationId: Long) : Route
 
     @Serializable
-    data class StationCreate(val projectId: Long) : Route
+    data class StationCreate(val projectId: Long, val stationId: Long? = null) : Route
 
     @Serializable
     data class LithologyForm(val stationId: Long, val lithologyId: Long? = null) : Route
@@ -38,7 +38,7 @@ sealed interface Route {
     data class DrillHoleDetail(val drillHoleId: Long) : Route
 
     @Serializable
-    data class DrillHoleCreate(val projectId: Long) : Route
+    data class DrillHoleCreate(val projectId: Long, val drillHoleId: Long? = null) : Route
 
     @Serializable
     data class DrillIntervalForm(val drillHoleId: Long, val intervalId: Long? = null) : Route
@@ -47,10 +47,10 @@ sealed interface Route {
     data class MapView(val projectId: Long) : Route
 
     @Serializable
-    data class PhotoGallery(val stationId: Long? = null, val drillHoleId: Long? = null) : Route
+    data class PhotoGallery(val stationId: Long? = null, val drillHoleId: Long? = null, val projectId: Long? = null) : Route
 
     @Serializable
-    data class CameraCapture(val stationId: Long? = null, val drillHoleId: Long? = null) : Route
+    data class CameraCapture(val stationId: Long? = null, val drillHoleId: Long? = null, val projectId: Long? = null) : Route
 
     @Serializable
     data class Export(val projectId: Long) : Route

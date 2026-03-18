@@ -15,6 +15,10 @@ class SampleRepository @Inject constructor(
 
     fun getById(id: Long): Flow<SampleEntity?> = sampleDao.getById(id)
 
+    fun getTotalCount(): Flow<Int> = sampleDao.getTotalCount()
+
+    fun getPendingSyncCount(): Flow<Int> = sampleDao.getPendingSyncCount()
+
     suspend fun create(
         stationId: Long,
         code: String,

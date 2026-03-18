@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface StructuralDao {
 
-    @Query("SELECT * FROM structural_data WHERE stationId = :stationId")
+    @Query("SELECT * FROM structural_data WHERE station_id = :stationId")
     fun getByStation(stationId: Long): Flow<List<StructuralEntity>>
 
     @Query("SELECT * FROM structural_data WHERE id = :id")
@@ -27,9 +27,9 @@ interface StructuralDao {
     @Delete
     suspend fun delete(structural: StructuralEntity)
 
-    @Query("SELECT * FROM structural_data WHERE syncStatus != 'SYNCED'")
+    @Query("SELECT * FROM structural_data WHERE sync_status != 'SYNCED'")
     suspend fun getPendingSync(): List<StructuralEntity>
 
-    @Query("UPDATE structural_data SET syncStatus = :status, remoteId = :remoteId WHERE id = :id")
+    @Query("UPDATE structural_data SET sync_status = :status, remote_id = :remoteId WHERE id = :id")
     suspend fun updateSyncStatus(id: Long, status: String, remoteId: String?)
 }

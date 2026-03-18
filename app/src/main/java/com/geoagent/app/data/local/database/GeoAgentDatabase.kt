@@ -2,6 +2,8 @@ package com.geoagent.app.data.local.database
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.geoagent.app.data.local.dao.DrillHoleDao
 import com.geoagent.app.data.local.dao.DrillIntervalDao
 import com.geoagent.app.data.local.dao.LithologyDao
@@ -30,10 +32,20 @@ import com.geoagent.app.data.local.entity.StructuralEntity
         DrillIntervalEntity::class,
         PhotoEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 abstract class GeoAgentDatabase : RoomDatabase() {
+
+    companion object {
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE photos ADD COLUMN project_id INTEGER")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_photos_project_id ON photos(project_id)")
+            }
+        }
+    }
+
     abstract fun projectDao(): ProjectDao
     abstract fun stationDao(): StationDao
     abstract fun lithologyDao(): LithologyDao

@@ -20,12 +20,25 @@ class PhotoRepository @Inject constructor(
     fun getByDrillHole(drillHoleId: Long): Flow<List<PhotoEntity>> =
         photoDao.getByDrillHole(drillHoleId)
 
+    fun getByProject(projectId: Long): Flow<List<PhotoEntity>> =
+        photoDao.getByProject(projectId)
+
     fun getById(id: Long): Flow<PhotoEntity?> = photoDao.getById(id)
 
     fun getCountByStation(stationId: Long): Flow<Int> = photoDao.getCountByStation(stationId)
 
+    fun getCountByDrillHole(drillHoleId: Long): Flow<Int> = photoDao.getCountByDrillHole(drillHoleId)
+
+    fun getCountByProject(projectId: Long): Flow<Int> = photoDao.getCountByProject(projectId)
+
+    fun getTotalCount(): Flow<Int> = photoDao.getTotalCount()
+
+    fun getPendingSyncCount(): Flow<Int> = photoDao.getPendingSyncCount()
+
     fun getPhotoDir(): File {
-        val dir = File(context.getExternalFilesDir(null), "photos")
+        // Prefer external files dir, fall back to internal files dir
+        val baseDir = context.getExternalFilesDir(null) ?: context.filesDir
+        val dir = File(baseDir, "photos")
         if (!dir.exists()) dir.mkdirs()
         return dir
     }
@@ -33,6 +46,7 @@ class PhotoRepository @Inject constructor(
     suspend fun create(
         stationId: Long?,
         drillHoleId: Long?,
+        projectId: Long? = null,
         filePath: String,
         fileName: String,
         description: String?,
@@ -44,6 +58,7 @@ class PhotoRepository @Inject constructor(
             PhotoEntity(
                 stationId = stationId,
                 drillHoleId = drillHoleId,
+                projectId = projectId,
                 filePath = filePath,
                 fileName = fileName,
                 description = description,

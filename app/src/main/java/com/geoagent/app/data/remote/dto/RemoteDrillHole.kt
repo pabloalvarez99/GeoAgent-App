@@ -3,6 +3,7 @@ package com.geoagent.app.data.remote.dto
 import com.geoagent.app.data.local.entity.DrillHoleEntity
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import java.time.Instant
 
 @Serializable
 data class RemoteDrillHole(
@@ -40,10 +41,10 @@ data class RemoteDrillHole(
     val actualDepth: Double? = null,
 
     @SerialName("start_date")
-    val startDate: Long? = null,
+    val startDate: String? = null,
 
     @SerialName("end_date")
-    val endDate: Long? = null,
+    val endDate: String? = null,
 
     @SerialName("status")
     val status: String,
@@ -53,15 +54,6 @@ data class RemoteDrillHole(
 
     @SerialName("notes")
     val notes: String? = null,
-
-    @SerialName("created_at")
-    val createdAt: Long,
-
-    @SerialName("updated_at")
-    val updatedAt: Long,
-
-    @SerialName("local_id")
-    val localId: Long? = null,
 ) {
     companion object {
         fun fromEntity(
@@ -81,14 +73,11 @@ data class RemoteDrillHole(
                 inclination = entity.inclination,
                 plannedDepth = entity.plannedDepth,
                 actualDepth = entity.actualDepth,
-                startDate = entity.startDate,
-                endDate = entity.endDate,
+                startDate = entity.startDate?.let { Instant.ofEpochMilli(it).toString() },
+                endDate = entity.endDate?.let { Instant.ofEpochMilli(it).toString() },
                 status = entity.status,
                 geologist = entity.geologist,
                 notes = entity.notes,
-                createdAt = entity.createdAt,
-                updatedAt = entity.updatedAt,
-                localId = entity.id,
             )
         }
     }

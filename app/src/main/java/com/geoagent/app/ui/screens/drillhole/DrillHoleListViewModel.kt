@@ -25,11 +25,15 @@ class DrillHoleListViewModel @Inject constructor(
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
+    private val _sortOrder = MutableStateFlow(DrillHoleSortOrder.DATE_DESC)
+    val sortOrder: StateFlow<DrillHoleSortOrder> = _sortOrder.asStateFlow()
+
     val drillHoles: StateFlow<List<DrillHoleEntity>> = combine(
         drillHoleRepository.getByProject(projectId),
         _searchQuery,
-    ) { holes, query ->
-        if (query.isBlank()) {
+        _sortOrder,
+    ) { holes, query, sort ->
+        val filtered = if (query.isBlank()) {
             holes
         } else {
             holes.filter { hole ->
@@ -38,6 +42,13 @@ class DrillHoleListViewModel @Inject constructor(
                     hole.type.contains(query, ignoreCase = true) ||
                     hole.status.contains(query, ignoreCase = true)
             }
+        }
+        when (sort) {
+            DrillHoleSortOrder.DATE_DESC -> filtered.sortedByDescending { it.createdAt }
+            DrillHoleSortOrder.DATE_ASC -> filtered.sortedBy { it.createdAt }
+            DrillHoleSortOrder.CODE_ASC -> filtered.sortedBy { it.holeId }
+            DrillHoleSortOrder.CODE_DESC -> filtered.sortedByDescending { it.holeId }
+            DrillHoleSortOrder.DEPTH_DESC -> filtered.sortedByDescending { it.actualDepth ?: 0.0 }
         }
     }.stateIn(
         scope = viewModelScope,
@@ -48,4 +59,16 @@ class DrillHoleListViewModel @Inject constructor(
     fun onSearchQueryChange(query: String) {
         _searchQuery.value = query
     }
+
+    fun onSortOrderChange(order: DrillHoleSortOrder) {
+        _sortOrder.value = order
+    }
+}
+
+enum class DrillHoleSortOrder(val label: String) {
+    DATE_DESC("Mas reciente"),
+    DATE_ASC("Mas antiguo"),
+    CODE_ASC("Codigo A-Z"),
+    CODE_DESC("Codigo Z-A"),
+    DEPTH_DESC("Mayor profundidad"),
 }

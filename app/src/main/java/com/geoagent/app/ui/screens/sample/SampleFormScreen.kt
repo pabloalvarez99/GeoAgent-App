@@ -69,17 +69,26 @@ fun SampleFormScreen(
     }
 
     LaunchedEffect(uiState.errorMessage) {
-        uiState.errorMessage?.let { snackbarHostState.showSnackbar(it) }
+        uiState.errorMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearError()
+        }
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(if (uiState.isEditing) "Editar Muestra" else "Muestra")
+                    Text(
+                        text = if (uiState.isEditing) "Editar Muestra" else "Muestra",
+                        fontWeight = FontWeight.SemiBold,
+                    )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(
+                        onClick = onNavigateBack,
+                        modifier = Modifier.size(48.dp),
+                    ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Volver",
@@ -89,6 +98,7 @@ fun SampleFormScreen(
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 ),
             )
         },
@@ -97,7 +107,12 @@ fun SampleFormScreen(
             ExtendedFloatingActionButton(
                 onClick = { viewModel.save() },
                 icon = { Icon(Icons.Default.Save, contentDescription = null) },
-                text = { Text("Guardar") },
+                text = {
+                    Text(
+                        text = if (uiState.isEditing) "Actualizar" else "Guardar",
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                },
             )
         },
     ) { innerPadding ->

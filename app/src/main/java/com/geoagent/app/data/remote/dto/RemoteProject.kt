@@ -17,15 +17,6 @@ data class RemoteProject(
 
     @SerialName("location")
     val location: String,
-
-    @SerialName("created_at")
-    val createdAt: Long,
-
-    @SerialName("updated_at")
-    val updatedAt: Long,
-
-    @SerialName("local_id")
-    val localId: Long? = null,
 ) {
     companion object {
         fun fromEntity(entity: ProjectEntity, remoteId: String? = null): RemoteProject {
@@ -34,9 +25,6 @@ data class RemoteProject(
                 name = entity.name,
                 description = entity.description,
                 location = entity.location,
-                createdAt = entity.createdAt,
-                updatedAt = entity.updatedAt,
-                localId = entity.id,
             )
         }
     }

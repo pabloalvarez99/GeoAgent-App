@@ -36,6 +36,12 @@ object FormValidation {
         return if (value <= 0) "$fieldName debe ser positivo" else null
     }
 
+    fun validateLatitude(value: Double?): String? =
+        validateRange(value, -90.0, 90.0, "Latitud")
+
+    fun validateLongitude(value: Double?): String? =
+        validateRange(value, -180.0, 180.0, "Longitud")
+
     fun parseDouble(text: String): Double? {
         return text.replace(",", ".").toDoubleOrNull()
     }

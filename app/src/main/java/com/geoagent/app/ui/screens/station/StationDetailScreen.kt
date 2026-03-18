@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -27,6 +28,8 @@ import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Photo
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Terrain
 import androidx.compose.material3.Button
@@ -54,6 +57,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.geoagent.app.ui.components.ConfirmDeleteDialog
+import com.geoagent.app.ui.components.SyncStatusBadge
 import com.geoagent.app.data.local.entity.LithologyEntity
 import com.geoagent.app.data.local.entity.SampleEntity
 import com.geoagent.app.data.local.entity.StructuralEntity
@@ -70,6 +75,7 @@ fun StationDetailScreen(
     onNavigateToSample: (Long?) -> Unit,
     onNavigateToCamera: () -> Unit,
     onNavigateToPhotos: () -> Unit,
+    onNavigateToEdit: () -> Unit,
     onNavigateBack: () -> Unit,
     viewModel: StationDetailViewModel = hiltViewModel(),
 ) {
@@ -78,8 +84,60 @@ fun StationDetailScreen(
     val structuralData by viewModel.structuralData.collectAsState()
     val samples by viewModel.samples.collectAsState()
     val photoCount by viewModel.photoCount.collectAsState()
+    var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
+    var lithologyToDelete by rememberSaveable { mutableStateOf<Long?>(null) }
+    var structuralToDelete by rememberSaveable { mutableStateOf<Long?>(null) }
+    var sampleToDelete by rememberSaveable { mutableStateOf<Long?>(null) }
 
     val dateFormatter = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("es"))
+
+    if (showDeleteDialog) {
+        ConfirmDeleteDialog(
+            title = "Eliminar estacion",
+            message = "Se eliminara la estacion ${station?.code ?: ""} y todos sus datos asociados. Esta accion no se puede deshacer.",
+            onConfirm = {
+                showDeleteDialog = false
+                viewModel.deleteStation(onNavigateBack)
+            },
+            onDismiss = { showDeleteDialog = false },
+        )
+    }
+
+    lithologyToDelete?.let { id ->
+        val item = lithologies.find { it.id == id }
+        if (item != null) {
+            ConfirmDeleteDialog(
+                title = "Eliminar litologia",
+                message = "Se eliminara el registro de ${item.rockType}. Esta accion no se puede deshacer.",
+                onConfirm = { viewModel.deleteLithology(item); lithologyToDelete = null },
+                onDismiss = { lithologyToDelete = null },
+            )
+        }
+    }
+
+    structuralToDelete?.let { id ->
+        val item = structuralData.find { it.id == id }
+        if (item != null) {
+            ConfirmDeleteDialog(
+                title = "Eliminar dato estructural",
+                message = "Se eliminara el registro de ${item.type}. Esta accion no se puede deshacer.",
+                onConfirm = { viewModel.deleteStructural(item); structuralToDelete = null },
+                onDismiss = { structuralToDelete = null },
+            )
+        }
+    }
+
+    sampleToDelete?.let { id ->
+        val item = samples.find { it.id == id }
+        if (item != null) {
+            ConfirmDeleteDialog(
+                title = "Eliminar muestra",
+                message = "Se eliminara la muestra ${item.code}. Esta accion no se puede deshacer.",
+                onConfirm = { viewModel.deleteSample(item); sampleToDelete = null },
+                onDismiss = { sampleToDelete = null },
+            )
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -101,10 +159,22 @@ fun StationDetailScreen(
                         )
                     }
                 },
+                actions = {
+                    IconButton(
+                        onClick = onNavigateToEdit,
+                        modifier = Modifier.size(48.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Editar estacion",
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 ),
             )
         },
@@ -152,7 +222,7 @@ fun StationDetailScreen(
                         // Date
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                imageVector = Icons.Default.Terrain,
+                                imageVector = Icons.Default.CalendarToday,
                                 contentDescription = null,
                                 modifier = Modifier.size(22.dp),
                                 tint = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -210,6 +280,11 @@ fun StationDetailScreen(
                                 color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.9f),
                             )
                         }
+
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.2f),
+                        )
+                        SyncStatusBadge(syncStatus = s.syncStatus)
                     }
                 }
             }
@@ -219,12 +294,14 @@ fun StationDetailScreen(
                 title = "Litologia",
                 icon = Icons.Default.Layers,
                 itemCount = lithologies.size,
+                addLabel = "Agregar Litologia",
                 onAddClick = { onNavigateToLithology(null) },
             ) {
                 lithologies.forEach { lithology ->
                     LithologyItem(
                         lithology = lithology,
                         onClick = { onNavigateToLithology(lithology.id) },
+                        onDeleteClick = { lithologyToDelete = lithology.id },
                     )
                 }
             }
@@ -234,12 +311,14 @@ fun StationDetailScreen(
                 title = "Datos Estructurales",
                 icon = Icons.Default.Terrain,
                 itemCount = structuralData.size,
+                addLabel = "Agregar Estructural",
                 onAddClick = { onNavigateToStructural(null) },
             ) {
                 structuralData.forEach { structural ->
                     StructuralItem(
                         structural = structural,
                         onClick = { onNavigateToStructural(structural.id) },
+                        onDeleteClick = { structuralToDelete = structural.id },
                     )
                 }
             }
@@ -249,12 +328,14 @@ fun StationDetailScreen(
                 title = "Muestras",
                 icon = Icons.Default.Science,
                 itemCount = samples.size,
+                addLabel = "Agregar Muestra",
                 onAddClick = { onNavigateToSample(null) },
             ) {
                 samples.forEach { sample ->
                     SampleItem(
                         sample = sample,
                         onClick = { onNavigateToSample(sample.id) },
+                        onDeleteClick = { sampleToDelete = sample.id },
                     )
                 }
             }
@@ -309,6 +390,25 @@ fun StationDetailScreen(
                 }
             }
 
+            // Delete button
+            OutlinedButton(
+                onClick = { showDeleteDialog = true },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error,
+                ),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Eliminar estacion")
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
@@ -319,6 +419,7 @@ private fun ExpandableSection(
     title: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     itemCount: Int,
+    addLabel: String = "Agregar",
     onAddClick: () -> Unit,
     content: @Composable () -> Unit,
 ) {
@@ -402,7 +503,7 @@ private fun ExpandableSection(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Agregar",
+                            text = addLabel,
                             style = MaterialTheme.typography.bodyLarge,
                         )
                     }
@@ -416,6 +517,7 @@ private fun ExpandableSection(
 private fun LithologyItem(
     lithology: LithologyEntity,
     onClick: () -> Unit,
+    onDeleteClick: () -> Unit,
 ) {
     Card(
         onClick = onClick,
@@ -424,28 +526,39 @@ private fun LithologyItem(
             containerColor = MaterialTheme.colorScheme.surface,
         ),
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(start = 12.dp, top = 8.dp, bottom = 8.dp, end = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = lithology.rockType,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "${lithology.rockGroup} - ${lithology.color} - ${lithology.texture}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-            )
-            if (!lithology.alteration.isNullOrBlank()) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Alteracion: ${lithology.alteration}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    text = lithology.rockType,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "${lithology.rockGroup} - ${lithology.color} - ${lithology.texture}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                )
+                if (!lithology.alteration.isNullOrBlank()) {
+                    Text(
+                        text = "Alteracion: ${lithology.alteration}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    )
+                }
+            }
+            IconButton(onClick = onDeleteClick, modifier = Modifier.size(36.dp)) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Eliminar litologia",
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(18.dp),
                 )
             }
         }
@@ -456,6 +569,7 @@ private fun LithologyItem(
 private fun StructuralItem(
     structural: StructuralEntity,
     onClick: () -> Unit,
+    onDeleteClick: () -> Unit,
 ) {
     Card(
         onClick = onClick,
@@ -464,27 +578,38 @@ private fun StructuralItem(
             containerColor = MaterialTheme.colorScheme.surface,
         ),
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(start = 12.dp, top = 8.dp, bottom = 8.dp, end = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = structural.type,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Rumbo: %.0f / Buzamiento: %.0f %s".format(
-                    structural.strike,
-                    structural.dip,
-                    structural.dipDirection,
-                ),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = structural.type,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Rumbo: %.0f / Buzamiento: %.0f %s".format(
+                        structural.strike,
+                        structural.dip,
+                        structural.dipDirection,
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                )
+            }
+            IconButton(onClick = onDeleteClick, modifier = Modifier.size(36.dp)) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Eliminar dato estructural",
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
         }
     }
 }
@@ -493,6 +618,7 @@ private fun StructuralItem(
 private fun SampleItem(
     sample: SampleEntity,
     onClick: () -> Unit,
+    onDeleteClick: () -> Unit,
 ) {
     Card(
         onClick = onClick,
@@ -501,35 +627,46 @@ private fun SampleItem(
             containerColor = MaterialTheme.colorScheme.surface,
         ),
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(start = 12.dp, top = 8.dp, bottom = 8.dp, end = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = sample.code,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = sample.type,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = sample.code,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Text(
-                    text = sample.type,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
+                    text = sample.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    maxLines = 2,
                 )
             }
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = sample.description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                maxLines = 2,
-            )
+            IconButton(onClick = onDeleteClick, modifier = Modifier.size(36.dp)) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Eliminar muestra",
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
         }
     }
 }

@@ -25,11 +25,15 @@ class StationListViewModel @Inject constructor(
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
+    private val _sortOrder = MutableStateFlow(SortOrder.DATE_DESC)
+    val sortOrder: StateFlow<SortOrder> = _sortOrder.asStateFlow()
+
     val stations: StateFlow<List<StationEntity>> = combine(
         stationRepository.getByProject(projectId),
         _searchQuery,
-    ) { stations, query ->
-        if (query.isBlank()) {
+        _sortOrder,
+    ) { stations, query, sort ->
+        val filtered = if (query.isBlank()) {
             stations
         } else {
             stations.filter { station ->
@@ -37,6 +41,12 @@ class StationListViewModel @Inject constructor(
                     station.geologist.contains(query, ignoreCase = true) ||
                     station.description.contains(query, ignoreCase = true)
             }
+        }
+        when (sort) {
+            SortOrder.DATE_DESC -> filtered.sortedByDescending { it.date }
+            SortOrder.DATE_ASC -> filtered.sortedBy { it.date }
+            SortOrder.CODE_ASC -> filtered.sortedBy { it.code }
+            SortOrder.CODE_DESC -> filtered.sortedByDescending { it.code }
         }
     }.stateIn(
         scope = viewModelScope,
@@ -47,4 +57,15 @@ class StationListViewModel @Inject constructor(
     fun onSearchQueryChange(query: String) {
         _searchQuery.value = query
     }
+
+    fun onSortOrderChange(order: SortOrder) {
+        _sortOrder.value = order
+    }
+}
+
+enum class SortOrder(val label: String) {
+    DATE_DESC("Mas reciente"),
+    DATE_ASC("Mas antiguo"),
+    CODE_ASC("Codigo A-Z"),
+    CODE_DESC("Codigo Z-A"),
 }

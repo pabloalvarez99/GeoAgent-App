@@ -23,6 +23,7 @@ import com.geoagent.app.data.remote.dto.RemoteProject
 import com.geoagent.app.data.remote.dto.RemoteSample
 import com.geoagent.app.data.remote.dto.RemoteStation
 import com.geoagent.app.data.remote.dto.RemoteStructural
+import androidx.work.workDataOf
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.flow.firstOrNull
@@ -226,12 +227,16 @@ class SyncWorker @AssistedInject constructor(
 
         } catch (e: Exception) {
             Log.e(TAG, "Sync failed with unexpected error", e)
-            return Result.retry()
+            return Result.failure(
+                workDataOf("error" to (e.message ?: "Error inesperado"))
+            )
         }
 
         Log.d(TAG, "Sync completed: $syncedCount synced, $errorCount errors")
         return if (errorCount > 0 && syncedCount == 0) {
-            Result.retry()
+            Result.failure(
+                workDataOf("error" to "Fallaron todos los $errorCount elementos. Verifica tu conexion y las tablas en Supabase.")
+            )
         } else {
             Result.success()
         }
@@ -287,13 +292,13 @@ class SyncWorker @AssistedInject constructor(
         }
 
         // Upload the photo file to Supabase Storage if not already uploaded
-        var uploadedUrl = photo.remoteUrl
-        if (uploadedUrl == null) {
+        var uploadedPath = photo.remoteUrl
+        if (uploadedPath == null) {
             val file = File(photo.filePath)
             if (file.exists()) {
                 val fileBytes = file.readBytes()
                 val storagePath = "${System.currentTimeMillis()}_${photo.fileName}"
-                uploadedUrl = remoteDataSource.uploadPhoto(storagePath, fileBytes)
+                uploadedPath = remoteDataSource.uploadPhoto(storagePath, fileBytes)
             } else {
                 Log.w(TAG, "Photo file not found at ${photo.filePath}, syncing record without file upload")
             }
@@ -304,9 +309,9 @@ class SyncWorker @AssistedInject constructor(
             entity = photo,
             stationRemoteId = stationRemoteId,
             drillHoleRemoteId = drillHoleRemoteId,
-            uploadedUrl = uploadedUrl,
+            uploadedPath = uploadedPath,
         )
         val remoteId = remoteDataSource.upsertPhoto(dto)
-        photoDao.updateSyncStatus(photo.id, SYNC_STATUS_SYNCED, remoteId, uploadedUrl)
+        photoDao.updateSyncStatus(photo.id, SYNC_STATUS_SYNCED, remoteId, uploadedPath)
     }
 }

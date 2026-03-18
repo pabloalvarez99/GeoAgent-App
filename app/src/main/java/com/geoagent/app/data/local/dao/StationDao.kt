@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface StationDao {
 
-    @Query("SELECT * FROM stations WHERE projectId = :projectId")
+    @Query("SELECT * FROM stations WHERE project_id = :projectId")
     fun getByProject(projectId: Long): Flow<List<StationEntity>>
 
     @Query("SELECT * FROM stations WHERE id = :id")
@@ -27,12 +27,21 @@ interface StationDao {
     @Delete
     suspend fun delete(station: StationEntity)
 
-    @Query("SELECT COUNT(*) FROM stations WHERE projectId = :projectId")
+    @Query("SELECT * FROM stations")
+    fun getAll(): Flow<List<StationEntity>>
+
+    @Query("SELECT COUNT(*) FROM stations WHERE project_id = :projectId")
     fun getCountByProject(projectId: Long): Flow<Int>
 
-    @Query("SELECT * FROM stations WHERE syncStatus != 'SYNCED'")
+    @Query("SELECT COUNT(*) FROM stations")
+    fun getTotalCount(): Flow<Int>
+
+    @Query("SELECT * FROM stations WHERE sync_status != 'SYNCED'")
     suspend fun getPendingSync(): List<StationEntity>
 
-    @Query("UPDATE stations SET syncStatus = :status, remoteId = :remoteId WHERE id = :id")
+    @Query("SELECT COUNT(*) FROM stations WHERE sync_status != 'SYNCED'")
+    fun getPendingSyncCount(): Flow<Int>
+
+    @Query("UPDATE stations SET sync_status = :status, remote_id = :remoteId WHERE id = :id")
     suspend fun updateSyncStatus(id: Long, status: String, remoteId: String?)
 }

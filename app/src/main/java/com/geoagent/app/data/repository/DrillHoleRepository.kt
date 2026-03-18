@@ -16,6 +16,12 @@ class DrillHoleRepository @Inject constructor(
     fun getByProject(projectId: Long): Flow<List<DrillHoleEntity>> =
         drillHoleDao.getByProject(projectId)
 
+    fun getAll(): Flow<List<DrillHoleEntity>> = drillHoleDao.getAll()
+
+    fun getTotalCount(): Flow<Int> = drillHoleDao.getTotalCount()
+
+    fun getPendingSyncCount(): Flow<Int> = drillHoleDao.getPendingSyncCount()
+
     fun getById(id: Long): Flow<DrillHoleEntity?> = drillHoleDao.getById(id)
 
     fun getIntervals(drillHoleId: Long): Flow<List<DrillIntervalEntity>> =

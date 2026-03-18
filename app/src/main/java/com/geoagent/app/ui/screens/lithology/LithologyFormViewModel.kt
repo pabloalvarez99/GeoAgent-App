@@ -3,8 +3,10 @@ package com.geoagent.app.ui.screens.lithology
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.geoagent.app.data.GeoConstants
 import com.geoagent.app.data.local.entity.LithologyEntity
 import com.geoagent.app.data.repository.LithologyRepository
+import com.geoagent.app.util.FormValidation
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -137,18 +139,31 @@ class LithologyFormViewModel @Inject constructor(
         _uiState.update { it.copy(notes = value) }
     }
 
+    fun clearError() {
+        _uiState.update { it.copy(errorMessage = null) }
+    }
+
     fun save() {
         val state = _uiState.value
+        if (state.isSaving) return
 
-        if (state.rockGroup.isBlank() || state.rockType.isBlank() ||
-            state.color.isBlank() || state.texture.isBlank() ||
-            state.grainSize.isBlank()
-        ) {
-            _uiState.update { it.copy(errorMessage = "Complete los campos obligatorios") }
+        val validationError = FormValidation.validateRequired(state.rockGroup, "Grupo de roca")
+            ?: FormValidation.validateRequired(state.rockType, "Tipo de roca")
+            ?: FormValidation.validateRequired(state.color, "Color")
+            ?: FormValidation.validateRequired(state.texture, "Textura")
+            ?: FormValidation.validateRequired(state.grainSize, "Tamano de grano")
+
+        if (validationError != null) {
+            _uiState.update { it.copy(errorMessage = validationError) }
             return
         }
 
-        val minPercent = state.mineralizationPercent.toDoubleOrNull()
+        val minPercent = FormValidation.parseDouble(state.mineralizationPercent)
+        val percentError = FormValidation.validatePercentage(minPercent, "Mineralizacion %")
+        if (percentError != null) {
+            _uiState.update { it.copy(errorMessage = percentError) }
+            return
+        }
 
         _uiState.update { it.copy(isSaving = true, errorMessage = null) }
 
@@ -200,36 +215,14 @@ class LithologyFormViewModel @Inject constructor(
     }
 
     companion object {
-        val rockGroups = listOf("Ignea", "Sedimentaria", "Metamorfica")
-
-        val rockTypesByGroup = mapOf(
-            "Ignea" to listOf("Andesita", "Basalto", "Granito", "Diorita", "Riolita", "Dacita", "Gabro"),
-            "Sedimentaria" to listOf("Arenisca", "Lutita", "Caliza", "Conglomerado", "Limolita"),
-            "Metamorfica" to listOf("Esquisto", "Gneis", "Marmol", "Pizarra", "Cuarcita"),
-        )
-
-        val colors = listOf(
-            "Blanco", "Gris Claro", "Gris Oscuro", "Negro",
-            "Rojo", "Rosado", "Verde", "Cafe", "Amarillo",
-        )
-
-        val textures = listOf(
-            "Faneritica", "Afanitica", "Porfirica", "Vitrea", "Clastica", "Foliada",
-        )
-
-        val grainSizes = listOf("Fina", "Media", "Gruesa", "Muy Gruesa")
-
-        val alterations = listOf(
-            "Ninguna", "Filica", "Argilica", "Propilitica",
-            "Potasica", "Silicica", "Clorita-Epidota",
-        )
-
-        val alterationIntensities = listOf("Debil", "Moderada", "Fuerte", "Intensa")
-
-        val structures = listOf(
-            "Masiva", "Foliada", "Bandeada", "Brechada", "Vesicular", "Fluidal",
-        )
-
-        val weatherings = listOf("Fresca", "Leve", "Moderada", "Alta", "Muy Alta")
+        val rockGroups = GeoConstants.rockGroups
+        val rockTypesByGroup = GeoConstants.rockTypesByGroup
+        val colors = GeoConstants.colors
+        val textures = GeoConstants.textures
+        val grainSizes = GeoConstants.grainSizes
+        val alterations = GeoConstants.alterations
+        val alterationIntensities = GeoConstants.alterationIntensities
+        val structures = GeoConstants.structures
+        val weatherings = GeoConstants.weatheringGrades
     }
 }

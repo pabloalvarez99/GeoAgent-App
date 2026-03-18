@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.geoagent.app.data.local.entity.DrillIntervalEntity
 import com.geoagent.app.data.repository.DrillHoleRepository
+import com.geoagent.app.util.FormValidation
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -40,9 +41,16 @@ class DrillIntervalFormViewModel @Inject constructor(
     private val _isSaving = MutableStateFlow(false)
     val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
 
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
+    fun clearError() {
+        _errorMessage.value = null
+    }
+
     fun save(
-        fromDepth: Double,
-        toDepth: Double,
+        fromDepth: Double?,
+        toDepth: Double?,
         rockGroup: String,
         rockType: String,
         color: String,
@@ -61,6 +69,31 @@ class DrillIntervalFormViewModel @Inject constructor(
         onSaved: () -> Unit,
     ) {
         if (_isSaving.value) return
+
+        if (fromDepth == null) {
+            _errorMessage.value = "Ingrese la profundidad inicial (Desde)"
+            return
+        }
+        if (toDepth == null) {
+            _errorMessage.value = "Ingrese la profundidad final (Hasta)"
+            return
+        }
+
+        val validationError = FormValidation.validateDepthOrder(fromDepth, toDepth)
+            ?: FormValidation.validateRequired(rockGroup, "Grupo de roca")
+            ?: FormValidation.validateRequired(rockType, "Tipo de roca")
+            ?: FormValidation.validateRequired(color, "Color")
+            ?: FormValidation.validateRequired(texture, "Textura")
+            ?: FormValidation.validateRequired(grainSize, "Tamano de grano")
+            ?: FormValidation.validateRequired(mineralogy, "Mineralogia")
+            ?: FormValidation.validatePercentage(rqd, "RQD")
+            ?: FormValidation.validatePercentage(recovery, "Recuperacion")
+            ?: FormValidation.validatePercentage(mineralizationPercent, "Mineralizacion %")
+
+        if (validationError != null) {
+            _errorMessage.value = validationError
+            return
+        }
 
         viewModelScope.launch {
             _isSaving.value = true
@@ -91,8 +124,8 @@ class DrillIntervalFormViewModel @Inject constructor(
                 } else {
                     drillHoleRepository.createInterval(
                         drillHoleId = drillHoleId,
-                        fromDepth = fromDepth,
-                        toDepth = toDepth,
+                        fromDepth = fromDepth!!,
+                        toDepth = toDepth!!,
                         rockGroup = rockGroup,
                         rockType = rockType,
                         color = color,
@@ -111,6 +144,8 @@ class DrillIntervalFormViewModel @Inject constructor(
                     )
                 }
                 onSaved()
+            } catch (e: Exception) {
+                _errorMessage.value = "Error al guardar: ${e.message}"
             } finally {
                 _isSaving.value = false
             }

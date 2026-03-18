@@ -2,15 +2,23 @@ package com.geoagent.app.ui.screens.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.geoagent.app.data.local.dao.ProjectDao
 import com.geoagent.app.data.repository.AuthRepository
+import com.geoagent.app.data.repository.DrillHoleRepository
+import com.geoagent.app.data.repository.PhotoRepository
+import com.geoagent.app.data.repository.ProjectRepository
+import com.geoagent.app.data.repository.SampleRepository
+import com.geoagent.app.data.repository.StationRepository
 import com.geoagent.app.data.repository.UserInfo
 import com.geoagent.app.data.sync.SyncManager
+import com.geoagent.app.util.CoordinateFormat
+import com.geoagent.app.util.DistanceUnit
+import com.geoagent.app.util.PreferencesHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -19,15 +27,25 @@ import javax.inject.Inject
 data class SettingsUiState(
     val isSyncing: Boolean = false,
     val lastSyncTimestamp: Long? = null,
-    val pendingSyncCount: Int = 0,
     val showLogoutDialog: Boolean = false,
+    val syncError: String? = null,
+    val coordinateFormat: CoordinateFormat = CoordinateFormat.DECIMAL_DEGREES,
+    val distanceUnit: DistanceUnit = DistanceUnit.METERS,
+    val autoSaveGps: Boolean = true,
+    val highAccuracyGps: Boolean = true,
+    val defaultGeologist: String = "",
 )
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val syncManager: SyncManager,
-    private val projectDao: ProjectDao,
+    private val preferencesHelper: PreferencesHelper,
+    projectRepository: ProjectRepository,
+    stationRepository: StationRepository,
+    drillHoleRepository: DrillHoleRepository,
+    photoRepository: PhotoRepository,
+    sampleRepository: SampleRepository,
 ) : ViewModel() {
 
     val userInfo: StateFlow<UserInfo?> = authRepository.getCurrentUser()
@@ -37,40 +55,85 @@ class SettingsViewModel @Inject constructor(
             initialValue = null,
         )
 
-    private val _uiState = MutableStateFlow(SettingsUiState())
+    private val _uiState = MutableStateFlow(
+        SettingsUiState(
+            coordinateFormat = preferencesHelper.coordinateFormat,
+            distanceUnit = preferencesHelper.distanceUnit,
+            autoSaveGps = preferencesHelper.autoSaveGps,
+            highAccuracyGps = preferencesHelper.highAccuracyGps,
+            defaultGeologist = preferencesHelper.lastGeologistName,
+        )
+    )
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
-    init {
-        loadPendingSyncCount()
+    val pendingSyncCount: StateFlow<Int> = combine(
+        projectRepository.getPendingSyncCount(),
+        stationRepository.getPendingSyncCount(),
+        drillHoleRepository.getPendingSyncCount(),
+        photoRepository.getPendingSyncCount(),
+        sampleRepository.getPendingSyncCount(),
+    ) { counts -> counts.sum() }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = 0,
+        )
+
+    fun setCoordinateFormat(format: CoordinateFormat) {
+        preferencesHelper.coordinateFormat = format
+        _uiState.update { it.copy(coordinateFormat = format) }
     }
 
-    private fun loadPendingSyncCount() {
-        viewModelScope.launch {
-            try {
-                val pendingProjects = projectDao.getPendingSync()
-                _uiState.update { it.copy(pendingSyncCount = pendingProjects.size) }
-            } catch (_: Exception) {
-                // Ignore
-            }
-        }
+    fun setDistanceUnit(unit: DistanceUnit) {
+        preferencesHelper.distanceUnit = unit
+        _uiState.update { it.copy(distanceUnit = unit) }
+    }
+
+    fun setAutoSaveGps(enabled: Boolean) {
+        preferencesHelper.autoSaveGps = enabled
+        _uiState.update { it.copy(autoSaveGps = enabled) }
+    }
+
+    fun setHighAccuracyGps(enabled: Boolean) {
+        preferencesHelper.highAccuracyGps = enabled
+        _uiState.update { it.copy(highAccuracyGps = enabled) }
+    }
+
+    fun setDefaultGeologist(name: String) {
+        preferencesHelper.lastGeologistName = name
+        _uiState.update { it.copy(defaultGeologist = name) }
     }
 
     fun syncNow() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isSyncing = true) }
-            try {
-                syncManager.schedulePeriodic()
-                _uiState.update {
-                    it.copy(
-                        isSyncing = false,
-                        lastSyncTimestamp = System.currentTimeMillis(),
-                    )
+        _uiState.update { it.copy(isSyncing = true, syncError = null) }
+        val workInfos = syncManager.syncNow()
+        val observer = object : androidx.lifecycle.Observer<List<androidx.work.WorkInfo>> {
+            override fun onChanged(value: List<androidx.work.WorkInfo>) {
+                val info = value.firstOrNull() ?: return
+                when {
+                    info.state.isFinished -> {
+                        val succeeded = info.state == androidx.work.WorkInfo.State.SUCCEEDED
+                        val errorMsg = info.outputData.getString("error")
+                        _uiState.update {
+                            it.copy(
+                                isSyncing = false,
+                                lastSyncTimestamp = if (succeeded) System.currentTimeMillis() else it.lastSyncTimestamp,
+                                syncError = if (!succeeded) (errorMsg ?: "Error durante la sincronizacion.") else null,
+                            )
+                        }
+                        syncManager.schedulePeriodic()
+                        workInfos.removeObserver(this)
+                    }
+                    info.state == androidx.work.WorkInfo.State.RUNNING -> {
+                        _uiState.update { it.copy(isSyncing = true) }
+                    }
+                    info.state == androidx.work.WorkInfo.State.ENQUEUED -> {
+                        _uiState.update { it.copy(isSyncing = true) }
+                    }
                 }
-                loadPendingSyncCount()
-            } catch (_: Exception) {
-                _uiState.update { it.copy(isSyncing = false) }
             }
         }
+        workInfos.observeForever(observer)
     }
 
     fun showLogoutDialog() {

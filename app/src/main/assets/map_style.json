@@ -1,0 +1,26 @@
+{
+  "version": 8,
+  "sources": {
+    "carto": {
+      "type": "raster",
+      "tiles": [
+        "https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png"
+      ],
+      "tileSize": 256,
+      "attribution": "© CARTO © OpenStreetMap contributors",
+      "maxzoom": 19
+    }
+  },
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": { "background-color": "#e8e0d8" }
+    },
+    {
+      "id": "carto-tiles",
+      "type": "raster",
+      "source": "carto"
+    }
+  ]
+}

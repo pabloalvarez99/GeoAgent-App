@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GeoAgent – Descarga</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #f1f5f9;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 20px;
+      padding: 48px 36px;
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.4);
+    }
+
+    .icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #38bdf8;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: #94a3b8;
+      font-size: 0.95rem;
+      margin-bottom: 36px;
+      line-height: 1.5;
+    }
+
+    .download-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+      color: #fff;
+      font-size: 1.1rem;
+      font-weight: 600;
+      padding: 16px 32px;
+      border-radius: 12px;
+      text-decoration: none;
+      width: 100%;
+      transition: opacity 0.2s, transform 0.1s;
+      box-shadow: 0 4px 20px rgba(56,189,248,0.3);
+    }
+
+    .download-btn:active {
+      opacity: 0.85;
+      transform: scale(0.98);
+    }
+
+    .steps {
+      margin-top: 36px;
+      text-align: left;
+    }
+
+    .steps h3 {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #64748b;
+      margin-bottom: 14px;
+    }
+
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .step-num {
+      background: #0ea5e9;
+      color: #fff;
+      border-radius: 50%;
+      width: 22px;
+      height: 22px;
+      min-width: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      margin-top: 1px;
+    }
+
+    .step p {
+      font-size: 0.88rem;
+      color: #cbd5e1;
+      line-height: 1.5;
+    }
+
+    .step strong {
+      color: #f1f5f9;
+    }
+
+    .badge {
+      display: inline-block;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-top: 24px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">🪨</div>
+    <h1>GeoAgent</h1>
+    <p class="subtitle">App de campo para registro geológico.<br/>Solo para Android.</p>
+
+    <a class="download-btn" href="/app-debug.apk" download="GeoAgent.apk">
+      ⬇️ Descargar APK
+    </a>
+
+    <div class="steps">
+      <h3>Cómo instalar</h3>
+      <div class="step">
+        <div class="step-num">1</div>
+        <p>Descargá el APK tocando el botón de arriba.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <p>Abrí <strong>Ajustes → Seguridad</strong> y habilitá <strong>"Instalar apps desconocidas"</strong> para tu navegador.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <p>Abrí el archivo descargado desde las notificaciones o el administrador de archivos.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <p>Tocá <strong>Instalar</strong> y abrí <strong>GeoAgent</strong>.</p>
+      </div>
+    </div>
+
+    <div class="badge">Android 8.0+ · v1.0.0-debug</div>
+  </div>
+</body>
+</html>

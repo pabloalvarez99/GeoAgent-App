@@ -124,7 +124,7 @@ class RemoteDataSource @Inject constructor(
     suspend fun uploadPhoto(fileName: String, fileBytes: ByteArray): String {
         Log.d(TAG, "Uploading photo file: $fileName (${fileBytes.size} bytes)")
         val bucket = storage.from(PHOTOS_BUCKET)
-        bucket.upload(fileName, fileBytes, upsert = true)
+        bucket.upload(fileName, fileBytes) { upsert = true }
         val publicUrl = bucket.publicUrl(fileName)
         Log.d(TAG, "Photo uploaded, public URL: $publicUrl")
         return publicUrl

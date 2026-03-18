@@ -9,11 +9,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -28,6 +30,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -43,6 +47,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.geoagent.app.data.GeoConstants
+import com.geoagent.app.util.FormValidation
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,6 +61,8 @@ fun DrillIntervalFormScreen(
 ) {
     val existingInterval by viewModel.existingInterval.collectAsState()
     val isSaving by viewModel.isSaving.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     var fromDepth by remember { mutableStateOf("") }
     var toDepth by remember { mutableStateOf("") }
@@ -84,26 +92,14 @@ fun DrillIntervalFormScreen(
     var formInitialized by remember { mutableStateOf(false) }
 
     // Geology dropdown options
-    val rockGroups = listOf("Ignea", "Sedimentaria", "Metamorfica", "Volcanica", "Piroclastica")
-    val colors = listOf(
-        "Blanco", "Gris claro", "Gris oscuro", "Negro",
-        "Rojo", "Marron", "Amarillo", "Verde", "Rosado"
-    )
-    val textures = listOf(
-        "Afanitica", "Faneritica", "Porfirica", "Pegmatitica",
-        "Vitrea", "Clastica", "Foliada", "No foliada"
-    )
-    val grainSizes = listOf("Muy fino", "Fino", "Medio", "Grueso", "Muy grueso")
-    val alterations = listOf(
-        "Silicificacion", "Sericitizacion", "Cloritizacion", "Carbonatacion",
-        "Propilitica", "Argilica", "Potasica", "Filica", "Ninguna"
-    )
-    val alterationIntensities = listOf("Debil", "Moderada", "Fuerte", "Muy fuerte")
-    val structures = listOf(
-        "Masiva", "Foliada", "Bandeada", "Brechada",
-        "Vetilleo", "Stockwork", "Diseminada", "Estratificada"
-    )
-    val weatherings = listOf("Fresca", "Leve", "Moderada", "Alta", "Completa")
+    val rockGroups = GeoConstants.rockGroups
+    val colors = GeoConstants.colors
+    val textures = GeoConstants.textures
+    val grainSizes = GeoConstants.grainSizes
+    val alterations = GeoConstants.alterations
+    val alterationIntensities = GeoConstants.alterationIntensities
+    val structures = GeoConstants.structures
+    val weatherings = GeoConstants.weatheringGrades
 
     // Load existing data
     LaunchedEffect(existingInterval) {
@@ -131,24 +127,28 @@ fun DrillIntervalFormScreen(
         }
     }
 
-    val isFormValid = fromDepth.toDoubleOrNull() != null &&
-            toDepth.toDoubleOrNull() != null &&
-            (toDepth.toDoubleOrNull() ?: 0.0) > (fromDepth.toDoubleOrNull() ?: 0.0) &&
-            rockGroup.isNotBlank() &&
-            rockType.isNotBlank() &&
-            color.isNotBlank() &&
-            texture.isNotBlank() &&
-            grainSize.isNotBlank() &&
-            mineralogy.isNotBlank()
+    LaunchedEffect(errorMessage) {
+        errorMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearError()
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
-                    Text(if (viewModel.isEditing) "Editar Intervalo" else "Intervalo de Logging")
+                    Text(
+                        text = if (viewModel.isEditing) "Editar Intervalo" else "Intervalo de Logging",
+                        fontWeight = FontWeight.SemiBold,
+                    )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(
+                        onClick = onNavigateBack,
+                        modifier = Modifier.size(48.dp),
+                    ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Volver",
@@ -158,6 +158,7 @@ fun DrillIntervalFormScreen(
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 ),
             )
         },
@@ -180,7 +181,7 @@ fun DrillIntervalFormScreen(
                 OutlinedTextField(
                     value = fromDepth,
                     onValueChange = { fromDepth = it },
-                    label = { Text("Desde (m)") },
+                    label = { Text("Desde (m) *") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.weight(1f),
                     singleLine = true,
@@ -188,7 +189,7 @@ fun DrillIntervalFormScreen(
                 OutlinedTextField(
                     value = toDepth,
                     onValueChange = { toDepth = it },
-                    label = { Text("Hasta (m)") },
+                    label = { Text("Hasta (m) *") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.weight(1f),
                     singleLine = true,
@@ -203,7 +204,7 @@ fun DrillIntervalFormScreen(
             DropdownField(
                 value = rockGroup,
                 onValueChange = { rockGroup = it },
-                label = "Grupo de Roca",
+                label = "Grupo de Roca *",
                 options = rockGroups,
                 expanded = rockGroupExpanded,
                 onExpandedChange = { rockGroupExpanded = it },
@@ -212,7 +213,7 @@ fun DrillIntervalFormScreen(
             OutlinedTextField(
                 value = rockType,
                 onValueChange = { rockType = it },
-                label = { Text("Tipo de Roca") },
+                label = { Text("Tipo de Roca *") },
                 placeholder = { Text("Ej: Granodiorita, Arenisca") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
@@ -221,7 +222,7 @@ fun DrillIntervalFormScreen(
             DropdownField(
                 value = color,
                 onValueChange = { color = it },
-                label = "Color",
+                label = "Color *",
                 options = colors,
                 expanded = colorExpanded,
                 onExpandedChange = { colorExpanded = it },
@@ -230,7 +231,7 @@ fun DrillIntervalFormScreen(
             DropdownField(
                 value = texture,
                 onValueChange = { texture = it },
-                label = "Textura",
+                label = "Textura *",
                 options = textures,
                 expanded = textureExpanded,
                 onExpandedChange = { textureExpanded = it },
@@ -239,7 +240,7 @@ fun DrillIntervalFormScreen(
             DropdownField(
                 value = grainSize,
                 onValueChange = { grainSize = it },
-                label = "Tamano de Grano",
+                label = "Tamano de Grano *",
                 options = grainSizes,
                 expanded = grainSizeExpanded,
                 onExpandedChange = { grainSizeExpanded = it },
@@ -248,7 +249,7 @@ fun DrillIntervalFormScreen(
             OutlinedTextField(
                 value = mineralogy,
                 onValueChange = { mineralogy = it },
-                label = { Text("Mineralogia") },
+                label = { Text("Mineralogia *") },
                 placeholder = { Text("Ej: Qz, Fd, Bt, Py") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
@@ -366,8 +367,8 @@ fun DrillIntervalFormScreen(
             Button(
                 onClick = {
                     viewModel.save(
-                        fromDepth = fromDepth.toDoubleOrNull() ?: 0.0,
-                        toDepth = toDepth.toDoubleOrNull() ?: 0.0,
+                        fromDepth = FormValidation.parseDouble(fromDepth),
+                        toDepth = FormValidation.parseDouble(toDepth),
                         rockGroup = rockGroup,
                         rockType = rockType.trim(),
                         color = color,
@@ -377,16 +378,16 @@ fun DrillIntervalFormScreen(
                         alteration = alteration.ifBlank { null },
                         alterationIntensity = alterationIntensity.ifBlank { null },
                         mineralization = mineralization.trim().ifBlank { null },
-                        mineralizationPercent = mineralizationPercent.toDoubleOrNull(),
-                        rqd = rqd.toDoubleOrNull()?.coerceIn(0.0, 100.0),
-                        recovery = recovery.toDoubleOrNull()?.coerceIn(0.0, 100.0),
+                        mineralizationPercent = FormValidation.parseDouble(mineralizationPercent),
+                        rqd = FormValidation.parseDouble(rqd),
+                        recovery = FormValidation.parseDouble(recovery),
                         structure = structure.ifBlank { null },
                         weathering = weathering.ifBlank { null },
                         notes = notes.trim().ifBlank { null },
                         onSaved = onSaved,
                     )
                 },
-                enabled = isFormValid && !isSaving,
+                enabled = !isSaving,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
@@ -401,9 +402,16 @@ fun DrillIntervalFormScreen(
                         strokeWidth = 2.dp,
                     )
                 } else {
+                    Icon(
+                        imageVector = Icons.Default.Save,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        text = "Guardar Intervalo",
+                        text = if (viewModel.isEditing) "Actualizar Intervalo" else "Guardar Intervalo",
                         style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
                     )
                 }
             }

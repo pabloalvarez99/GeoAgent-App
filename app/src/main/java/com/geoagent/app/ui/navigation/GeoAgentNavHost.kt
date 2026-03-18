@@ -35,6 +35,7 @@ fun GeoAgentNavHost() {
         composable<Route.Home> {
             HomeScreen(
                 onNavigateToProjects = { navController.navigate(Route.ProjectList) },
+                onNavigateToMap = { navController.navigate(Route.MapView(0L)) },
                 onNavigateToSettings = { navController.navigate(Route.Settings) },
             )
         }
@@ -56,6 +57,12 @@ fun GeoAgentNavHost() {
                 onNavigateToDrillHoles = { navController.navigate(Route.DrillHoleList(route.projectId)) },
                 onNavigateToMap = { navController.navigate(Route.MapView(route.projectId)) },
                 onNavigateToExport = { navController.navigate(Route.Export(route.projectId)) },
+                onNavigateToPhotos = {
+                    navController.navigate(Route.PhotoGallery(projectId = route.projectId))
+                },
+                onNavigateToCamera = {
+                    navController.navigate(Route.CameraCapture(projectId = route.projectId))
+                },
                 onNavigateBack = { navController.popBackStack() }
             )
         }
@@ -79,8 +86,14 @@ fun GeoAgentNavHost() {
             StationCreateScreen(
                 projectId = route.projectId,
                 onStationCreated = { stationId ->
-                    navController.navigate(Route.StationDetail(stationId)) {
-                        popUpTo(Route.StationList(route.projectId))
+                    if (route.stationId != null && route.stationId != 0L) {
+                        // Editing — just go back to detail screen
+                        navController.popBackStack()
+                    } else {
+                        // Creating — navigate to the new station detail
+                        navController.navigate(Route.StationDetail(stationId)) {
+                            popUpTo(Route.StationList(route.projectId))
+                        }
                     }
                 },
                 onNavigateBack = { navController.popBackStack() }
@@ -105,6 +118,11 @@ fun GeoAgentNavHost() {
                 },
                 onNavigateToCamera = {
                     navController.navigate(Route.CameraCapture(stationId = route.stationId))
+                },
+                onNavigateToEdit = {
+                    // Navigate back and then to edit - need projectId from station
+                    // StationCreate will load the station data via stationId
+                    navController.navigate(Route.StationCreate(projectId = 0, stationId = route.stationId))
                 },
                 onNavigateBack = { navController.popBackStack() }
             )
@@ -159,8 +177,12 @@ fun GeoAgentNavHost() {
             DrillHoleCreateScreen(
                 projectId = route.projectId,
                 onCreated = { drillHoleId ->
-                    navController.navigate(Route.DrillHoleDetail(drillHoleId)) {
-                        popUpTo(Route.DrillHoleList(route.projectId))
+                    if (route.drillHoleId != null && route.drillHoleId != 0L) {
+                        navController.popBackStack()
+                    } else {
+                        navController.navigate(Route.DrillHoleDetail(drillHoleId)) {
+                            popUpTo(Route.DrillHoleList(route.projectId))
+                        }
                     }
                 },
                 onNavigateBack = { navController.popBackStack() }
@@ -179,6 +201,9 @@ fun GeoAgentNavHost() {
                 },
                 onNavigateToCamera = {
                     navController.navigate(Route.CameraCapture(drillHoleId = route.drillHoleId))
+                },
+                onNavigateToEdit = {
+                    navController.navigate(Route.DrillHoleCreate(projectId = 0, drillHoleId = route.drillHoleId))
                 },
                 onNavigateBack = { navController.popBackStack() }
             )
@@ -201,6 +226,9 @@ fun GeoAgentNavHost() {
                 onNavigateToStation = { stationId ->
                     navController.navigate(Route.StationDetail(stationId))
                 },
+                onNavigateToDrillHole = { drillHoleId ->
+                    navController.navigate(Route.DrillHoleDetail(drillHoleId))
+                },
                 onNavigateBack = { navController.popBackStack() }
             )
         }
@@ -210,6 +238,7 @@ fun GeoAgentNavHost() {
             PhotoGalleryScreen(
                 stationId = route.stationId,
                 drillHoleId = route.drillHoleId,
+                projectId = route.projectId,
                 onNavigateBack = { navController.popBackStack() }
             )
         }
@@ -219,6 +248,7 @@ fun GeoAgentNavHost() {
             CameraCaptureScreen(
                 stationId = route.stationId,
                 drillHoleId = route.drillHoleId,
+                projectId = route.projectId,
                 onPhotoCaptured = { navController.popBackStack() },
                 onNavigateBack = { navController.popBackStack() }
             )

@@ -27,9 +27,15 @@ interface ProjectDao {
     @Delete
     suspend fun delete(project: ProjectEntity)
 
-    @Query("SELECT * FROM projects WHERE syncStatus != 'SYNCED'")
+    @Query("SELECT COUNT(*) FROM projects")
+    fun getTotalCount(): Flow<Int>
+
+    @Query("SELECT * FROM projects WHERE sync_status != 'SYNCED'")
     suspend fun getPendingSync(): List<ProjectEntity>
 
-    @Query("UPDATE projects SET syncStatus = :status, remoteId = :remoteId WHERE id = :id")
+    @Query("SELECT COUNT(*) FROM projects WHERE sync_status != 'SYNCED'")
+    fun getPendingSyncCount(): Flow<Int>
+
+    @Query("UPDATE projects SET sync_status = :status, remote_id = :remoteId WHERE id = :id")
     suspend fun updateSyncStatus(id: Long, status: String, remoteId: String?)
 }

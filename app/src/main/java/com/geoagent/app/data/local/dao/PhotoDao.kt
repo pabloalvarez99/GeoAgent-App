@@ -12,11 +12,17 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface PhotoDao {
 
-    @Query("SELECT * FROM photos WHERE stationId = :stationId")
+    @Query("SELECT * FROM photos WHERE station_id = :stationId")
     fun getByStation(stationId: Long): Flow<List<PhotoEntity>>
 
-    @Query("SELECT * FROM photos WHERE drillHoleId = :drillHoleId")
+    @Query("SELECT * FROM photos WHERE drill_hole_id = :drillHoleId")
     fun getByDrillHole(drillHoleId: Long): Flow<List<PhotoEntity>>
+
+    @Query("SELECT * FROM photos WHERE project_id = :projectId ORDER BY taken_at DESC")
+    fun getByProject(projectId: Long): Flow<List<PhotoEntity>>
+
+    @Query("SELECT COUNT(*) FROM photos WHERE project_id = :projectId")
+    fun getCountByProject(projectId: Long): Flow<Int>
 
     @Query("SELECT * FROM photos WHERE id = :id")
     fun getById(id: Long): Flow<PhotoEntity?>
@@ -30,16 +36,25 @@ interface PhotoDao {
     @Delete
     suspend fun delete(photo: PhotoEntity)
 
-    @Query("SELECT COUNT(*) FROM photos WHERE stationId = :stationId")
+    @Query("SELECT COUNT(*) FROM photos WHERE station_id = :stationId")
     fun getCountByStation(stationId: Long): Flow<Int>
 
-    @Query("SELECT * FROM photos WHERE syncStatus != 'SYNCED'")
+    @Query("SELECT COUNT(*) FROM photos WHERE drill_hole_id = :drillHoleId")
+    fun getCountByDrillHole(drillHoleId: Long): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM photos")
+    fun getTotalCount(): Flow<Int>
+
+    @Query("SELECT * FROM photos WHERE sync_status != 'SYNCED'")
     suspend fun getPendingSync(): List<PhotoEntity>
+
+    @Query("SELECT COUNT(*) FROM photos WHERE sync_status != 'SYNCED'")
+    fun getPendingSyncCount(): Flow<Int>
 
     @Query(
         """
         UPDATE photos
-        SET syncStatus = :status, remoteId = :remoteId, remoteUrl = :remoteUrl
+        SET sync_status = :status, remote_id = :remoteId, remote_url = :remoteUrl
         WHERE id = :id
         """
     )

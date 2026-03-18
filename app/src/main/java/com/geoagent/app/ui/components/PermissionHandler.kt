@@ -1,6 +1,9 @@
 package com.geoagent.app.ui.components
 
 import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -11,13 +14,16 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.MultiplePermissionsState
-import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import androidx.core.content.ContextCompat
 
 val locationPermissions = listOf(
     Manifest.permission.ACCESS_FINE_LOCATION,
@@ -28,7 +34,6 @@ val cameraPermissions = listOf(
     Manifest.permission.CAMERA,
 )
 
-@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun RequirePermissions(
     permissions: List<String>,
@@ -36,50 +41,50 @@ fun RequirePermissions(
     rationaleMessage: String,
     content: @Composable () -> Unit,
 ) {
-    val permissionState = rememberMultiplePermissionsState(permissions)
+    val context = LocalContext.current
 
-    if (permissionState.allPermissionsGranted) {
-        content()
-    } else {
-        PermissionRationale(
-            title = rationaleTitle,
-            message = rationaleMessage,
-            permissionState = permissionState,
+    var allGranted by remember {
+        mutableStateOf(
+            permissions.all {
+                ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+            }
         )
     }
-}
 
-@OptIn(ExperimentalPermissionsApi::class)
-@Composable
-private fun PermissionRationale(
-    title: String,
-    message: String,
-    permissionState: MultiplePermissionsState,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.headlineSmall,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(modifier = Modifier.height(24.dp))
-        Button(
-            onClick = { permissionState.launchMultiplePermissionRequest() }
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { result ->
+        allGranted = result.values.all { it }
+    }
+
+    if (allGranted) {
+        content()
+    } else {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
         ) {
-            Text("Conceder Permisos")
+            Text(
+                text = rationaleTitle,
+                style = MaterialTheme.typography.headlineSmall,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = rationaleMessage,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            Button(
+                onClick = { launcher.launch(permissions.toTypedArray()) }
+            ) {
+                Text("Conceder Permisos")
+            }
         }
     }
 }

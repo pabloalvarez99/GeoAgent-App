@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface SampleDao {
 
-    @Query("SELECT * FROM samples WHERE stationId = :stationId")
+    @Query("SELECT * FROM samples WHERE station_id = :stationId")
     fun getByStation(stationId: Long): Flow<List<SampleEntity>>
 
     @Query("SELECT * FROM samples WHERE id = :id")
@@ -30,15 +30,21 @@ interface SampleDao {
     @Query(
         """
         SELECT COUNT(*) FROM samples
-        INNER JOIN stations ON samples.stationId = stations.id
-        WHERE stations.projectId = :projectId
+        INNER JOIN stations ON samples.station_id = stations.id
+        WHERE stations.project_id = :projectId
         """
     )
     fun getCountByProject(projectId: Long): Flow<Int>
 
-    @Query("SELECT * FROM samples WHERE syncStatus != 'SYNCED'")
+    @Query("SELECT COUNT(*) FROM samples")
+    fun getTotalCount(): Flow<Int>
+
+    @Query("SELECT * FROM samples WHERE sync_status != 'SYNCED'")
     suspend fun getPendingSync(): List<SampleEntity>
 
-    @Query("UPDATE samples SET syncStatus = :status, remoteId = :remoteId WHERE id = :id")
+    @Query("SELECT COUNT(*) FROM samples WHERE sync_status != 'SYNCED'")
+    fun getPendingSyncCount(): Flow<Int>
+
+    @Query("UPDATE samples SET sync_status = :status, remote_id = :remoteId WHERE id = :id")
     suspend fun updateSyncStatus(id: Long, status: String, remoteId: String?)
 }

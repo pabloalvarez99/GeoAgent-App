@@ -3,6 +3,7 @@ package com.geoagent.app.data.remote.dto
 import com.geoagent.app.data.local.entity.PhotoEntity
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import java.time.Instant
 
 @Serializable
 data class RemotePhoto(
@@ -18,8 +19,8 @@ data class RemotePhoto(
     @SerialName("file_name")
     val fileName: String,
 
-    @SerialName("remote_url")
-    val remoteUrl: String? = null,
+    @SerialName("storage_path")
+    val storagePath: String? = null,
 
     @SerialName("description")
     val description: String? = null,
@@ -31,23 +32,14 @@ data class RemotePhoto(
     val longitude: Double? = null,
 
     @SerialName("taken_at")
-    val takenAt: Long,
-
-    @SerialName("created_at")
-    val createdAt: Long,
-
-    @SerialName("updated_at")
-    val updatedAt: Long,
-
-    @SerialName("local_id")
-    val localId: Long? = null,
+    val takenAt: String? = null,
 ) {
     companion object {
         fun fromEntity(
             entity: PhotoEntity,
             stationRemoteId: String? = null,
             drillHoleRemoteId: String? = null,
-            uploadedUrl: String? = null,
+            uploadedPath: String? = null,
             remoteId: String? = null,
         ): RemotePhoto {
             return RemotePhoto(
@@ -55,14 +47,11 @@ data class RemotePhoto(
                 stationId = stationRemoteId,
                 drillHoleId = drillHoleRemoteId,
                 fileName = entity.fileName,
-                remoteUrl = uploadedUrl ?: entity.remoteUrl,
+                storagePath = uploadedPath ?: entity.remoteUrl,
                 description = entity.description,
                 latitude = entity.latitude,
                 longitude = entity.longitude,
-                takenAt = entity.takenAt,
-                createdAt = entity.createdAt,
-                updatedAt = entity.updatedAt,
-                localId = entity.id,
+                takenAt = Instant.ofEpochMilli(entity.takenAt).toString(),
             )
         }
     }

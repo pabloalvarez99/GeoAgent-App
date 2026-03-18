@@ -6,9 +6,11 @@ import android.location.Location
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.geoagent.app.data.GeoConstants
 import com.geoagent.app.data.local.entity.SampleEntity
 import com.geoagent.app.data.repository.SampleRepository
 import com.geoagent.app.util.CodeGenerator
+import com.geoagent.app.util.FormValidation
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
@@ -125,6 +127,10 @@ class SampleFormViewModel @Inject constructor(
         _uiState.update { it.copy(notes = value) }
     }
 
+    fun clearError() {
+        _uiState.update { it.copy(errorMessage = null) }
+    }
+
     @SuppressLint("MissingPermission")
     fun captureGps() {
         _uiState.update { it.copy(isCapturingGps = true) }
@@ -154,25 +160,23 @@ class SampleFormViewModel @Inject constructor(
 
     fun save() {
         val state = _uiState.value
+        if (state.isSaving) return
 
-        if (state.code.isBlank()) {
-            _uiState.update { it.copy(errorMessage = "Ingrese el codigo de la muestra") }
-            return
-        }
-        if (state.type.isBlank()) {
-            _uiState.update { it.copy(errorMessage = "Seleccione el tipo de muestra") }
-            return
-        }
-        if (state.description.isBlank()) {
-            _uiState.update { it.copy(errorMessage = "Ingrese una descripcion") }
+        val validationError = FormValidation.validateRequired(state.code, "Codigo de muestra")
+            ?: FormValidation.validateRequired(state.type, "Tipo de muestra")
+            ?: FormValidation.validateRequired(state.description, "Descripcion")
+            ?: FormValidation.validatePositive(FormValidation.parseDouble(state.weight), "Peso")
+
+        if (validationError != null) {
+            _uiState.update { it.copy(errorMessage = validationError) }
             return
         }
 
-        val weightVal = state.weight.toDoubleOrNull()
-        val lengthVal = state.length.toDoubleOrNull()
-        val latVal = state.latitude.toDoubleOrNull()
-        val lonVal = state.longitude.toDoubleOrNull()
-        val altVal = state.altitude.toDoubleOrNull()
+        val weightVal = FormValidation.parseDouble(state.weight)
+        val lengthVal = FormValidation.parseDouble(state.length)
+        val latVal = FormValidation.parseDouble(state.latitude)
+        val lonVal = FormValidation.parseDouble(state.longitude)
+        val altVal = FormValidation.parseDouble(state.altitude)
 
         _uiState.update { it.copy(isSaving = true, errorMessage = null) }
 
@@ -220,8 +224,6 @@ class SampleFormViewModel @Inject constructor(
     }
 
     companion object {
-        val sampleTypes = listOf(
-            "Roca", "Suelo", "Sedimento", "Canal", "Chip", "Trinchera",
-        )
+        val sampleTypes = GeoConstants.sampleTypes
     }
 }

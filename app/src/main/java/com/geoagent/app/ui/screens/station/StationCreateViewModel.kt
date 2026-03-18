@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.geoagent.app.data.repository.StationRepository
 import com.geoagent.app.util.CodeGenerator
+import com.geoagent.app.util.FormValidation
+import com.geoagent.app.util.PreferencesHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,9 +19,13 @@ import javax.inject.Inject
 class StationCreateViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val stationRepository: StationRepository,
+    private val preferencesHelper: PreferencesHelper,
 ) : ViewModel() {
 
     private val projectId: Long = checkNotNull(savedStateHandle["projectId"])
+    private val editStationId: Long? = savedStateHandle.get<Long>("stationId")
+
+    val isEditing: Boolean = editStationId != null && editStationId != 0L
 
     private val _code = MutableStateFlow("")
     val code: StateFlow<String> = _code.asStateFlow()
@@ -42,10 +48,37 @@ class StationCreateViewModel @Inject constructor(
     private val _altitude = MutableStateFlow<Double?>(null)
     val altitude: StateFlow<Double?> = _altitude.asStateFlow()
 
+    private val _gpsAccuracy = MutableStateFlow<Float?>(null)
+    val gpsAccuracy: StateFlow<Float?> = _gpsAccuracy.asStateFlow()
+
+    private val _isSaving = MutableStateFlow(false)
+    val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
+
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
     init {
+        if (isEditing) {
+            loadExistingStation()
+        } else {
+            _geologist.value = preferencesHelper.lastGeologistName
+            viewModelScope.launch {
+                val existing = stationRepository.getByProject(projectId).first()
+                _code.value = CodeGenerator.generateStationCode(existing.map { it.code })
+            }
+        }
+    }
+
+    private fun loadExistingStation() {
         viewModelScope.launch {
-            val existing = stationRepository.getByProject(projectId).first()
-            _code.value = CodeGenerator.generateStationCode(existing.map { it.code })
+            val station = stationRepository.getById(editStationId!!).first() ?: return@launch
+            _code.value = station.code
+            _geologist.value = station.geologist
+            _description.value = station.description
+            _weatherConditions.value = station.weatherConditions ?: ""
+            _latitude.value = station.latitude
+            _longitude.value = station.longitude
+            _altitude.value = station.altitude
         }
     }
 
@@ -65,22 +98,67 @@ class StationCreateViewModel @Inject constructor(
         _weatherConditions.value = value
     }
 
-    fun onLocationUpdate(lat: Double, lng: Double, alt: Double?) {
+    fun onLocationUpdate(lat: Double, lng: Double, alt: Double?, accuracy: Float? = null) {
         _latitude.value = lat
         _longitude.value = lng
         _altitude.value = alt
+        _gpsAccuracy.value = accuracy
     }
 
-    suspend fun createStation(): Long {
-        return stationRepository.create(
-            projectId = projectId,
-            code = _code.value.trim(),
-            latitude = _latitude.value,
-            longitude = _longitude.value,
-            altitude = _altitude.value,
-            geologist = _geologist.value.trim(),
-            description = _description.value.trim(),
-            weatherConditions = _weatherConditions.value.ifBlank { null },
-        )
+    fun clearError() {
+        _errorMessage.value = null
+    }
+
+    suspend fun createStation(): Long? {
+        if (_isSaving.value) return null
+
+        val validationError = FormValidation.validateRequired(_code.value, "Codigo")
+            ?: FormValidation.validateRequired(_geologist.value, "Geologo")
+            ?: FormValidation.validateRequired(_description.value, "Descripcion")
+            ?: FormValidation.validateLatitude(_latitude.value)
+            ?: FormValidation.validateLongitude(_longitude.value)
+
+        if (validationError != null) {
+            _errorMessage.value = validationError
+            return null
+        }
+
+        _isSaving.value = true
+        _errorMessage.value = null
+        return try {
+            preferencesHelper.lastGeologistName = _geologist.value.trim()
+
+            if (isEditing) {
+                val existing = stationRepository.getById(editStationId!!).first()!!
+                stationRepository.update(
+                    existing.copy(
+                        code = _code.value.trim(),
+                        latitude = _latitude.value,
+                        longitude = _longitude.value,
+                        altitude = _altitude.value,
+                        geologist = _geologist.value.trim(),
+                        description = _description.value.trim(),
+                        weatherConditions = _weatherConditions.value.ifBlank { null },
+                    )
+                )
+                editStationId
+            } else {
+                stationRepository.create(
+                    projectId = projectId,
+                    code = _code.value.trim(),
+                    latitude = _latitude.value,
+                    longitude = _longitude.value,
+                    altitude = _altitude.value,
+                    geologist = _geologist.value.trim(),
+                    description = _description.value.trim(),
+                    weatherConditions = _weatherConditions.value.ifBlank { null },
+                )
+            }
+        } catch (e: Exception) {
+            _errorMessage.value = "Error al guardar: ${e.message}"
+            null
+        } finally {
+            _isSaving.value = false
+        }
     }
 }

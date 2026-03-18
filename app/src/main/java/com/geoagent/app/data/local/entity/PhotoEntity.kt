@@ -24,7 +24,8 @@ import androidx.room.PrimaryKey
     ],
     indices = [
         Index(value = ["station_id"]),
-        Index(value = ["drill_hole_id"])
+        Index(value = ["drill_hole_id"]),
+        Index(value = ["project_id"]),
     ]
 )
 data class PhotoEntity(
@@ -37,6 +38,9 @@ data class PhotoEntity(
 
     @ColumnInfo(name = "drill_hole_id")
     val drillHoleId: Long? = null,
+
+    @ColumnInfo(name = "project_id")
+    val projectId: Long? = null,
 
     @ColumnInfo(name = "file_path")
     val filePath: String,

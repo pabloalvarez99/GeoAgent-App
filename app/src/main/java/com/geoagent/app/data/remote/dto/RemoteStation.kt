@@ -3,6 +3,7 @@ package com.geoagent.app.data.remote.dto
 import com.geoagent.app.data.local.entity.StationEntity
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import java.time.Instant
 
 @Serializable
 data class RemoteStation(
@@ -25,7 +26,7 @@ data class RemoteStation(
     val altitude: Double? = null,
 
     @SerialName("date")
-    val date: Long,
+    val date: String,
 
     @SerialName("geologist")
     val geologist: String,
@@ -35,15 +36,6 @@ data class RemoteStation(
 
     @SerialName("weather_conditions")
     val weatherConditions: String? = null,
-
-    @SerialName("created_at")
-    val createdAt: Long,
-
-    @SerialName("updated_at")
-    val updatedAt: Long,
-
-    @SerialName("local_id")
-    val localId: Long? = null,
 ) {
     companion object {
         fun fromEntity(
@@ -58,13 +50,10 @@ data class RemoteStation(
                 latitude = entity.latitude,
                 longitude = entity.longitude,
                 altitude = entity.altitude,
-                date = entity.date,
+                date = Instant.ofEpochMilli(entity.date).toString(),
                 geologist = entity.geologist,
                 description = entity.description,
                 weatherConditions = entity.weatherConditions,
-                createdAt = entity.createdAt,
-                updatedAt = entity.updatedAt,
-                localId = entity.id,
             )
         }
     }

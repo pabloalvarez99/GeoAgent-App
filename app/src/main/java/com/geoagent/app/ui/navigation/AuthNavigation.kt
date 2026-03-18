@@ -1,8 +1,25 @@
 package com.geoagent.app.ui.navigation
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Landscape
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -31,8 +48,8 @@ class AuthNavigationViewModel @Inject constructor(
             when (status) {
                 is SessionStatus.Authenticated -> AuthState.LoggedIn
                 is SessionStatus.NotAuthenticated -> AuthState.LoggedOut
-                is SessionStatus.LoadingFromStorage -> AuthState.Loading
-                is SessionStatus.NetworkError -> AuthState.LoggedOut
+                is SessionStatus.Initializing -> AuthState.Loading
+                is SessionStatus.RefreshFailure -> AuthState.LoggedOut
             }
         }
         .stateIn(
@@ -50,8 +67,36 @@ fun GeoAgentRootNavigation(
 
     when (authState) {
         AuthState.Loading -> {
-            // Show nothing while checking session status (brief flash)
-            // Could add a splash screen here in the future
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.background,
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Landscape,
+                        contentDescription = null,
+                        modifier = Modifier.size(72.dp),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "GeoAgent",
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(36.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = 3.dp,
+                    )
+                }
+            }
         }
         AuthState.LoggedOut -> {
             com.geoagent.app.ui.screens.auth.LoginScreen(

@@ -7,11 +7,22 @@ import com.geoagent.app.data.local.entity.DrillHoleEntity
 import com.geoagent.app.data.local.entity.StationEntity
 import com.geoagent.app.data.repository.DrillHoleRepository
 import com.geoagent.app.data.repository.StationRepository
+import com.google.android.gms.maps.model.MapStyleOptions
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
+
+enum class GeoMapType(val label: String) {
+    NORMAL("Normal"),
+    SATELLITE("Satelite"),
+    TERRAIN("Relieve"),
+    HYBRID("Hibrido"),
+}
 
 @HiltViewModel
 class MapViewModel @Inject constructor(
@@ -22,17 +33,40 @@ class MapViewModel @Inject constructor(
 
     private val projectId: Long = savedStateHandle["projectId"] ?: 0L
 
-    val stations: StateFlow<List<StationEntity>> = stationRepository.getByProject(projectId)
-        .stateIn(
+    val stations: StateFlow<List<StationEntity>> = (
+        if (projectId == 0L) stationRepository.getAll()
+        else stationRepository.getByProject(projectId)
+    ).stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = emptyList(),
+    )
+
+    val drillHoles: StateFlow<List<DrillHoleEntity>> = (
+        if (projectId == 0L) drillHoleRepository.getAll()
+        else drillHoleRepository.getByProject(projectId)
+    ).stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = emptyList(),
+    )
+
+    /** Geographic centroid of all project points, used for initial map camera. */
+    val centerPoint: StateFlow<Pair<Double, Double>?> =
+        combine(stations, drillHoles) { stList, dhList ->
+            val lats = stList.map { it.latitude } + dhList.map { it.latitude }
+            val lngs = stList.map { it.longitude } + dhList.map { it.longitude }
+            if (lats.isEmpty()) null else (lats.average() to lngs.average())
+        }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = emptyList(),
+            initialValue = null,
         )
 
-    val drillHoles: StateFlow<List<DrillHoleEntity>> = drillHoleRepository.getByProject(projectId)
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = emptyList(),
-        )
+    private val _mapType = MutableStateFlow(GeoMapType.HYBRID)
+    val mapType: StateFlow<GeoMapType> = _mapType.asStateFlow()
+
+    fun setMapType(type: GeoMapType) {
+        _mapType.value = type
+    }
 }

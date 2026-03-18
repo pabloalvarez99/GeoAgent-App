@@ -13,7 +13,13 @@ class StationRepository @Inject constructor(
     fun getByProject(projectId: Long): Flow<List<StationEntity>> =
         stationDao.getByProject(projectId)
 
+    fun getAll(): Flow<List<StationEntity>> = stationDao.getAll()
+
     fun getById(id: Long): Flow<StationEntity?> = stationDao.getById(id)
+
+    fun getTotalCount(): Flow<Int> = stationDao.getTotalCount()
+
+    fun getPendingSyncCount(): Flow<Int> = stationDao.getPendingSyncCount()
 
     suspend fun create(
         projectId: Long,

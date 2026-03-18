@@ -16,15 +16,16 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class StationDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    stationRepository: StationRepository,
-    lithologyRepository: LithologyRepository,
-    structuralRepository: StructuralRepository,
-    sampleRepository: SampleRepository,
+    private val stationRepository: StationRepository,
+    private val lithologyRepository: LithologyRepository,
+    private val structuralRepository: StructuralRepository,
+    private val sampleRepository: SampleRepository,
     photoRepository: PhotoRepository,
 ) : ViewModel() {
 
@@ -64,4 +65,24 @@ class StationDetailViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = 0,
         )
+
+    fun deleteStation(onDeleted: () -> Unit) {
+        val current = station.value ?: return
+        viewModelScope.launch {
+            stationRepository.delete(current)
+            onDeleted()
+        }
+    }
+
+    fun deleteLithology(lithology: LithologyEntity) {
+        viewModelScope.launch { lithologyRepository.delete(lithology) }
+    }
+
+    fun deleteStructural(structural: StructuralEntity) {
+        viewModelScope.launch { structuralRepository.delete(structural) }
+    }
+
+    fun deleteSample(sample: SampleEntity) {
+        viewModelScope.launch { sampleRepository.delete(sample) }
+    }
 }

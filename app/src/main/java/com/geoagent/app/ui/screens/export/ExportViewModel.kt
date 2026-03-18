@@ -7,12 +7,14 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.geoagent.app.data.local.entity.DrillHoleEntity
-import com.geoagent.app.data.local.entity.DrillIntervalEntity
-import com.geoagent.app.data.local.entity.StationEntity
 import com.geoagent.app.data.repository.DrillHoleRepository
+import com.geoagent.app.data.repository.LithologyRepository
 import com.geoagent.app.data.repository.ProjectRepository
+import com.geoagent.app.data.repository.SampleRepository
 import com.geoagent.app.data.repository.StationRepository
+import com.geoagent.app.data.repository.StructuralRepository
+import com.geoagent.app.util.ExportHelper
+import com.geoagent.app.util.PdfReportGenerator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,11 +22,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.io.BufferedOutputStream
 import java.io.File
+import java.io.FileOutputStream
 import java.io.FileWriter
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 import javax.inject.Inject
 
 enum class ExportType {
@@ -48,6 +54,11 @@ class ExportViewModel @Inject constructor(
     private val projectRepository: ProjectRepository,
     private val stationRepository: StationRepository,
     private val drillHoleRepository: DrillHoleRepository,
+    private val lithologyRepository: LithologyRepository,
+    private val structuralRepository: StructuralRepository,
+    private val sampleRepository: SampleRepository,
+    private val pdfReportGenerator: PdfReportGenerator,
+    private val exportHelper: ExportHelper,
 ) : ViewModel() {
 
     private val projectId: Long = savedStateHandle["projectId"] ?: 0L
@@ -68,12 +79,12 @@ class ExportViewModel @Inject constructor(
             _exportState.value = ExportState(isExporting = true, currentExport = type)
             try {
                 val file = when (type) {
-                    ExportType.EXCEL_CSV -> exportCsv()
+                    ExportType.EXCEL_CSV -> exportExcel()
                     ExportType.PDF_REPORT -> exportPdfReport()
                     ExportType.COLLAR_SURVEY_ASSAY -> exportCollarSurveyAssay()
                     ExportType.GEOJSON -> exportGeoJson()
                 }
-                _exportState.value = ExportState(lastExportedFile = file)
+                _exportState.value = ExportState(currentExport = type, lastExportedFile = file)
             } catch (e: Exception) {
                 _exportState.value = ExportState(error = e.message ?: "Error al exportar")
             }
@@ -90,9 +101,11 @@ class ExportViewModel @Inject constructor(
         val shareIntent = Intent(Intent.ACTION_SEND).apply {
             putExtra(Intent.EXTRA_STREAM, uri)
             type = when {
+                file.name.endsWith(".xlsx") -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 file.name.endsWith(".csv") -> "text/csv"
                 file.name.endsWith(".pdf") -> "application/pdf"
                 file.name.endsWith(".geojson") -> "application/geo+json"
+                file.name.endsWith(".zip") -> "application/zip"
                 else -> "application/octet-stream"
             }
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -108,76 +121,49 @@ class ExportViewModel @Inject constructor(
         _exportState.value = ExportState()
     }
 
-    private suspend fun exportCsv(): File {
-        val project = projectRepository.getById(projectId).first()
+    private suspend fun exportExcel(): File {
+        val project = projectRepository.getById(projectId).first() ?: error("Proyecto no encontrado")
         val stations = stationRepository.getByProject(projectId).first()
         val drillHoles = drillHoleRepository.getByProject(projectId).first()
-
-        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-        val file = File(getExportDir(), "proyecto_${project?.name?.replace(" ", "_") ?: projectId}_$timestamp.csv")
-
-        FileWriter(file).use { writer ->
-            // Stations section
-            writer.append("ESTACIONES\n")
-            writer.append("Codigo,Latitud,Longitud,Altitud,Geologo,Descripcion,Fecha\n")
-            val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale("es"))
-            stations.forEach { station ->
-                writer.append("${station.code},${station.latitude},${station.longitude},${station.altitude ?: ""},${station.geologist},\"${station.description}\",${dateFormat.format(Date(station.date))}\n")
-            }
-
-            writer.append("\n")
-
-            // Drill holes section
-            writer.append("SONDAJES\n")
-            writer.append("HoleID,Tipo,Latitud,Longitud,Azimut,Inclinacion,Prof.Planificada,Prof.Actual,Estado,Geologo\n")
-            drillHoles.forEach { dh ->
-                writer.append("${dh.holeId},${dh.type},${dh.latitude},${dh.longitude},${dh.azimuth},${dh.inclination},${dh.plannedDepth},${dh.actualDepth ?: ""},${dh.status},${dh.geologist}\n")
-            }
-        }
-
-        return file
+        val lithologies = stations.associate { it.id to lithologyRepository.getByStation(it.id).first() }
+        val structuralData = stations.associate { it.id to structuralRepository.getByStation(it.id).first() }
+        val samples = stations.associate { it.id to sampleRepository.getByStation(it.id).first() }
+        val intervals = drillHoles.associate { it.id to drillHoleRepository.getIntervals(it.id).first() }
+        return exportHelper.exportToExcel(project, stations, lithologies, structuralData, samples, drillHoles, intervals)
     }
 
     private suspend fun exportPdfReport(): File {
-        // PDF generation is placeholder -- produces a text-based report
-        val project = projectRepository.getById(projectId).first()
+        val project = projectRepository.getById(projectId).first() ?: error("Proyecto no encontrado")
         val stations = stationRepository.getByProject(projectId).first()
         val drillHoles = drillHoleRepository.getByProject(projectId).first()
 
-        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-        val file = File(getExportDir(), "reporte_${project?.name?.replace(" ", "_") ?: projectId}_$timestamp.txt")
-
-        FileWriter(file).use { writer ->
-            writer.append("REPORTE DE PROYECTO\n")
-            writer.append("==================\n\n")
-            writer.append("Proyecto: ${project?.name ?: "N/A"}\n")
-            writer.append("Descripcion: ${project?.description ?: "N/A"}\n")
-            writer.append("Ubicacion: ${project?.location ?: "N/A"}\n")
-            writer.append("Fecha de reporte: ${SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("es")).format(Date())}\n\n")
-
-            writer.append("ESTACIONES (${stations.size})\n")
-            writer.append("---------\n")
-            stations.forEach { station ->
-                writer.append("  ${station.code} - Lat: ${station.latitude}, Lng: ${station.longitude}\n")
-                writer.append("  Geologo: ${station.geologist}\n")
-                writer.append("  ${station.description}\n\n")
-            }
-
-            writer.append("SONDAJES (${drillHoles.size})\n")
-            writer.append("--------\n")
-            drillHoles.forEach { dh ->
-                writer.append("  ${dh.holeId} - ${dh.type} - ${dh.status}\n")
-                writer.append("  Coordenadas: ${dh.latitude}, ${dh.longitude}\n")
-                writer.append("  Azimut: ${dh.azimuth}, Inclinacion: ${dh.inclination}\n")
-                writer.append("  Profundidad: ${dh.actualDepth ?: 0.0} / ${dh.plannedDepth} m\n\n")
-            }
+        val lithologies = stations.associate { station ->
+            station.id to lithologyRepository.getByStation(station.id).first()
+        }
+        val structuralData = stations.associate { station ->
+            station.id to structuralRepository.getByStation(station.id).first()
+        }
+        val samples = stations.associate { station ->
+            station.id to sampleRepository.getByStation(station.id).first()
+        }
+        val intervals = drillHoles.associate { dh ->
+            dh.id to drillHoleRepository.getIntervals(dh.id).first()
         }
 
-        return file
+        return pdfReportGenerator.generateProjectReport(
+            project = project,
+            stations = stations,
+            lithologies = lithologies,
+            structuralData = structuralData,
+            samples = samples,
+            drillHoles = drillHoles,
+            intervals = intervals,
+        )
     }
 
     private suspend fun exportCollarSurveyAssay(): File {
         val drillHoles = drillHoleRepository.getByProject(projectId).first()
+        val project = projectRepository.getById(projectId).first()
         val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
         val exportDir = File(getExportDir(), "mining_$timestamp")
         if (!exportDir.exists()) exportDir.mkdirs()
@@ -197,7 +183,6 @@ class ExportViewModel @Inject constructor(
             writer.append("HOLEID,DEPTH,AZIMUTH,DIP\n")
             drillHoles.forEach { dh ->
                 writer.append("${dh.holeId},0,${dh.azimuth},${dh.inclination}\n")
-                // Add end-of-hole survey
                 val depth = dh.actualDepth ?: dh.plannedDepth
                 writer.append("${dh.holeId},$depth,${dh.azimuth},${dh.inclination}\n")
             }
@@ -215,40 +200,27 @@ class ExportViewModel @Inject constructor(
             }
         }
 
-        // Return collar file for sharing (user can navigate to directory)
-        return collarFile
+        // ZIP all files together for easy sharing
+        val projectName = project?.name?.replace(Regex("[^a-zA-Z0-9_-]"), "_") ?: "project"
+        val zipFile = File(getExportDir(), "${projectName}_mining_$timestamp.zip")
+        ZipOutputStream(BufferedOutputStream(FileOutputStream(zipFile))).use { zos ->
+            listOf(collarFile, surveyFile, assayFile).forEach { file ->
+                zos.putNextEntry(ZipEntry(file.name))
+                file.inputStream().use { it.copyTo(zos) }
+                zos.closeEntry()
+            }
+        }
+
+        // Clean up individual files
+        exportDir.deleteRecursively()
+
+        return zipFile
     }
 
     private suspend fun exportGeoJson(): File {
-        val project = projectRepository.getById(projectId).first()
+        val project = projectRepository.getById(projectId).first() ?: error("Proyecto no encontrado")
         val stations = stationRepository.getByProject(projectId).first()
         val drillHoles = drillHoleRepository.getByProject(projectId).first()
-
-        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-        val file = File(getExportDir(), "proyecto_${project?.name?.replace(" ", "_") ?: projectId}_$timestamp.geojson")
-
-        val features = buildString {
-            val allFeatures = mutableListOf<String>()
-
-            stations.forEach { station ->
-                allFeatures.add(
-                    """{"type":"Feature","geometry":{"type":"Point","coordinates":[${station.longitude},${station.latitude}]},"properties":{"type":"station","code":"${station.code}","geologist":"${station.geologist}","description":"${station.description.replace("\"", "\\\"")}"}}"""
-                )
-            }
-
-            drillHoles.forEach { dh ->
-                allFeatures.add(
-                    """{"type":"Feature","geometry":{"type":"Point","coordinates":[${dh.longitude},${dh.latitude}]},"properties":{"type":"drillhole","holeId":"${dh.holeId}","drillType":"${dh.type}","status":"${dh.status}","plannedDepth":${dh.plannedDepth},"actualDepth":${dh.actualDepth ?: 0.0}}}"""
-                )
-            }
-
-            append("""{"type":"FeatureCollection","features":[${allFeatures.joinToString(",")}]}""")
-        }
-
-        FileWriter(file).use { writer ->
-            writer.append(features)
-        }
-
-        return file
+        return exportHelper.exportGeoJson(project, stations, drillHoles)
     }
 }

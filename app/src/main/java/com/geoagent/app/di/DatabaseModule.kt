@@ -29,7 +29,9 @@ object DatabaseModule {
             context,
             GeoAgentDatabase::class.java,
             "geoagent.db"
-        ).build()
+        )
+            .addMigrations(GeoAgentDatabase.MIGRATION_1_2)
+            .build()
     }
 
     @Provides fun provideProjectDao(db: GeoAgentDatabase): ProjectDao = db.projectDao()

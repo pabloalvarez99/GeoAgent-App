@@ -12,15 +12,24 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import android.Manifest
+import android.annotation.SuppressLint
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
+import com.google.android.gms.location.LocationServices
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -31,10 +40,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,10 +58,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.geoagent.app.data.GeoConstants
 import kotlinx.coroutines.launch
 
-private val weatherOptions = listOf("Despejado", "Nublado", "Lluvia", "Viento")
+private val weatherOptions = GeoConstants.weatherConditions
 
+@SuppressLint("MissingPermission")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StationCreateScreen(
@@ -65,16 +79,70 @@ fun StationCreateScreen(
     val latitude by viewModel.latitude.collectAsState()
     val longitude by viewModel.longitude.collectAsState()
     val altitude by viewModel.altitude.collectAsState()
+    val gpsAccuracy by viewModel.gpsAccuracy.collectAsState()
+    val isSaving by viewModel.isSaving.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
 
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var isFormValid by remember { mutableStateOf(true) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    var hasLocationPermission by remember { mutableStateOf(false) }
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        hasLocationPermission = granted
+    }
+
+    fun captureGps() {
+        if (!hasLocationPermission) {
+            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+            return
+        }
+        val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
+        fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+            location?.let {
+                viewModel.onLocationUpdate(it.latitude, it.longitude, if (it.hasAltitude()) it.altitude else null, if (it.hasAccuracy()) it.accuracy else null)
+            }
+        }
+    }
+
+    // Check permission on screen open and auto-capture GPS
+    LaunchedEffect(Unit) {
+        hasLocationPermission = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_FINE_LOCATION,
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!hasLocationPermission) {
+            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+    }
+
+    // Auto-capture GPS once permission is granted (skip when editing - preserve existing coords)
+    LaunchedEffect(hasLocationPermission) {
+        if (hasLocationPermission && !viewModel.isEditing && latitude == 0.0 && longitude == 0.0) {
+            val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
+            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                location?.let {
+                    viewModel.onLocationUpdate(it.latitude, it.longitude, if (it.hasAltitude()) it.altitude else null, if (it.hasAccuracy()) it.accuracy else null)
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(errorMessage) {
+        errorMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearError()
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        text = "Nueva Estacion",
+                        text = if (viewModel.isEditing) "Editar Estacion" else "Nueva Estacion",
                         fontWeight = FontWeight.SemiBold,
                     )
                 },
@@ -109,10 +177,10 @@ fun StationCreateScreen(
             OutlinedTextField(
                 value = code,
                 onValueChange = viewModel::onCodeChange,
-                label = { Text("Codigo de estacion") },
+                label = { Text("Codigo de estacion *") },
                 placeholder = { Text("Ej: EST-001") },
                 singleLine = true,
-                isError = !isFormValid && code.isBlank(),
+                isError = errorMessage != null && code.isBlank(),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(64.dp),
@@ -122,10 +190,10 @@ fun StationCreateScreen(
             OutlinedTextField(
                 value = geologist,
                 onValueChange = viewModel::onGeologistChange,
-                label = { Text("Geologo") },
+                label = { Text("Geologo *") },
                 placeholder = { Text("Nombre del geologo") },
                 singleLine = true,
-                isError = !isFormValid && geologist.isBlank(),
+                isError = errorMessage != null && geologist.isBlank(),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(64.dp),
@@ -135,11 +203,11 @@ fun StationCreateScreen(
             OutlinedTextField(
                 value = description,
                 onValueChange = viewModel::onDescriptionChange,
-                label = { Text("Descripcion") },
+                label = { Text("Descripcion *") },
                 placeholder = { Text("Descripcion de la estacion") },
                 minLines = 3,
                 maxLines = 5,
-                isError = !isFormValid && description.isBlank(),
+                isError = errorMessage != null && description.isBlank(),
                 modifier = Modifier.fillMaxWidth(),
             )
 
@@ -185,13 +253,11 @@ fun StationCreateScreen(
                         }
 
                         IconButton(
-                            onClick = {
-                                // TODO: trigger GPS location refresh
-                            },
+                            onClick = { captureGps() },
                             modifier = Modifier.size(48.dp),
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Refresh,
+                                imageVector = Icons.Default.MyLocation,
                                 contentDescription = "Actualizar ubicacion",
                                 tint = MaterialTheme.colorScheme.onSecondaryContainer,
                             )
@@ -245,6 +311,26 @@ fun StationCreateScreen(
                                 color = MaterialTheme.colorScheme.onSecondaryContainer,
                             )
                         }
+
+                        Column {
+                            Text(
+                                text = "Precision",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
+                            )
+                            Text(
+                                text = if (gpsAccuracy != null) "±%.0f m".format(gpsAccuracy) else "--",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium,
+                                color = if (gpsAccuracy != null && gpsAccuracy!! <= 10f) {
+                                    MaterialTheme.colorScheme.onSecondaryContainer
+                                } else if (gpsAccuracy != null) {
+                                    MaterialTheme.colorScheme.error
+                                } else {
+                                    MaterialTheme.colorScheme.onSecondaryContainer
+                                },
+                            )
+                        }
                     }
                 }
             }
@@ -254,15 +340,14 @@ fun StationCreateScreen(
             // Save button
             Button(
                 onClick = {
-                    if (code.isBlank() || geologist.isBlank() || description.isBlank()) {
-                        isFormValid = false
-                        return@Button
-                    }
                     scope.launch {
                         val stationId = viewModel.createStation()
-                        onStationCreated(stationId)
+                        if (stationId != null) {
+                            onStationCreated(stationId)
+                        }
                     }
                 },
+                enabled = !isSaving,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
@@ -271,17 +356,25 @@ fun StationCreateScreen(
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                 ),
             ) {
-                Icon(
-                    imageVector = Icons.Default.Save,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = "Guardar Estacion",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
+                if (isSaving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Save,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = if (viewModel.isEditing) "Actualizar Estacion" else "Guardar Estacion",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))

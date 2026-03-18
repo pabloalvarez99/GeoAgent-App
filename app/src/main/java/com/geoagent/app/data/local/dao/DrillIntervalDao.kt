@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface DrillIntervalDao {
 
-    @Query("SELECT * FROM drill_intervals WHERE drillHoleId = :drillHoleId ORDER BY fromDepth ASC")
+    @Query("SELECT * FROM drill_intervals WHERE drill_hole_id = :drillHoleId ORDER BY from_depth ASC")
     fun getByDrillHole(drillHoleId: Long): Flow<List<DrillIntervalEntity>>
 
     @Query("SELECT * FROM drill_intervals WHERE id = :id")
@@ -27,9 +27,9 @@ interface DrillIntervalDao {
     @Delete
     suspend fun delete(interval: DrillIntervalEntity)
 
-    @Query("SELECT * FROM drill_intervals WHERE syncStatus != 'SYNCED'")
+    @Query("SELECT * FROM drill_intervals WHERE sync_status != 'SYNCED'")
     suspend fun getPendingSync(): List<DrillIntervalEntity>
 
-    @Query("UPDATE drill_intervals SET syncStatus = :status, remoteId = :remoteId WHERE id = :id")
+    @Query("UPDATE drill_intervals SET sync_status = :status, remote_id = :remoteId WHERE id = :id")
     suspend fun updateSyncStatus(id: Long, status: String, remoteId: String?)
 }
