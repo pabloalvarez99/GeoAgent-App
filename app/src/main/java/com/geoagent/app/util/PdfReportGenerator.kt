@@ -60,6 +60,7 @@ class PdfReportGenerator @Inject constructor(
         intervals: Map<Long, List<DrillIntervalEntity>>,
     ): File {
         val document = PdfDocument()
+        try {
         var pageNum = 1
         var currentPage: PdfDocument.Page
         var canvas: Canvas
@@ -229,13 +230,16 @@ class PdfReportGenerator @Inject constructor(
             document.finishPage(currentPage)
         }
 
-        val fileName = "Reporte_${project.name}_${DateFormatter.formatForFileName(System.currentTimeMillis())}.pdf"
+        val safeName = project.name.replace(Regex("[^a-zA-Z0-9_-]"), "_")
+        val fileName = "Reporte_${safeName}_${DateFormatter.formatForFileName(System.currentTimeMillis())}.pdf"
         val file = File(
             File(context.getExternalFilesDir(null), "exports").also { if (!it.exists()) it.mkdirs() },
             fileName
         )
         FileOutputStream(file).use { document.writeTo(it) }
-        document.close()
         return file
+        } finally {
+            document.close()
+        }
     }
 }
