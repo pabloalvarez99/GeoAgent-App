@@ -2,6 +2,7 @@ package com.geoagent.app.data.remote
 
 import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.storage.FirebaseStorage
@@ -37,6 +38,7 @@ class RemoteDataSource @Inject constructor(
         val docRef = if (id != null) col(collection).document(id) else col(collection).document()
         val cleanData = HashMap<String, Any>()
         data.forEach { (k, v) -> if (v != null) cleanData[k] = v }
+        cleanData["updated_at"] = FieldValue.serverTimestamp()
         docRef.set(cleanData, SetOptions.merge()).await()
         return docRef.id
     }

@@ -13,6 +13,8 @@ class StructuralRepository @Inject constructor(
     fun getByStation(stationId: Long): Flow<List<StructuralEntity>> =
         structuralDao.getByStation(stationId)
 
+    fun getPendingSyncCount(): Flow<Int> = structuralDao.getPendingSyncCount()
+
     fun getById(id: Long): Flow<StructuralEntity?> = structuralDao.getById(id)
 
     suspend fun create(

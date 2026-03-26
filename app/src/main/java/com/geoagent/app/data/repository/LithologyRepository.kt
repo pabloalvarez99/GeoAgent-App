@@ -13,6 +13,8 @@ class LithologyRepository @Inject constructor(
     fun getByStation(stationId: Long): Flow<List<LithologyEntity>> =
         lithologyDao.getByStation(stationId)
 
+    fun getPendingSyncCount(): Flow<Int> = lithologyDao.getPendingSyncCount()
+
     fun getById(id: Long): Flow<LithologyEntity?> = lithologyDao.getById(id)
 
     suspend fun create(

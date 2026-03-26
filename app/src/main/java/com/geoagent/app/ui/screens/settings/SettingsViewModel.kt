@@ -4,10 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.geoagent.app.data.repository.AuthRepository
 import com.geoagent.app.data.repository.DrillHoleRepository
+import com.geoagent.app.data.repository.LithologyRepository
 import com.geoagent.app.data.repository.PhotoRepository
 import com.geoagent.app.data.repository.ProjectRepository
 import com.geoagent.app.data.repository.SampleRepository
 import com.geoagent.app.data.repository.StationRepository
+import com.geoagent.app.data.repository.StructuralRepository
 import com.geoagent.app.data.repository.UserInfo
 import com.geoagent.app.data.sync.SyncManager
 import com.geoagent.app.util.CoordinateFormat
@@ -46,6 +48,8 @@ class SettingsViewModel @Inject constructor(
     drillHoleRepository: DrillHoleRepository,
     photoRepository: PhotoRepository,
     sampleRepository: SampleRepository,
+    lithologyRepository: LithologyRepository,
+    structuralRepository: StructuralRepository,
 ) : ViewModel() {
 
     val userInfo: StateFlow<UserInfo?> = authRepository.getCurrentUser()
@@ -67,12 +71,19 @@ class SettingsViewModel @Inject constructor(
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
     val pendingSyncCount: StateFlow<Int> = combine(
-        projectRepository.getPendingSyncCount(),
-        stationRepository.getPendingSyncCount(),
-        drillHoleRepository.getPendingSyncCount(),
-        photoRepository.getPendingSyncCount(),
-        sampleRepository.getPendingSyncCount(),
-    ) { counts -> counts.sum() }
+        combine(
+            projectRepository.getPendingSyncCount(),
+            stationRepository.getPendingSyncCount(),
+            drillHoleRepository.getPendingSyncCount(),
+            photoRepository.getPendingSyncCount(),
+            sampleRepository.getPendingSyncCount(),
+        ) { counts -> counts.sum() },
+        combine(
+            lithologyRepository.getPendingSyncCount(),
+            structuralRepository.getPendingSyncCount(),
+            drillHoleRepository.getIntervalPendingSyncCount(),
+        ) { counts -> counts.sum() },
+    ) { a, b -> a + b }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),

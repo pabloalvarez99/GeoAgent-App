@@ -22,6 +22,8 @@ class DrillHoleRepository @Inject constructor(
 
     fun getPendingSyncCount(): Flow<Int> = drillHoleDao.getPendingSyncCount()
 
+    fun getIntervalPendingSyncCount(): Flow<Int> = drillIntervalDao.getPendingSyncCount()
+
     fun getById(id: Long): Flow<DrillHoleEntity?> = drillHoleDao.getById(id)
 
     fun getIntervals(drillHoleId: Long): Flow<List<DrillIntervalEntity>> =
