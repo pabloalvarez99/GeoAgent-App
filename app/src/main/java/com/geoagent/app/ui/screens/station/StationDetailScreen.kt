@@ -213,7 +213,7 @@ fun StationDetailScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "%.6f, %.6f".format(s.latitude, s.longitude) +
+                                text = viewModel.formatCoordinate(s.latitude, s.longitude) +
                                     if (s.altitude != null) " | %.0f m".format(s.altitude) else "",
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer,

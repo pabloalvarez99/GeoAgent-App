@@ -206,6 +206,7 @@ fun StationListScreen(
                         StationCard(
                             station = station,
                             onClick = { onNavigateToStation(station.id) },
+                            formatCoordinate = viewModel::formatCoordinate,
                         )
                     }
                 }
@@ -218,6 +219,7 @@ fun StationListScreen(
 private fun StationCard(
     station: StationEntity,
     onClick: () -> Unit,
+    formatCoordinate: (Double, Double) -> String = { lat, lng -> "%.6f, %.6f".format(lat, lng) },
 ) {
     val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("es")) }
 
@@ -288,7 +290,7 @@ private fun StationCard(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "%.6f, %.6f".format(station.latitude, station.longitude),
+                    text = formatCoordinate(station.latitude, station.longitude),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

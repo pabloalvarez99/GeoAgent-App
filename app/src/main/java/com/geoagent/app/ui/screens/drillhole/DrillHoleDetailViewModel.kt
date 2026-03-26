@@ -7,6 +7,7 @@ import com.geoagent.app.data.local.entity.DrillHoleEntity
 import com.geoagent.app.data.local.entity.DrillIntervalEntity
 import com.geoagent.app.data.repository.DrillHoleRepository
 import com.geoagent.app.data.repository.PhotoRepository
+import com.geoagent.app.util.PreferencesHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -19,6 +20,7 @@ class DrillHoleDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val drillHoleRepository: DrillHoleRepository,
     photoRepository: PhotoRepository,
+    private val preferencesHelper: PreferencesHelper,
 ) : ViewModel() {
 
     private val drillHoleId: Long = savedStateHandle["drillHoleId"] ?: 0L
@@ -71,4 +73,7 @@ class DrillHoleDetailViewModel @Inject constructor(
             drillHoleRepository.deleteInterval(interval)
         }
     }
+
+    fun formatCoordinate(lat: Double, lng: Double): String =
+        preferencesHelper.formatCoordinate(lat, lng)
 }

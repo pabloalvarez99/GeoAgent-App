@@ -355,6 +355,7 @@ fun MapViewScreen(
                     else onNavigateToDrillHole(m.id)
                 },
                 onDismiss = { selectedMarker = null },
+                formatCoordinate = viewModel::formatCoordinate,
             )
         }
     }
@@ -379,6 +380,7 @@ private fun MarkerBottomSheet(
     marker: SelectedMarker,
     onNavigate: () -> Unit,
     onDismiss: () -> Unit,
+    formatCoordinate: (Double, Double) -> String = { lat, lng -> "%.6f, %.6f".format(lat, lng) },
 ) {
     Column(
         modifier = Modifier
@@ -401,7 +403,7 @@ private fun MarkerBottomSheet(
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "${"%.6f".format(marker.lat)}, ${"%.6f".format(marker.lng)}",
+            text = formatCoordinate(marker.lat, marker.lng),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

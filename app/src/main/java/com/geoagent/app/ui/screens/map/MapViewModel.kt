@@ -7,6 +7,7 @@ import com.geoagent.app.data.local.entity.DrillHoleEntity
 import com.geoagent.app.data.local.entity.StationEntity
 import com.geoagent.app.data.repository.DrillHoleRepository
 import com.geoagent.app.data.repository.StationRepository
+import com.geoagent.app.util.PreferencesHelper
 import com.google.android.gms.maps.model.MapStyleOptions
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,6 +30,7 @@ class MapViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     stationRepository: StationRepository,
     drillHoleRepository: DrillHoleRepository,
+    private val preferencesHelper: PreferencesHelper,
 ) : ViewModel() {
 
     private val projectId: Long = savedStateHandle["projectId"] ?: 0L
@@ -72,4 +74,7 @@ class MapViewModel @Inject constructor(
     fun setMapType(type: GeoMapType) {
         _mapType.value = type
     }
+
+    fun formatCoordinate(lat: Double, lng: Double): String =
+        preferencesHelper.formatCoordinate(lat, lng)
 }

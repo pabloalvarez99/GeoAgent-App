@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.geoagent.app.data.local.entity.StationEntity
 import com.geoagent.app.data.repository.StationRepository
+import com.geoagent.app.util.PreferencesHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -18,6 +19,7 @@ import javax.inject.Inject
 class StationListViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     stationRepository: StationRepository,
+    private val preferencesHelper: PreferencesHelper,
 ) : ViewModel() {
 
     private val projectId: Long = checkNotNull(savedStateHandle["projectId"])
@@ -61,6 +63,9 @@ class StationListViewModel @Inject constructor(
     fun onSortOrderChange(order: SortOrder) {
         _sortOrder.value = order
     }
+
+    fun formatCoordinate(lat: Double, lng: Double): String =
+        preferencesHelper.formatCoordinate(lat, lng)
 }
 
 enum class SortOrder(val label: String) {

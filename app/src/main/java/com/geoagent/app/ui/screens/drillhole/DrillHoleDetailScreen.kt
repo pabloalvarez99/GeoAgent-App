@@ -369,7 +369,7 @@ private fun DrillHoleInfoCard(drillHole: DrillHoleEntity) {
             ) {
                 DetailField(
                     label = "Coordenadas",
-                    value = "${"%.6f".format(drillHole.latitude)}, ${"%.6f".format(drillHole.longitude)}"
+                    value = viewModel.formatCoordinate(drillHole.latitude, drillHole.longitude)
                 )
             }
 

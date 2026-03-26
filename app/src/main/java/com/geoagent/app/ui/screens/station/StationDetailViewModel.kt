@@ -12,6 +12,7 @@ import com.geoagent.app.data.repository.PhotoRepository
 import com.geoagent.app.data.repository.SampleRepository
 import com.geoagent.app.data.repository.StationRepository
 import com.geoagent.app.data.repository.StructuralRepository
+import com.geoagent.app.util.PreferencesHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -27,6 +28,7 @@ class StationDetailViewModel @Inject constructor(
     private val structuralRepository: StructuralRepository,
     private val sampleRepository: SampleRepository,
     photoRepository: PhotoRepository,
+    private val preferencesHelper: PreferencesHelper,
 ) : ViewModel() {
 
     private val stationId: Long = checkNotNull(savedStateHandle["stationId"])
@@ -85,4 +87,7 @@ class StationDetailViewModel @Inject constructor(
     fun deleteSample(sample: SampleEntity) {
         viewModelScope.launch { sampleRepository.delete(sample) }
     }
+
+    fun formatCoordinate(lat: Double, lng: Double): String =
+        preferencesHelper.formatCoordinate(lat, lng)
 }
