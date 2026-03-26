@@ -10,6 +10,9 @@ data class RemotePhoto(
     @SerialName("id")
     val id: String? = null,
 
+    @SerialName("project_id")
+    val projectId: String? = null,
+
     @SerialName("station_id")
     val stationId: String? = null,
 
@@ -35,6 +38,7 @@ data class RemotePhoto(
     val takenAt: String? = null,
 ) {
     fun toMap(): Map<String, Any?> = mapOf(
+        "project_id" to projectId,
         "station_id" to stationId,
         "drill_hole_id" to drillHoleId,
         "file_name" to fileName,
@@ -48,6 +52,7 @@ data class RemotePhoto(
     companion object {
         fun fromFirestoreMap(id: String, data: Map<String, Any>): RemotePhoto = RemotePhoto(
             id = id,
+            projectId = data["project_id"] as? String,
             stationId = data["station_id"] as? String,
             drillHoleId = data["drill_hole_id"] as? String,
             fileName = data["file_name"] as? String ?: "",
@@ -60,6 +65,7 @@ data class RemotePhoto(
 
         fun fromEntity(
             entity: PhotoEntity,
+            projectRemoteId: String? = null,
             stationRemoteId: String? = null,
             drillHoleRemoteId: String? = null,
             uploadedPath: String? = null,
@@ -67,6 +73,7 @@ data class RemotePhoto(
         ): RemotePhoto {
             return RemotePhoto(
                 id = remoteId ?: entity.remoteId,
+                projectId = projectRemoteId,
                 stationId = stationRemoteId,
                 drillHoleId = drillHoleRemoteId,
                 fileName = entity.fileName,

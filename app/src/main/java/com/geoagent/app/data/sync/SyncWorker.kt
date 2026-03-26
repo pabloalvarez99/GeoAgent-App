@@ -480,11 +480,13 @@ class SyncWorker @AssistedInject constructor(
         remoteDataSource.fetchAllPhotos().forEach { rp ->
             val remoteId = rp.id ?: return@forEach
             if (photoDao.getByRemoteId(remoteId) == null) {
+                val localProjectId = rp.projectId?.let { remoteProjectToLocal[it] }
                 val localStationId = rp.stationId?.let { remoteStationToLocal[it] }
                 val localDrillHoleId = rp.drillHoleId?.let { remoteDrillHoleToLocal[it] }
                 val takenAtMs = parseIsoDate(rp.takenAt)
                 Log.d(TAG, "Pull: inserting new photo '${rp.fileName}'")
                 photoDao.insert(PhotoEntity(
+                    projectId = localProjectId,
                     stationId = localStationId,
                     drillHoleId = localDrillHoleId,
                     filePath = "",  // No local file for photos pulled from remote
@@ -543,6 +545,10 @@ class SyncWorker @AssistedInject constructor(
 
     private suspend fun syncPhoto(photo: PhotoEntity) {
         // Resolve parent remote IDs
+        val projectRemoteId = if (photo.projectId != null) {
+            resolveProjectRemoteId(photo.projectId)
+        } else null
+
         val stationRemoteId = if (photo.stationId != null) {
             resolveStationRemoteId(photo.stationId)
         } else null
@@ -552,6 +558,11 @@ class SyncWorker @AssistedInject constructor(
         } else null
 
         // Validate that at least one parent is resolved when the local ID is set
+        if (photo.projectId != null && projectRemoteId == null) {
+            throw IllegalStateException(
+                "Parent project id=${photo.projectId} has no remote ID"
+            )
+        }
         if (photo.stationId != null && stationRemoteId == null) {
             throw IllegalStateException(
                 "Parent station id=${photo.stationId} has no remote ID"
@@ -578,6 +589,7 @@ class SyncWorker @AssistedInject constructor(
         // Upsert the photo record in Firestore
         val dto = RemotePhoto.fromEntity(
             entity = photo,
+            projectRemoteId = projectRemoteId,
             stationRemoteId = stationRemoteId,
             drillHoleRemoteId = drillHoleRemoteId,
             uploadedPath = uploadedPath,
