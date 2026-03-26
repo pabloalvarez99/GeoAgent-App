@@ -50,6 +50,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -89,7 +90,7 @@ fun StationDetailScreen(
     var structuralToDelete by rememberSaveable { mutableStateOf<Long?>(null) }
     var sampleToDelete by rememberSaveable { mutableStateOf<Long?>(null) }
 
-    val dateFormatter = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("es"))
+    val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("es")) }
 
     if (showDeleteDialog) {
         ConfirmDeleteDialog(

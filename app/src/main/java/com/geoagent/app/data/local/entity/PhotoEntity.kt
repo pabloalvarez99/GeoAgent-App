@@ -26,6 +26,8 @@ import androidx.room.PrimaryKey
         Index(value = ["station_id"]),
         Index(value = ["drill_hole_id"]),
         Index(value = ["project_id"]),
+        Index(value = ["sync_status"]),
+        Index(value = ["remote_id"]),
     ]
 )
 data class PhotoEntity(

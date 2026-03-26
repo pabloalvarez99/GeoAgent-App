@@ -16,7 +16,11 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index(value = ["project_id"])]
+    indices = [
+        Index(value = ["project_id"]),
+        Index(value = ["sync_status"]),
+        Index(value = ["remote_id"]),
+    ]
 )
 data class DrillHoleEntity(
     @PrimaryKey(autoGenerate = true)

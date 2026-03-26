@@ -2,9 +2,16 @@ package com.geoagent.app.data.local.entity
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "projects")
+@Entity(
+    tableName = "projects",
+    indices = [
+        Index(value = ["sync_status"]),
+        Index(value = ["remote_id"]),
+    ]
+)
 data class ProjectEntity(
     @PrimaryKey(autoGenerate = true)
     @ColumnInfo(name = "id")

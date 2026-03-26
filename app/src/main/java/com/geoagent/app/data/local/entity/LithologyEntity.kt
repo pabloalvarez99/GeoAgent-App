@@ -16,7 +16,11 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index(value = ["station_id"])]
+    indices = [
+        Index(value = ["station_id"]),
+        Index(value = ["sync_status"]),
+        Index(value = ["remote_id"]),
+    ]
 )
 data class LithologyEntity(
     @PrimaryKey(autoGenerate = true)

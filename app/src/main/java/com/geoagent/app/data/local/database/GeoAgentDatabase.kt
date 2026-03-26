@@ -32,7 +32,7 @@ import com.geoagent.app.data.local.entity.StructuralEntity
         DrillIntervalEntity::class,
         PhotoEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true
 )
 abstract class GeoAgentDatabase : RoomDatabase() {
@@ -42,6 +42,18 @@ abstract class GeoAgentDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE photos ADD COLUMN project_id INTEGER")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_photos_project_id ON photos(project_id)")
+            }
+        }
+
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Add sync_status and remote_id indexes for faster pull-phase lookups
+                // and pending-sync queries across all entity tables
+                listOf("projects", "stations", "lithologies", "structural_data",
+                    "samples", "drill_holes", "drill_intervals", "photos").forEach { table ->
+                    db.execSQL("CREATE INDEX IF NOT EXISTS index_${table}_sync_status ON $table(sync_status)")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS index_${table}_remote_id ON $table(remote_id)")
+                }
             }
         }
     }

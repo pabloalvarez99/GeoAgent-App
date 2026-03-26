@@ -99,10 +99,10 @@ class RemoteDataSource @Inject constructor(
         return upsert("photos", data.id, data.toMap())
     }
 
-    suspend fun uploadPhoto(fileName: String, fileBytes: ByteArray): String {
-        Log.d(TAG, "Uploading photo: $fileName (${fileBytes.size} bytes)")
+    suspend fun uploadPhoto(fileName: String, file: java.io.File): String {
+        Log.d(TAG, "Uploading photo: $fileName (${file.length()} bytes)")
         val ref = storage.reference.child("photos/${userId()}/$fileName")
-        ref.putBytes(fileBytes).await()
+        ref.putFile(android.net.Uri.fromFile(file)).await()
         val url = ref.downloadUrl.await().toString()
         Log.d(TAG, "Photo uploaded: $url")
         return url

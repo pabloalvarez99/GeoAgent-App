@@ -568,9 +568,8 @@ class SyncWorker @AssistedInject constructor(
         if (uploadedPath == null) {
             val file = File(photo.filePath)
             if (file.exists()) {
-                val fileBytes = file.readBytes()
                 val storagePath = "${System.currentTimeMillis()}_${photo.fileName}"
-                uploadedPath = remoteDataSource.uploadPhoto(storagePath, fileBytes)
+                uploadedPath = remoteDataSource.uploadPhoto(storagePath, file)
             } else {
                 Log.w(TAG, "Photo file not found at ${photo.filePath}, syncing record without file upload")
             }

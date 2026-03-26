@@ -219,7 +219,7 @@ private fun StationCard(
     station: StationEntity,
     onClick: () -> Unit,
 ) {
-    val dateFormatter = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("es"))
+    val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("es")) }
 
     Card(
         onClick = onClick,

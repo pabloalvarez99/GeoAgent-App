@@ -30,7 +30,7 @@ object DatabaseModule {
             GeoAgentDatabase::class.java,
             "geoagent.db"
         )
-            .addMigrations(GeoAgentDatabase.MIGRATION_1_2)
+            .addMigrations(GeoAgentDatabase.MIGRATION_1_2, GeoAgentDatabase.MIGRATION_2_3)
             .build()
     }
 
