@@ -19,6 +19,6 @@ local.properties
 google-services.json
 .superpowers/
 
-# Supabase
-supabase/.temp/
-supabase/.branches/
+.vercel
+.kotlin/
+hs_err_pid*.log
