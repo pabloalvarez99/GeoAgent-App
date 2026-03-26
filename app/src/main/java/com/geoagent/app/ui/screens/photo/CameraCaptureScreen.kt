@@ -53,7 +53,9 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.google.android.gms.location.CurrentLocationRequest
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import java.io.File
 
 @SuppressLint("MissingPermission")
@@ -132,14 +134,24 @@ fun CameraCaptureScreen(
             context, Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
         if (hasLocationPermission) {
-            LocationServices.getFusedLocationProviderClient(context)
-                .lastLocation
-                .addOnSuccessListener { location ->
-                    location?.let {
-                        currentLatitude = it.latitude
-                        currentLongitude = it.longitude
-                    }
+            val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
+            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                if (location != null) {
+                    currentLatitude = location.latitude
+                    currentLongitude = location.longitude
+                } else {
+                    val request = CurrentLocationRequest.Builder()
+                        .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
+                        .build()
+                    fusedLocationClient.getCurrentLocation(request, null)
+                        .addOnSuccessListener { fresh ->
+                            fresh?.let {
+                                currentLatitude = it.latitude
+                                currentLongitude = it.longitude
+                            }
+                        }
                 }
+            }
         }
     }
 

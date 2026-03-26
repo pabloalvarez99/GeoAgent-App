@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface StructuralDao {
 
-    @Query("SELECT * FROM structural_data WHERE station_id = :stationId")
+    @Query("SELECT * FROM structural_data WHERE station_id = :stationId ORDER BY created_at ASC")
     fun getByStation(stationId: Long): Flow<List<StructuralEntity>>
 
     @Query("SELECT * FROM structural_data WHERE id = :id")

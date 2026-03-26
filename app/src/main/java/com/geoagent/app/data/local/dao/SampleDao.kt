@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface SampleDao {
 
-    @Query("SELECT * FROM samples WHERE station_id = :stationId")
+    @Query("SELECT * FROM samples WHERE station_id = :stationId ORDER BY created_at ASC")
     fun getByStation(stationId: Long): Flow<List<SampleEntity>>
 
     @Query("SELECT * FROM samples WHERE id = :id")

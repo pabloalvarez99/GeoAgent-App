@@ -146,7 +146,8 @@ class DrillHoleCreateViewModel @Inject constructor(
             return
         }
 
-        val rangeError = FormValidation.validateLatitude(latitude)
+        val rangeError = FormValidation.validateCoordinatesCaptured(latitude, longitude)
+            ?: FormValidation.validateLatitude(latitude)
             ?: FormValidation.validateLongitude(longitude)
             ?: FormValidation.validateAzimuth(azimuth)
             ?: FormValidation.validateInclination(inclination)

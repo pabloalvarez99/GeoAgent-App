@@ -76,9 +76,11 @@ class PhotoRepository @Inject constructor(
     }
 
     suspend fun delete(photo: PhotoEntity) {
-        // Delete local file
-        val file = File(photo.filePath)
-        if (file.exists()) file.delete()
+        // Delete local file only if filePath is non-empty (remote-only photos have filePath = "")
+        if (photo.filePath.isNotEmpty()) {
+            val file = File(photo.filePath)
+            if (file.exists()) file.delete()
+        }
         photoDao.delete(photo)
     }
 }

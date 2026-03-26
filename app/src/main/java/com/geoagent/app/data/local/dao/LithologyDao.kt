@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface LithologyDao {
 
-    @Query("SELECT * FROM lithologies WHERE station_id = :stationId")
+    @Query("SELECT * FROM lithologies WHERE station_id = :stationId ORDER BY created_at ASC")
     fun getByStation(stationId: Long): Flow<List<LithologyEntity>>
 
     @Query("SELECT * FROM lithologies WHERE id = :id")

@@ -54,8 +54,11 @@ class MapViewModel @Inject constructor(
     /** Geographic centroid of all project points, used for initial map camera. */
     val centerPoint: StateFlow<Pair<Double, Double>?> =
         combine(stations, drillHoles) { stList, dhList ->
-            val lats = stList.map { it.latitude } + dhList.map { it.latitude }
-            val lngs = stList.map { it.longitude } + dhList.map { it.longitude }
+            // Exclude default 0.0,0.0 coordinates (stations saved before GPS validation was enforced)
+            val validStations = stList.filter { it.latitude != 0.0 || it.longitude != 0.0 }
+            val validDrillHoles = dhList.filter { it.latitude != 0.0 || it.longitude != 0.0 }
+            val lats = validStations.map { it.latitude } + validDrillHoles.map { it.latitude }
+            val lngs = validStations.map { it.longitude } + validDrillHoles.map { it.longitude }
             if (lats.isEmpty()) null else (lats.average() to lngs.average())
         }.stateIn(
             scope = viewModelScope,

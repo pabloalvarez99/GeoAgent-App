@@ -12,10 +12,10 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface PhotoDao {
 
-    @Query("SELECT * FROM photos WHERE station_id = :stationId")
+    @Query("SELECT * FROM photos WHERE station_id = :stationId ORDER BY taken_at DESC")
     fun getByStation(stationId: Long): Flow<List<PhotoEntity>>
 
-    @Query("SELECT * FROM photos WHERE drill_hole_id = :drillHoleId")
+    @Query("SELECT * FROM photos WHERE drill_hole_id = :drillHoleId ORDER BY taken_at DESC")
     fun getByDrillHole(drillHoleId: Long): Flow<List<PhotoEntity>>
 
     @Query("SELECT * FROM photos WHERE project_id = :projectId ORDER BY taken_at DESC")

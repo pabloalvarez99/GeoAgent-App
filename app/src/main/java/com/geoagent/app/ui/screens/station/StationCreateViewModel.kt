@@ -115,6 +115,7 @@ class StationCreateViewModel @Inject constructor(
         val validationError = FormValidation.validateRequired(_code.value, "Codigo")
             ?: FormValidation.validateRequired(_geologist.value, "Geologo")
             ?: FormValidation.validateRequired(_description.value, "Descripcion")
+            ?: FormValidation.validateCoordinatesCaptured(_latitude.value, _longitude.value)
             ?: FormValidation.validateLatitude(_latitude.value)
             ?: FormValidation.validateLongitude(_longitude.value)
 

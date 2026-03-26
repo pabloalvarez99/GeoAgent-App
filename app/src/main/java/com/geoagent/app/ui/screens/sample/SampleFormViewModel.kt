@@ -1,8 +1,11 @@
 package com.geoagent.app.ui.screens.sample
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.pm.PackageManager
 import android.location.Location
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -133,6 +136,11 @@ class SampleFormViewModel @Inject constructor(
 
     @SuppressLint("MissingPermission")
     fun captureGps() {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
+            != PackageManager.PERMISSION_GRANTED) {
+            _uiState.update { it.copy(isCapturingGps = false) }
+            return
+        }
         _uiState.update { it.copy(isCapturingGps = true) }
         val fusedClient = LocationServices.getFusedLocationProviderClient(context)
         val cancellationToken = CancellationTokenSource()

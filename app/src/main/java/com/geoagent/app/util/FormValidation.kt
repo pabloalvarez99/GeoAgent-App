@@ -42,6 +42,12 @@ object FormValidation {
     fun validateLongitude(value: Double?): String? =
         validateRange(value, -180.0, 180.0, "Longitud")
 
+    /** Ensures GPS was actually captured — rejects the default 0.0, 0.0 starting value. */
+    fun validateCoordinatesCaptured(lat: Double?, lng: Double?): String? {
+        if (lat == null || lng == null) return "Coordenadas GPS no capturadas"
+        return if (lat == 0.0 && lng == 0.0) "Captura las coordenadas GPS antes de guardar" else null
+    }
+
     fun parseDouble(text: String): Double? {
         return text.replace(",", ".").toDoubleOrNull()
     }

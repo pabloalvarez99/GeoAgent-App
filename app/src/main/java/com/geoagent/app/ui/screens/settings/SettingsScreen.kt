@@ -341,7 +341,7 @@ fun SettingsScreen(
                     )
                     Text(
                         text = uiState.lastSyncTimestamp?.let { timestamp ->
-                            SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+                            remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
                                 .format(Date(timestamp))
                         } ?: "Nunca",
                         style = MaterialTheme.typography.bodyMedium,
