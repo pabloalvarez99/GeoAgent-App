@@ -16,6 +16,8 @@ import com.geoagent.app.util.CoordinateFormat
 import com.geoagent.app.util.DistanceUnit
 import com.geoagent.app.util.PreferencesHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
+import androidx.lifecycle.asFlow
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -115,12 +117,15 @@ class SettingsViewModel @Inject constructor(
         _uiState.update { it.copy(defaultGeologist = name) }
     }
 
+    private var syncJob: Job? = null
+
     fun syncNow() {
+        syncJob?.cancel()
         _uiState.update { it.copy(isSyncing = true, syncError = null) }
         val workInfos = syncManager.syncNow()
-        val observer = object : androidx.lifecycle.Observer<List<androidx.work.WorkInfo>> {
-            override fun onChanged(value: List<androidx.work.WorkInfo>) {
-                val info = value.firstOrNull() ?: return
+        syncJob = viewModelScope.launch {
+            workInfos.asFlow().collect { infoList ->
+                val info = infoList.firstOrNull() ?: return@collect
                 when {
                     info.state.isFinished -> {
                         val succeeded = info.state == androidx.work.WorkInfo.State.SUCCEEDED
@@ -133,18 +138,12 @@ class SettingsViewModel @Inject constructor(
                             )
                         }
                         syncManager.schedulePeriodic()
-                        workInfos.removeObserver(this)
+                        syncJob = null
                     }
-                    info.state == androidx.work.WorkInfo.State.RUNNING -> {
-                        _uiState.update { it.copy(isSyncing = true) }
-                    }
-                    info.state == androidx.work.WorkInfo.State.ENQUEUED -> {
-                        _uiState.update { it.copy(isSyncing = true) }
-                    }
+                    else -> _uiState.update { it.copy(isSyncing = true) }
                 }
             }
         }
-        workInfos.observeForever(observer)
     }
 
     fun showLogoutDialog() {

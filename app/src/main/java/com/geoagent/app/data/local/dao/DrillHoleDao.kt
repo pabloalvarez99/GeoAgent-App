@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface DrillHoleDao {
 
-    @Query("SELECT * FROM drill_holes WHERE project_id = :projectId")
+    @Query("SELECT * FROM drill_holes WHERE project_id = :projectId ORDER BY hole_id ASC")
     fun getByProject(projectId: Long): Flow<List<DrillHoleEntity>>
 
     @Query("SELECT * FROM drill_holes WHERE id = :id")

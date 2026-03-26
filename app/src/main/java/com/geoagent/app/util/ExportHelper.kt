@@ -32,6 +32,9 @@ class ExportHelper @Inject constructor(
         return dir
     }
 
+    private fun sanitizeName(name: String): String =
+        name.replace(Regex("[/\\\\:*?\"<>|]"), "_").trim()
+
     fun exportToExcel(
         project: ProjectEntity,
         stations: List<StationEntity>,
@@ -42,7 +45,7 @@ class ExportHelper @Inject constructor(
         intervals: Map<Long, List<DrillIntervalEntity>>,
     ): File {
         val workbook = XSSFWorkbook()
-        val fileName = "GeoAgent_${project.name}_${DateFormatter.formatForFileName(System.currentTimeMillis())}.xlsx"
+        val fileName = "GeoAgent_${sanitizeName(project.name)}_${DateFormatter.formatForFileName(System.currentTimeMillis())}.xlsx"
         val file = File(getExportDir(), fileName)
 
         // Stations sheet
@@ -207,7 +210,8 @@ class ExportHelper @Inject constructor(
         val files = mutableListOf<File>()
 
         // Collar file
-        val collarFile = File(getExportDir(), "collar_${project.name}_$timestamp.csv")
+        val safeProjectName = sanitizeName(project.name)
+        val collarFile = File(getExportDir(), "collar_${safeProjectName}_$timestamp.csv")
         FileWriter(collarFile).use { writer ->
             writer.write("HoleID,Easting,Northing,Elevation,MaxDepth,Type,Azimuth,Dip\n")
             drillHoles.forEach { dh ->
@@ -217,7 +221,7 @@ class ExportHelper @Inject constructor(
         files.add(collarFile)
 
         // Survey file
-        val surveyFile = File(getExportDir(), "survey_${project.name}_$timestamp.csv")
+        val surveyFile = File(getExportDir(), "survey_${safeProjectName}_$timestamp.csv")
         FileWriter(surveyFile).use { writer ->
             writer.write("HoleID,Depth,Azimuth,Dip\n")
             drillHoles.forEach { dh ->
@@ -231,7 +235,7 @@ class ExportHelper @Inject constructor(
         files.add(surveyFile)
 
         // Assay/Lithology file
-        val assayFile = File(getExportDir(), "litho_${project.name}_$timestamp.csv")
+        val assayFile = File(getExportDir(), "litho_${safeProjectName}_$timestamp.csv")
         FileWriter(assayFile).use { writer ->
             writer.write("HoleID,From,To,RockType,RockGroup,Alteration,Mineralization,MineralPct,RQD,Recovery\n")
             drillHoles.forEach { dh ->
@@ -312,7 +316,7 @@ class ExportHelper @Inject constructor(
             "features" to JsonArray(features),
         ))
 
-        val fileName = "GeoAgent_${project.name}_${DateFormatter.formatForFileName(System.currentTimeMillis())}.geojson"
+        val fileName = "GeoAgent_${sanitizeName(project.name)}_${DateFormatter.formatForFileName(System.currentTimeMillis())}.geojson"
         val file = File(getExportDir(), fileName)
         FileWriter(file).use { it.write(geoJson.toString()) }
         return file
