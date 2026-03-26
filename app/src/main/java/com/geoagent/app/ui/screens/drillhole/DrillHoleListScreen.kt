@@ -198,6 +198,7 @@ fun DrillHoleListScreen(
                         DrillHoleCard(
                             drillHole = drillHole,
                             onClick = { onNavigateToDrillHole(drillHole.id) },
+                            formatDepth = viewModel::formatDepth,
                         )
                     }
                 }
@@ -210,6 +211,7 @@ fun DrillHoleListScreen(
 private fun DrillHoleCard(
     drillHole: DrillHoleEntity,
     onClick: () -> Unit,
+    formatDepth: (Double) -> String = { "%.1f m".format(it) },
 ) {
     val depthProgress = if (drillHole.plannedDepth > 0) {
         ((drillHole.actualDepth ?: 0.0) / drillHole.plannedDepth).toFloat().coerceIn(0f, 1f)
@@ -264,7 +266,7 @@ private fun DrillHoleCard(
 
             // Depth progress
             Text(
-                text = "Profundidad: ${"%.1f".format(drillHole.actualDepth ?: 0.0)} / ${"%.1f".format(drillHole.plannedDepth)} m",
+                text = "Profundidad: ${formatDepth(drillHole.actualDepth ?: 0.0)} / ${formatDepth(drillHole.plannedDepth)}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

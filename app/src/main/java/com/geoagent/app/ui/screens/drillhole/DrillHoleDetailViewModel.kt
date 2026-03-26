@@ -76,4 +76,7 @@ class DrillHoleDetailViewModel @Inject constructor(
 
     fun formatCoordinate(lat: Double, lng: Double): String =
         preferencesHelper.formatCoordinate(lat, lng)
+
+    fun formatDepth(meters: Double): String =
+        preferencesHelper.formatDepth(meters)
 }

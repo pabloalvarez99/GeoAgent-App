@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.geoagent.app.data.local.entity.DrillHoleEntity
 import com.geoagent.app.data.repository.DrillHoleRepository
+import com.geoagent.app.util.PreferencesHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -18,6 +19,7 @@ import javax.inject.Inject
 class DrillHoleListViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     drillHoleRepository: DrillHoleRepository,
+    private val preferencesHelper: PreferencesHelper,
 ) : ViewModel() {
 
     private val projectId: Long = savedStateHandle["projectId"] ?: 0L
@@ -63,6 +65,9 @@ class DrillHoleListViewModel @Inject constructor(
     fun onSortOrderChange(order: DrillHoleSortOrder) {
         _sortOrder.value = order
     }
+
+    fun formatDepth(meters: Double): String =
+        preferencesHelper.formatDepth(meters)
 }
 
 enum class DrillHoleSortOrder(val label: String) {

@@ -99,7 +99,7 @@ fun DrillHoleDetailScreen(
         if (interval != null) {
             ConfirmDeleteDialog(
                 title = "Eliminar intervalo",
-                message = "Se eliminara el intervalo ${"%.1f".format(interval.fromDepth)}-${"%.1f".format(interval.toDepth)} m. Esta accion no se puede deshacer.",
+                message = "Se eliminara el intervalo ${viewModel.formatDepth(interval.fromDepth)}-${viewModel.formatDepth(interval.toDepth)}. Esta accion no se puede deshacer.",
                 onConfirm = {
                     viewModel.deleteInterval(interval)
                     intervalToDelete = null
@@ -172,7 +172,11 @@ fun DrillHoleDetailScreen(
             // Info card
             item {
                 Spacer(modifier = Modifier.height(4.dp))
-                DrillHoleInfoCard(drillHole = hole)
+                DrillHoleInfoCard(
+                    drillHole = hole,
+                    formatCoordinate = viewModel::formatCoordinate,
+                    formatDepth = viewModel::formatDepth,
+                )
             }
 
             // Status selector
@@ -189,6 +193,7 @@ fun DrillHoleDetailScreen(
                     currentDepth = hole.actualDepth ?: 0.0,
                     plannedDepth = hole.plannedDepth,
                     onUpdateDepth = { viewModel.updateActualDepth(it) },
+                    formatDepth = viewModel::formatDepth,
                 )
             }
 
@@ -258,6 +263,7 @@ fun DrillHoleDetailScreen(
                         interval = interval,
                         onClick = { onNavigateToInterval(interval.id) },
                         onDeleteClick = { intervalToDelete = interval.id },
+                        formatDepth = viewModel::formatDepth,
                     )
                 }
             }
@@ -327,7 +333,11 @@ fun DrillHoleDetailScreen(
 }
 
 @Composable
-private fun DrillHoleInfoCard(drillHole: DrillHoleEntity) {
+private fun DrillHoleInfoCard(
+    drillHole: DrillHoleEntity,
+    formatCoordinate: (Double, Double) -> String = { lat, lng -> "%.6f, %.6f".format(lat, lng) },
+    formatDepth: (Double) -> String = { "%.1f m".format(it) },
+) {
     val dateFormat = remember { SimpleDateFormat("dd/MM/yyyy", Locale("es")) }
 
     Card(
@@ -369,7 +379,7 @@ private fun DrillHoleInfoCard(drillHole: DrillHoleEntity) {
             ) {
                 DetailField(
                     label = "Coordenadas",
-                    value = viewModel.formatCoordinate(drillHole.latitude, drillHole.longitude)
+                    value = formatCoordinate(drillHole.latitude, drillHole.longitude),
                 )
             }
 
@@ -387,11 +397,11 @@ private fun DrillHoleInfoCard(drillHole: DrillHoleEntity) {
             ) {
                 DetailField(
                     label = "Prof. Planificada",
-                    value = "${"%.1f".format(drillHole.plannedDepth)} m",
+                    value = formatDepth(drillHole.plannedDepth),
                 )
                 DetailField(
                     label = "Prof. Actual",
-                    value = "${"%.1f".format(drillHole.actualDepth ?: 0.0)} m",
+                    value = formatDepth(drillHole.actualDepth ?: 0.0),
                 )
             }
 
@@ -490,6 +500,7 @@ private fun IntervalCard(
     interval: DrillIntervalEntity,
     onClick: () -> Unit,
     onDeleteClick: () -> Unit,
+    formatDepth: (Double) -> String = { "%.1f m".format(it) },
 ) {
     Card(
         onClick = onClick,
@@ -510,7 +521,7 @@ private fun IntervalCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "${"%.1f".format(interval.fromDepth)} - ${"%.1f".format(interval.toDepth)} m",
+                    text = "${formatDepth(interval.fromDepth)} - ${formatDepth(interval.toDepth)}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
@@ -579,6 +590,7 @@ private fun DepthUpdateCard(
     currentDepth: Double,
     plannedDepth: Double,
     onUpdateDepth: (Double) -> Unit,
+    formatDepth: (Double) -> String = { "%.1f m".format(it) },
 ) {
     var isEditing by rememberSaveable { mutableStateOf(false) }
     var depthText by rememberSaveable { mutableStateOf("") }
@@ -662,7 +674,7 @@ private fun DepthUpdateCard(
                 }
             } else {
                 Text(
-                    text = "${"%.1f".format(currentDepth)} / ${"%.1f".format(plannedDepth)} m  (${"%.0f".format(progress * 100)}%)",
+                    text = "${formatDepth(currentDepth)} / ${formatDepth(plannedDepth)}  (${"%.0f".format(progress * 100)}%)",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onTertiaryContainer,
