@@ -78,6 +78,7 @@ fun SettingsScreen(
     val userInfo by viewModel.userInfo.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
     val pendingSyncCount by viewModel.pendingSyncCount.collectAsState()
+    val syncDateFormatter = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
 
 
 
@@ -341,8 +342,7 @@ fun SettingsScreen(
                     )
                     Text(
                         text = uiState.lastSyncTimestamp?.let { timestamp ->
-                            remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
-                                .format(Date(timestamp))
+                            syncDateFormatter.format(Date(timestamp))
                         } ?: "Nunca",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,

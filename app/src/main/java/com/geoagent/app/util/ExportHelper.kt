@@ -196,9 +196,12 @@ class ExportHelper @Inject constructor(
             }
         }
 
-        FileOutputStream(file).use { workbook.write(it) }
-        workbook.close()
-        return file
+        try {
+            FileOutputStream(file).use { workbook.write(it) }
+            return file
+        } finally {
+            workbook.close()
+        }
     }
 
     fun exportCollarSurveyAssay(
