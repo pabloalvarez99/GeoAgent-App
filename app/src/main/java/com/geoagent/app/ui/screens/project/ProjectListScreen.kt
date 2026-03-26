@@ -50,9 +50,7 @@ import com.geoagent.app.data.local.entity.ProjectEntity
 import com.geoagent.app.ui.components.ConfirmDeleteDialog
 import com.geoagent.app.ui.components.GeoSearchBar
 import com.geoagent.app.ui.components.SyncStatusBadge
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import com.geoagent.app.util.DateFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -206,9 +204,8 @@ private fun ProjectCard(
     onClick: () -> Unit,
     onDeleteClick: () -> Unit,
 ) {
-    val dateFormat = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     val formattedDate = remember(project.createdAt) {
-        dateFormat.format(Date(project.createdAt))
+        DateFormatter.formatDate(project.createdAt)
     }
 
     Card(

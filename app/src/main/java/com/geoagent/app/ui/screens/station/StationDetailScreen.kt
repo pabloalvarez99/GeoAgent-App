@@ -63,9 +63,7 @@ import com.geoagent.app.ui.components.SyncStatusBadge
 import com.geoagent.app.data.local.entity.LithologyEntity
 import com.geoagent.app.data.local.entity.SampleEntity
 import com.geoagent.app.data.local.entity.StructuralEntity
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import com.geoagent.app.util.DateFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -90,7 +88,6 @@ fun StationDetailScreen(
     var structuralToDelete by rememberSaveable { mutableStateOf<Long?>(null) }
     var sampleToDelete by rememberSaveable { mutableStateOf<Long?>(null) }
 
-    val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("es")) }
 
     if (showDeleteDialog) {
         ConfirmDeleteDialog(
@@ -230,7 +227,7 @@ fun StationDetailScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = dateFormatter.format(Date(s.date)),
+                                text = DateFormatter.formatDateTime(s.date),
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer,
                             )

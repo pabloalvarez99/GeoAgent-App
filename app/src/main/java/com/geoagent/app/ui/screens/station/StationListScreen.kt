@@ -48,9 +48,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.geoagent.app.data.local.entity.StationEntity
 import com.geoagent.app.ui.components.GeoSearchBar
 import com.geoagent.app.ui.components.SyncStatusBadge
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import com.geoagent.app.util.DateFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -221,7 +219,6 @@ private fun StationCard(
     onClick: () -> Unit,
     formatCoordinate: (Double, Double) -> String = { lat, lng -> "%.6f, %.6f".format(lat, lng) },
 ) {
-    val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("es")) }
 
     Card(
         onClick = onClick,
@@ -250,7 +247,7 @@ private fun StationCard(
                 )
 
                 Text(
-                    text = dateFormatter.format(Date(station.date)),
+                    text = DateFormatter.formatDateTime(station.date),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

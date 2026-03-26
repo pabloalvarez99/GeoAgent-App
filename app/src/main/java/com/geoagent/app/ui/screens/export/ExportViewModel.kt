@@ -25,9 +25,7 @@ import kotlinx.coroutines.launch
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileOutputStream
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import com.geoagent.app.util.DateFormatter
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import javax.inject.Inject
@@ -169,7 +167,7 @@ class ExportViewModel @Inject constructor(
         val csvFiles = exportHelper.exportCollarSurveyAssay(project, drillHoles, intervals)
 
         // ZIP all CSVs for easy single-file sharing
-        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+        val timestamp = DateFormatter.formatForFileName(System.currentTimeMillis())
         val projectName = project.name.replace(Regex("[^a-zA-Z0-9_-]"), "_")
         val zipFile = File(getExportDir(), "${projectName}_mining_$timestamp.zip")
         try {

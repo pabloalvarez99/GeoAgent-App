@@ -61,9 +61,7 @@ import com.geoagent.app.ui.components.SyncStatusBadge
 import com.geoagent.app.util.FormValidation
 import com.geoagent.app.data.local.entity.DrillHoleEntity
 import com.geoagent.app.data.local.entity.DrillIntervalEntity
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import com.geoagent.app.util.DateFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -338,8 +336,6 @@ private fun DrillHoleInfoCard(
     formatCoordinate: (Double, Double) -> String = { lat, lng -> "%.6f, %.6f".format(lat, lng) },
     formatDepth: (Double) -> String = { "%.1f m".format(it) },
 ) {
-    val dateFormat = remember { SimpleDateFormat("dd/MM/yyyy", Locale("es")) }
-
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -411,11 +407,11 @@ private fun DrillHoleInfoCard(
             ) {
                 DetailField(
                     label = "Fecha Inicio",
-                    value = drillHole.startDate?.let { dateFormat.format(Date(it)) } ?: "No registrada",
+                    value = drillHole.startDate?.let { DateFormatter.formatDate(it) } ?: "No registrada",
                 )
                 DetailField(
                     label = "Fecha Fin",
-                    value = drillHole.endDate?.let { dateFormat.format(Date(it)) } ?: "No registrada",
+                    value = drillHole.endDate?.let { DateFormatter.formatDate(it) } ?: "No registrada",
                 )
             }
 

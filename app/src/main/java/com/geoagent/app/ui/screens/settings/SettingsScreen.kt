@@ -64,9 +64,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.geoagent.app.BuildConfig
 import com.geoagent.app.util.CoordinateFormat
 import com.geoagent.app.util.DistanceUnit
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import com.geoagent.app.util.DateFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,8 +76,6 @@ fun SettingsScreen(
     val userInfo by viewModel.userInfo.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
     val pendingSyncCount by viewModel.pendingSyncCount.collectAsState()
-    val syncDateFormatter = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
-
 
 
     // Logout confirmation dialog
@@ -342,7 +338,7 @@ fun SettingsScreen(
                     )
                     Text(
                         text = uiState.lastSyncTimestamp?.let { timestamp ->
-                            syncDateFormatter.format(Date(timestamp))
+                            DateFormatter.formatDateTime(timestamp)
                         } ?: "Nunca",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
