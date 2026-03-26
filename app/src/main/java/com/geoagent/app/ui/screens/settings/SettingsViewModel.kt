@@ -68,6 +68,7 @@ class SettingsViewModel @Inject constructor(
             autoSaveGps = preferencesHelper.autoSaveGps,
             highAccuracyGps = preferencesHelper.highAccuracyGps,
             defaultGeologist = preferencesHelper.lastGeologistName,
+            lastSyncTimestamp = preferencesHelper.lastSyncTimestamp.takeIf { it > 0 },
         )
     )
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -130,10 +131,12 @@ class SettingsViewModel @Inject constructor(
                     info.state.isFinished -> {
                         val succeeded = info.state == androidx.work.WorkInfo.State.SUCCEEDED
                         val errorMsg = info.outputData.getString("error")
+                        val ts = if (succeeded) System.currentTimeMillis() else null
+                        if (ts != null) preferencesHelper.lastSyncTimestamp = ts
                         _uiState.update {
                             it.copy(
                                 isSyncing = false,
-                                lastSyncTimestamp = if (succeeded) System.currentTimeMillis() else it.lastSyncTimestamp,
+                                lastSyncTimestamp = ts ?: it.lastSyncTimestamp,
                                 syncError = if (!succeeded) (errorMsg ?: "Error durante la sincronizacion.") else null,
                             )
                         }

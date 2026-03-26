@@ -49,6 +49,10 @@ class PreferencesHelper @Inject constructor(
         get() = prefs.getBoolean("high_accuracy_gps", true)
         set(value) = prefs.edit().putBoolean("high_accuracy_gps", value).apply()
 
+    var lastSyncTimestamp: Long
+        get() = prefs.getLong("last_sync_timestamp", 0L)
+        set(value) = prefs.edit().putLong("last_sync_timestamp", value).apply()
+
     /** Format a coordinate pair according to user preference. */
     fun formatCoordinate(lat: Double, lng: Double): String {
         return when (coordinateFormat) {

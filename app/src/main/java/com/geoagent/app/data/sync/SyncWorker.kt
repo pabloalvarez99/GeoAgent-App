@@ -24,6 +24,7 @@ import com.geoagent.app.data.local.entity.StationEntity
 import com.geoagent.app.data.local.entity.StructuralEntity
 import com.geoagent.app.data.remote.RemoteDataSource
 import com.geoagent.app.data.remote.dto.RemoteDrillHole
+import com.geoagent.app.util.PreferencesHelper
 import com.geoagent.app.data.remote.dto.RemoteDrillInterval
 import com.geoagent.app.data.remote.dto.RemoteLithology
 import com.geoagent.app.data.remote.dto.RemotePhoto
@@ -50,6 +51,7 @@ class SyncWorker @AssistedInject constructor(
     private val drillIntervalDao: DrillIntervalDao,
     private val photoDao: PhotoDao,
     private val remoteDataSource: RemoteDataSource,
+    private val preferencesHelper: PreferencesHelper,
 ) : CoroutineWorker(context, workerParams) {
 
     companion object {
@@ -254,6 +256,7 @@ class SyncWorker @AssistedInject constructor(
                 workDataOf("error" to "Fallaron todos los $errorCount elementos. Verifica tu conexion y los permisos en Firebase.")
             )
         } else {
+            preferencesHelper.lastSyncTimestamp = System.currentTimeMillis()
             Result.success()
         }
     }
