@@ -18,10 +18,21 @@ interface PhotoDao {
     @Query("SELECT * FROM photos WHERE drill_hole_id = :drillHoleId ORDER BY taken_at DESC")
     fun getByDrillHole(drillHoleId: Long): Flow<List<PhotoEntity>>
 
-    @Query("SELECT * FROM photos WHERE project_id = :projectId ORDER BY taken_at DESC")
+    @Query("""
+        SELECT * FROM photos WHERE
+            project_id = :projectId
+            OR station_id IN (SELECT id FROM stations WHERE project_id = :projectId)
+            OR drill_hole_id IN (SELECT id FROM drill_holes WHERE project_id = :projectId)
+        ORDER BY taken_at DESC
+    """)
     fun getByProject(projectId: Long): Flow<List<PhotoEntity>>
 
-    @Query("SELECT COUNT(*) FROM photos WHERE project_id = :projectId")
+    @Query("""
+        SELECT COUNT(*) FROM photos WHERE
+            project_id = :projectId
+            OR station_id IN (SELECT id FROM stations WHERE project_id = :projectId)
+            OR drill_hole_id IN (SELECT id FROM drill_holes WHERE project_id = :projectId)
+    """)
     fun getCountByProject(projectId: Long): Flow<Int>
 
     @Query("SELECT * FROM photos WHERE id = :id")
