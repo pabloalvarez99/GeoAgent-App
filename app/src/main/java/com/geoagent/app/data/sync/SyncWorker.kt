@@ -487,7 +487,7 @@ class SyncWorker @AssistedInject constructor(
                 photoDao.insert(PhotoEntity(
                     stationId = localStationId,
                     drillHoleId = localDrillHoleId,
-                    filePath = rp.storagePath ?: "",
+                    filePath = "",  // No local file for photos pulled from remote
                     fileName = rp.fileName,
                     description = rp.description,
                     latitude = rp.latitude,

@@ -61,7 +61,9 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.geoagent.app.data.GeoConstants
 import com.geoagent.app.util.FormValidation
+import com.google.android.gms.location.CurrentLocationRequest
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 
 @SuppressLint("MissingPermission")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -154,21 +156,6 @@ fun DrillHoleCreateScreen(
         }
     }
 
-    // Auto-capture GPS on permission grant (skip when editing)
-    LaunchedEffect(hasLocationPermission) {
-        if (hasLocationPermission && !viewModel.isEditing && latitude.isBlank()) {
-            val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
-            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-                location?.let {
-                    latitude = "%.6f".format(it.latitude)
-                    longitude = "%.6f".format(it.longitude)
-                    if (it.hasAltitude()) altitude = "%.1f".format(it.altitude)
-                    if (it.hasAccuracy()) gpsAccuracy = it.accuracy
-                }
-            }
-        }
-    }
-
     fun captureGps() {
         if (!hasLocationPermission) {
             locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
@@ -176,12 +163,32 @@ fun DrillHoleCreateScreen(
         }
         val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
         fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-            location?.let {
-                latitude = "%.6f".format(it.latitude)
-                longitude = "%.6f".format(it.longitude)
-                if (it.hasAltitude()) altitude = "%.1f".format(it.altitude)
-                if (it.hasAccuracy()) gpsAccuracy = it.accuracy
+            if (location != null) {
+                latitude = "%.6f".format(location.latitude)
+                longitude = "%.6f".format(location.longitude)
+                if (location.hasAltitude()) altitude = "%.1f".format(location.altitude)
+                if (location.hasAccuracy()) gpsAccuracy = location.accuracy
+            } else {
+                val request = CurrentLocationRequest.Builder()
+                    .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
+                    .build()
+                fusedLocationClient.getCurrentLocation(request, null)
+                    .addOnSuccessListener { fresh ->
+                        fresh?.let {
+                            latitude = "%.6f".format(it.latitude)
+                            longitude = "%.6f".format(it.longitude)
+                            if (it.hasAltitude()) altitude = "%.1f".format(it.altitude)
+                            if (it.hasAccuracy()) gpsAccuracy = it.accuracy
+                        }
+                    }
             }
+        }
+    }
+
+    // Auto-capture GPS on permission grant (skip when editing)
+    LaunchedEffect(hasLocationPermission) {
+        if (hasLocationPermission && !viewModel.isEditing && latitude.isBlank()) {
+            captureGps()
         }
     }
 

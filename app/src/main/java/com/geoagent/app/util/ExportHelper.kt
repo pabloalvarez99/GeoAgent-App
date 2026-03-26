@@ -253,55 +253,62 @@ class ExportHelper @Inject constructor(
         val features = mutableListOf<JsonObject>()
 
         stations.forEach { s ->
+            val coords = buildList {
+                add(JsonPrimitive(s.longitude))
+                add(JsonPrimitive(s.latitude))
+                s.altitude?.let { add(JsonPrimitive(it)) }
+            }
             features.add(
                 JsonObject(mapOf(
                     "type" to JsonPrimitive("Feature"),
                     "geometry" to JsonObject(mapOf(
                         "type" to JsonPrimitive("Point"),
-                        "coordinates" to JsonArray(listOf(
-                            JsonPrimitive(s.longitude),
-                            JsonPrimitive(s.latitude),
-                        ))
+                        "coordinates" to JsonArray(coords),
                     )),
-                    "properties" to JsonObject(mapOf(
-                        "type" to JsonPrimitive("station"),
-                        "code" to JsonPrimitive(s.code),
-                        "geologist" to JsonPrimitive(s.geologist),
-                        "description" to JsonPrimitive(s.description),
-                        "date" to JsonPrimitive(DateFormatter.formatDateTime(s.date)),
-                        "altitude" to JsonPrimitive(s.altitude ?: 0.0),
-                    ))
+                    "properties" to JsonObject(buildMap {
+                        put("type", JsonPrimitive("station"))
+                        put("code", JsonPrimitive(s.code))
+                        put("geologist", JsonPrimitive(s.geologist))
+                        put("description", JsonPrimitive(s.description))
+                        put("date", JsonPrimitive(DateFormatter.formatDateTime(s.date)))
+                        s.altitude?.let { put("altitude", JsonPrimitive(it)) }
+                        s.weatherConditions?.let { put("weatherConditions", JsonPrimitive(it)) }
+                    }),
                 ))
             )
         }
 
         drillHoles.forEach { dh ->
+            val coords = buildList {
+                add(JsonPrimitive(dh.longitude))
+                add(JsonPrimitive(dh.latitude))
+                dh.altitude?.let { add(JsonPrimitive(it)) }
+            }
             features.add(
                 JsonObject(mapOf(
                     "type" to JsonPrimitive("Feature"),
                     "geometry" to JsonObject(mapOf(
                         "type" to JsonPrimitive("Point"),
-                        "coordinates" to JsonArray(listOf(
-                            JsonPrimitive(dh.longitude),
-                            JsonPrimitive(dh.latitude),
-                        ))
+                        "coordinates" to JsonArray(coords),
                     )),
                     "properties" to JsonObject(mapOf(
                         "type" to JsonPrimitive("drillhole"),
                         "holeId" to JsonPrimitive(dh.holeId),
                         "drillType" to JsonPrimitive(dh.type),
+                        "geologist" to JsonPrimitive(dh.geologist),
                         "azimuth" to JsonPrimitive(dh.azimuth),
                         "inclination" to JsonPrimitive(dh.inclination),
                         "plannedDepth" to JsonPrimitive(dh.plannedDepth),
                         "actualDepth" to JsonPrimitive(dh.actualDepth ?: 0.0),
                         "status" to JsonPrimitive(dh.status),
-                    ))
+                    )),
                 ))
             )
         }
 
         val geoJson = JsonObject(mapOf(
             "type" to JsonPrimitive("FeatureCollection"),
+            "name" to JsonPrimitive(project.name),
             "features" to JsonArray(features),
         ))
 

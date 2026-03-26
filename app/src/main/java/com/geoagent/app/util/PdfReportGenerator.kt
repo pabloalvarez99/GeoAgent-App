@@ -134,9 +134,19 @@ class PdfReportGenerator @Inject constructor(
 
                 // Lithology for this station
                 lithologies[station.id]?.forEach { l ->
-                    canvas.drawText("  Litologia: ${l.rockType} (${l.rockGroup}) - ${l.color}, ${l.texture}", margin + 20f, y, smallPaint)
+                    if (y > pageHeight - 40) {
+                        document.finishPage(currentPage)
+                        currentPage = document.startPage(PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNum++).create())
+                        canvas = currentPage.canvas; y = margin + 20f
+                    }
+                    canvas.drawText("  Litologia: ${l.rockType} (${l.rockGroup}) - ${l.color}, ${l.texture}".take(90), margin + 20f, y, smallPaint)
                     y += 12f
                     if (l.alteration != null) {
+                        if (y > pageHeight - 40) {
+                            document.finishPage(currentPage)
+                            currentPage = document.startPage(PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNum++).create())
+                            canvas = currentPage.canvas; y = margin + 20f
+                        }
                         canvas.drawText("    Alteracion: ${l.alteration} (${l.alterationIntensity ?: ""})", margin + 20f, y, smallPaint)
                         y += 12f
                     }
@@ -144,12 +154,22 @@ class PdfReportGenerator @Inject constructor(
 
                 // Structural for this station
                 structuralData[station.id]?.forEach { s ->
+                    if (y > pageHeight - 40) {
+                        document.finishPage(currentPage)
+                        currentPage = document.startPage(PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNum++).create())
+                        canvas = currentPage.canvas; y = margin + 20f
+                    }
                     canvas.drawText("  Estructural: ${s.type} - Rumbo: ${s.strike}° Manteo: ${s.dip}° ${s.dipDirection}", margin + 20f, y, smallPaint)
                     y += 12f
                 }
 
                 // Samples for this station
                 samples[station.id]?.forEach { s ->
+                    if (y > pageHeight - 40) {
+                        document.finishPage(currentPage)
+                        currentPage = document.startPage(PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNum++).create())
+                        canvas = currentPage.canvas; y = margin + 20f
+                    }
                     canvas.drawText("  Muestra: ${s.code} (${s.type}) - ${s.description.take(60)}", margin + 20f, y, smallPaint)
                     y += 12f
                 }

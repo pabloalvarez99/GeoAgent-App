@@ -25,7 +25,6 @@ import kotlinx.coroutines.launch
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileOutputStream
-import java.io.FileWriter
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -162,57 +161,25 @@ class ExportViewModel @Inject constructor(
     }
 
     private suspend fun exportCollarSurveyAssay(): File {
+        val project = projectRepository.getById(projectId).first() ?: error("Proyecto no encontrado")
         val drillHoles = drillHoleRepository.getByProject(projectId).first()
-        val project = projectRepository.getById(projectId).first()
+        val intervals = drillHoles.associate { it.id to drillHoleRepository.getIntervals(it.id).first() }
+
+        // Delegate CSV generation to ExportHelper (handles csvEscape + proper column headers)
+        val csvFiles = exportHelper.exportCollarSurveyAssay(project, drillHoles, intervals)
+
+        // ZIP all CSVs for easy single-file sharing
         val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-        val exportDir = File(getExportDir(), "mining_$timestamp")
-        if (!exportDir.exists()) exportDir.mkdirs()
-
-        // collar.csv
-        val collarFile = File(exportDir, "collar.csv")
-        FileWriter(collarFile).use { writer ->
-            writer.append("HOLEID,EAST,NORTH,ELEV,DEPTH\n")
-            drillHoles.forEach { dh ->
-                writer.append("${dh.holeId},${dh.longitude},${dh.latitude},${dh.altitude ?: 0.0},${dh.plannedDepth}\n")
-            }
-        }
-
-        // survey.csv
-        val surveyFile = File(exportDir, "survey.csv")
-        FileWriter(surveyFile).use { writer ->
-            writer.append("HOLEID,DEPTH,AZIMUTH,DIP\n")
-            drillHoles.forEach { dh ->
-                writer.append("${dh.holeId},0,${dh.azimuth},${dh.inclination}\n")
-                val depth = dh.actualDepth ?: dh.plannedDepth
-                writer.append("${dh.holeId},$depth,${dh.azimuth},${dh.inclination}\n")
-            }
-        }
-
-        // assay.csv (intervals)
-        val assayFile = File(exportDir, "assay.csv")
-        FileWriter(assayFile).use { writer ->
-            writer.append("HOLEID,FROM,TO,ROCKTYPE,ALTERATION,MINERALIZATION,MINERALIZATION_PCT\n")
-            drillHoles.forEach { dh ->
-                val intervals = drillHoleRepository.getIntervals(dh.id).first()
-                intervals.forEach { interval ->
-                    writer.append("${dh.holeId},${interval.fromDepth},${interval.toDepth},${interval.rockType},${interval.alteration ?: ""},${interval.mineralization ?: ""},${interval.mineralizationPercent ?: ""}\n")
-                }
-            }
-        }
-
-        // ZIP all files together for easy sharing
-        val projectName = project?.name?.replace(Regex("[^a-zA-Z0-9_-]"), "_") ?: "project"
+        val projectName = project.name.replace(Regex("[^a-zA-Z0-9_-]"), "_")
         val zipFile = File(getExportDir(), "${projectName}_mining_$timestamp.zip")
         ZipOutputStream(BufferedOutputStream(FileOutputStream(zipFile))).use { zos ->
-            listOf(collarFile, surveyFile, assayFile).forEach { file ->
+            csvFiles.forEach { file ->
                 zos.putNextEntry(ZipEntry(file.name))
                 file.inputStream().use { it.copyTo(zos) }
                 zos.closeEntry()
             }
         }
-
-        // Clean up individual files
-        exportDir.deleteRecursively()
+        csvFiles.forEach { it.delete() }
 
         return zipFile
     }

@@ -156,7 +156,7 @@ fun PhotoGalleryScreen(
             ) {
                 Box(modifier = Modifier.fillMaxSize()) {
                     AsyncImage(
-                        model = File(photo.filePath),
+                        model = photoImageModel(photo),
                         contentDescription = photo.description,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Fit,
@@ -175,14 +175,14 @@ fun PhotoGalleryScreen(
                                 tint = MaterialTheme.colorScheme.onSurface,
                             )
                         }
-                        IconButton(
-                            onClick = {
-                                val file = File(photo.filePath)
-                                if (file.exists()) {
+                        val localFile = File(photo.filePath)
+                        if (localFile.exists()) {
+                            IconButton(
+                                onClick = {
                                     val uri = FileProvider.getUriForFile(
                                         context,
                                         "${context.packageName}.fileprovider",
-                                        file,
+                                        localFile,
                                     )
                                     val shareIntent = Intent(Intent.ACTION_SEND).apply {
                                         type = "image/jpeg"
@@ -193,14 +193,14 @@ fun PhotoGalleryScreen(
                                         }
                                     }
                                     context.startActivity(Intent.createChooser(shareIntent, "Compartir foto"))
-                                }
-                            },
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Share,
-                                contentDescription = "Compartir",
-                                tint = MaterialTheme.colorScheme.onSurface,
-                            )
+                                },
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Share,
+                                    contentDescription = "Compartir",
+                                    tint = MaterialTheme.colorScheme.onSurface,
+                                )
+                            }
                         }
                     }
 
@@ -328,7 +328,7 @@ private fun PhotoThumbnail(
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             AsyncImage(
-                model = File(photo.filePath),
+                model = photoImageModel(photo),
                 contentDescription = photo.description,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
@@ -357,4 +357,14 @@ private fun PhotoThumbnail(
             }
         }
     }
+}
+
+/**
+ * Returns the best image source for Coil: local file if it exists,
+ * otherwise the remote URL for photos synced from other devices.
+ */
+private fun photoImageModel(photo: com.geoagent.app.data.local.entity.PhotoEntity): Any? {
+    val file = java.io.File(photo.filePath)
+    return if (photo.filePath.isNotEmpty() && file.exists()) file
+    else photo.remoteUrl
 }

@@ -24,7 +24,9 @@ import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import com.google.android.gms.location.CurrentLocationRequest
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -101,8 +103,27 @@ fun StationCreateScreen(
         }
         val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
         fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-            location?.let {
-                viewModel.onLocationUpdate(it.latitude, it.longitude, if (it.hasAltitude()) it.altitude else null, if (it.hasAccuracy()) it.accuracy else null)
+            if (location != null) {
+                viewModel.onLocationUpdate(
+                    location.latitude, location.longitude,
+                    if (location.hasAltitude()) location.altitude else null,
+                    if (location.hasAccuracy()) location.accuracy else null,
+                )
+            } else {
+                // lastLocation can be null on first boot or airplane-mode off — request a fresh fix
+                val request = CurrentLocationRequest.Builder()
+                    .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
+                    .build()
+                fusedLocationClient.getCurrentLocation(request, null)
+                    .addOnSuccessListener { fresh ->
+                        fresh?.let {
+                            viewModel.onLocationUpdate(
+                                it.latitude, it.longitude,
+                                if (it.hasAltitude()) it.altitude else null,
+                                if (it.hasAccuracy()) it.accuracy else null,
+                            )
+                        }
+                    }
             }
         }
     }
@@ -120,12 +141,7 @@ fun StationCreateScreen(
     // Auto-capture GPS once permission is granted (skip when editing - preserve existing coords)
     LaunchedEffect(hasLocationPermission) {
         if (hasLocationPermission && !viewModel.isEditing && latitude == 0.0 && longitude == 0.0) {
-            val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
-            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-                location?.let {
-                    viewModel.onLocationUpdate(it.latitude, it.longitude, if (it.hasAltitude()) it.altitude else null, if (it.hasAccuracy()) it.accuracy else null)
-                }
-            }
+            captureGps()
         }
     }
 
