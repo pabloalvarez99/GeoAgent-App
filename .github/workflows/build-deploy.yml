@@ -8,22 +8,20 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
-      - name: Checkout código
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Configurar JDK 17
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Configurar Android SDK
-        uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v3
 
-      - name: Cache Gradle
-        uses: actions/cache@v4
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
@@ -34,49 +32,65 @@ jobs:
       - name: Crear google-services.json
         run: echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > app/google-services.json
 
-      - name: Dar permisos a gradlew
-        run: chmod +x gradlew
+      - name: Build APK
+        run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon
 
-      - name: Build APK Debug
-        run: ./gradlew assembleDebug --no-daemon
-
-      - name: Preparar carpeta de deploy
+      - name: Publicar APK en GitHub Releases
         run: |
+          gh release delete latest --yes 2>/dev/null || true
+          gh release create latest \
+            app/build/outputs/apk/debug/app-debug.apk#geoagent.apk \
+            --title "GeoAgent - Última build" \
+            --notes "Build #${{ github.run_number }} · commit ${{ github.sha }}" \
+            --latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Crear página de descarga
+        run: |
+          APK_URL="https://github.com/${{ github.repository }}/releases/latest/download/geoagent.apk"
           mkdir -p dist
-          cp app/build/outputs/apk/debug/app-debug.apk dist/geoagent.apk
-          cat > dist/index.html << 'EOF'
+          cat > dist/index.html << EOF
           <!DOCTYPE html>
           <html lang="es">
           <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>GeoAgent - Descargar APK</title>
+            <title>GeoAgent</title>
             <style>
-              body { font-family: system-ui, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #0f172a; color: #f1f5f9; }
-              .card { background: #1e293b; border-radius: 16px; padding: 48px; text-align: center; max-width: 420px; width: 90%; box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
-              h1 { margin: 0 0 8px; font-size: 2rem; color: #38bdf8; }
-              p { color: #94a3b8; margin: 0 0 32px; }
-              a { display: inline-block; background: #0284c7; color: white; padding: 14px 32px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 1.1rem; transition: background 0.2s; }
-              a:hover { background: #0369a1; }
-              .meta { margin-top: 24px; font-size: 0.8rem; color: #475569; }
+              *{box-sizing:border-box;margin:0;padding:0}
+              body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f172a;color:#f1f5f9;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+              .card{background:#1e293b;border-radius:24px;padding:52px 40px;text-align:center;max-width:380px;width:100%;box-shadow:0 32px 64px rgba(0,0,0,.6)}
+              .icon{font-size:64px;margin-bottom:20px}
+              h1{font-size:2rem;font-weight:800;color:#38bdf8;margin-bottom:6px}
+              .sub{color:#64748b;font-size:.95rem;margin-bottom:32px}
+              .btn{display:flex;align-items:center;justify-content:center;gap:10px;background:#0284c7;color:#fff;padding:18px 0;border-radius:14px;text-decoration:none;font-weight:700;font-size:1.1rem;letter-spacing:.01em;transition:background .15s,transform .15s;box-shadow:0 4px 24px rgba(2,132,199,.35)}
+              .btn:hover{background:#0369a1;transform:translateY(-2px)}
+              .btn:active{transform:translateY(0)}
+              .meta{margin-top:20px;font-size:.75rem;color:#334155}
+              .badge{display:inline-block;background:#0c3249;color:#7dd3fc;padding:4px 12px;border-radius:20px;font-size:.78rem;font-weight:600;margin-bottom:28px}
             </style>
           </head>
           <body>
             <div class="card">
-              <h1>⛰️ GeoAgent</h1>
-              <p>App de geología de campo para Android</p>
-              <a href="/geoagent.apk" download>⬇ Descargar APK</a>
-              <div class="meta">Última build: ${{ github.sha }} · ${{ github.run_number }}</div>
+              <div class="icon">⛰️</div>
+              <h1>GeoAgent</h1>
+              <p class="sub">App de geología de campo para Android</p>
+              <span class="badge">Build #${{ github.run_number }}</span>
+              <a class="btn" href="${APK_URL}">
+                <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 15V3"/><path d="m8 11 4 4 4-4"/><path d="M2 17l.621 2.485A2 2 0 0 0 4.561 21h14.878a2 2 0 0 0 1.94-1.515L22 17"/></svg>
+                Descargar APK
+              </a>
+              <p class="meta">Commit ${{ github.sha }} · ${{ github.ref_name }}</p>
             </div>
           </body>
           </html>
           EOF
 
       - name: Deploy a Vercel
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          working-directory: dist
-          vercel-args: '--prod'
+        run: |
+          cd dist
+          npx vercel --token ${{ secrets.VERCEL_TOKEN }} --prod --yes
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
