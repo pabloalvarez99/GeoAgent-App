@@ -63,6 +63,27 @@ data class RemoteDrillInterval(
     @SerialName("notes")
     val notes: String? = null,
 ) {
+    fun toMap(): Map<String, Any?> = mapOf(
+        "drill_hole_id" to drillHoleId,
+        "from_depth" to fromDepth,
+        "to_depth" to toDepth,
+        "rock_type" to rockType,
+        "rock_group" to rockGroup,
+        "color" to color,
+        "texture" to texture,
+        "grain_size" to grainSize,
+        "mineralogy" to mineralogy,
+        "alteration" to alteration,
+        "alteration_intensity" to alterationIntensity,
+        "mineralization" to mineralization,
+        "mineralization_percent" to mineralizationPercent,
+        "rqd" to rqd,
+        "recovery" to recovery,
+        "structure" to structure,
+        "weathering" to weathering,
+        "notes" to notes,
+    )
+
     companion object {
         fun fromEntity(
             entity: DrillIntervalEntity,

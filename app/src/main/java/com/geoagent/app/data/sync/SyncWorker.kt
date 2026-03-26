@@ -235,7 +235,7 @@ class SyncWorker @AssistedInject constructor(
         Log.d(TAG, "Sync completed: $syncedCount synced, $errorCount errors")
         return if (errorCount > 0 && syncedCount == 0) {
             Result.failure(
-                workDataOf("error" to "Fallaron todos los $errorCount elementos. Verifica tu conexion y las tablas en Supabase.")
+                workDataOf("error" to "Fallaron todos los $errorCount elementos. Verifica tu conexion y los permisos en Firebase.")
             )
         } else {
             Result.success()
@@ -291,7 +291,7 @@ class SyncWorker @AssistedInject constructor(
             )
         }
 
-        // Upload the photo file to Supabase Storage if not already uploaded
+        // Upload the photo file to Firebase Storage if not already uploaded
         var uploadedPath = photo.remoteUrl
         if (uploadedPath == null) {
             val file = File(photo.filePath)
@@ -304,7 +304,7 @@ class SyncWorker @AssistedInject constructor(
             }
         }
 
-        // Upsert the photo record in the Supabase database
+        // Upsert the photo record in Firestore
         val dto = RemotePhoto.fromEntity(
             entity = photo,
             stationRemoteId = stationRemoteId,

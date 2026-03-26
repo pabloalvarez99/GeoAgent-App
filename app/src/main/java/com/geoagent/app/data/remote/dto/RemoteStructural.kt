@@ -42,6 +42,20 @@ data class RemoteStructural(
     @SerialName("notes")
     val notes: String? = null,
 ) {
+    fun toMap(): Map<String, Any?> = mapOf(
+        "station_id" to stationId,
+        "type" to type,
+        "strike" to strike,
+        "dip" to dip,
+        "dip_direction" to dipDirection,
+        "movement" to movement,
+        "thickness" to thickness,
+        "filling" to filling,
+        "roughness" to roughness,
+        "continuity" to continuity,
+        "notes" to notes,
+    )
+
     companion object {
         fun fromEntity(
             entity: StructuralEntity,

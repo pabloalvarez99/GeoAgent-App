@@ -25,7 +25,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.geoagent.app.data.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -44,13 +43,8 @@ class AuthNavigationViewModel @Inject constructor(
 ) : ViewModel() {
 
     val authState: StateFlow<AuthState> = authRepository.observeSessionStatus()
-        .map { status ->
-            when (status) {
-                is SessionStatus.Authenticated -> AuthState.LoggedIn
-                is SessionStatus.NotAuthenticated -> AuthState.LoggedOut
-                is SessionStatus.Initializing -> AuthState.Loading
-                is SessionStatus.RefreshFailure -> AuthState.LoggedOut
-            }
+        .map { isLoggedIn ->
+            if (isLoggedIn) AuthState.LoggedIn else AuthState.LoggedOut
         }
         .stateIn(
             scope = viewModelScope,

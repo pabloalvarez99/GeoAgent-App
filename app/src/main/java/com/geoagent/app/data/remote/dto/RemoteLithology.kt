@@ -51,6 +51,23 @@ data class RemoteLithology(
     @SerialName("notes")
     val notes: String? = null,
 ) {
+    fun toMap(): Map<String, Any?> = mapOf(
+        "station_id" to stationId,
+        "rock_type" to rockType,
+        "rock_group" to rockGroup,
+        "color" to color,
+        "texture" to texture,
+        "grain_size" to grainSize,
+        "mineralogy" to mineralogy,
+        "alteration" to alteration,
+        "alteration_intensity" to alterationIntensity,
+        "mineralization" to mineralization,
+        "mineralization_percent" to mineralizationPercent,
+        "structure" to structure,
+        "weathering" to weathering,
+        "notes" to notes,
+    )
+
     companion object {
         fun fromEntity(
             entity: LithologyEntity,

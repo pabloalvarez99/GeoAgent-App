@@ -37,6 +37,18 @@ data class RemoteStation(
     @SerialName("weather_conditions")
     val weatherConditions: String? = null,
 ) {
+    fun toMap(): Map<String, Any?> = mapOf(
+        "project_id" to projectId,
+        "code" to code,
+        "latitude" to latitude,
+        "longitude" to longitude,
+        "altitude" to altitude,
+        "date" to date,
+        "geologist" to geologist,
+        "description" to description,
+        "weather_conditions" to weatherConditions,
+    )
+
     companion object {
         fun fromEntity(
             entity: StationEntity,

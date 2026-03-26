@@ -1,6 +1,10 @@
 package com.geoagent.app.data.remote
 
 import android.util.Log
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
+import com.google.firebase.storage.FirebaseStorage
 import com.geoagent.app.data.remote.dto.RemoteDrillHole
 import com.geoagent.app.data.remote.dto.RemoteDrillInterval
 import com.geoagent.app.data.remote.dto.RemoteLithology
@@ -9,124 +13,96 @@ import com.geoagent.app.data.remote.dto.RemoteProject
 import com.geoagent.app.data.remote.dto.RemoteSample
 import com.geoagent.app.data.remote.dto.RemoteStation
 import com.geoagent.app.data.remote.dto.RemoteStructural
-import io.github.jan.supabase.postgrest.Postgrest
-import io.github.jan.supabase.postgrest.query.PostgrestQueryBuilder
-import io.github.jan.supabase.storage.Storage
+import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class RemoteDataSource @Inject constructor(
-    private val postgrest: Postgrest,
-    private val storage: Storage,
+    private val firestore: FirebaseFirestore,
+    private val storage: FirebaseStorage,
+    private val auth: FirebaseAuth,
 ) {
     companion object {
         private const val TAG = "RemoteDataSource"
-        private const val PHOTOS_BUCKET = "photos"
+    }
+
+    private fun userId(): String =
+        auth.currentUser?.uid ?: throw IllegalStateException("Usuario no autenticado")
+
+    private fun col(name: String) =
+        firestore.collection("users").document(userId()).collection(name)
+
+    private suspend fun upsert(collection: String, id: String?, data: Map<String, Any?>): String {
+        val docRef = if (id != null) col(collection).document(id) else col(collection).document()
+        val cleanData = HashMap<String, Any>()
+        data.forEach { (k, v) -> if (v != null) cleanData[k] = v }
+        docRef.set(cleanData, SetOptions.merge()).await()
+        return docRef.id
     }
 
     // ---- Projects ----
 
     suspend fun upsertProject(data: RemoteProject): String {
         Log.d(TAG, "Upserting project: ${data.name}")
-        val result = postgrest.from("projects")
-            .upsert(data) {
-                select()
-            }
-            .decodeSingle<RemoteProject>()
-        return result.id ?: throw IllegalStateException("No ID returned for project upsert")
+        return upsert("projects", data.id, data.toMap())
     }
 
     // ---- Stations ----
 
     suspend fun upsertStation(data: RemoteStation): String {
         Log.d(TAG, "Upserting station: ${data.code}")
-        val result = postgrest.from("stations")
-            .upsert(data) {
-                select()
-            }
-            .decodeSingle<RemoteStation>()
-        return result.id ?: throw IllegalStateException("No ID returned for station upsert")
+        return upsert("stations", data.id, data.toMap())
     }
 
     // ---- Lithologies ----
 
     suspend fun upsertLithology(data: RemoteLithology): String {
         Log.d(TAG, "Upserting lithology: ${data.rockType}")
-        val result = postgrest.from("lithologies")
-            .upsert(data) {
-                select()
-            }
-            .decodeSingle<RemoteLithology>()
-        return result.id ?: throw IllegalStateException("No ID returned for lithology upsert")
+        return upsert("lithologies", data.id, data.toMap())
     }
 
     // ---- Structural Data ----
 
     suspend fun upsertStructural(data: RemoteStructural): String {
         Log.d(TAG, "Upserting structural: ${data.type}")
-        val result = postgrest.from("structural_data")
-            .upsert(data) {
-                select()
-            }
-            .decodeSingle<RemoteStructural>()
-        return result.id ?: throw IllegalStateException("No ID returned for structural upsert")
+        return upsert("structural_data", data.id, data.toMap())
     }
 
     // ---- Samples ----
 
     suspend fun upsertSample(data: RemoteSample): String {
         Log.d(TAG, "Upserting sample: ${data.code}")
-        val result = postgrest.from("samples")
-            .upsert(data) {
-                select()
-            }
-            .decodeSingle<RemoteSample>()
-        return result.id ?: throw IllegalStateException("No ID returned for sample upsert")
+        return upsert("samples", data.id, data.toMap())
     }
 
     // ---- Drill Holes ----
 
     suspend fun upsertDrillHole(data: RemoteDrillHole): String {
         Log.d(TAG, "Upserting drill hole: ${data.holeId}")
-        val result = postgrest.from("drill_holes")
-            .upsert(data) {
-                select()
-            }
-            .decodeSingle<RemoteDrillHole>()
-        return result.id ?: throw IllegalStateException("No ID returned for drill hole upsert")
+        return upsert("drill_holes", data.id, data.toMap())
     }
 
     // ---- Drill Intervals ----
 
     suspend fun upsertDrillInterval(data: RemoteDrillInterval): String {
         Log.d(TAG, "Upserting drill interval: ${data.fromDepth}-${data.toDepth}")
-        val result = postgrest.from("drill_intervals")
-            .upsert(data) {
-                select()
-            }
-            .decodeSingle<RemoteDrillInterval>()
-        return result.id ?: throw IllegalStateException("No ID returned for drill interval upsert")
+        return upsert("drill_intervals", data.id, data.toMap())
     }
 
     // ---- Photos ----
 
     suspend fun upsertPhoto(data: RemotePhoto): String {
-        Log.d(TAG, "Upserting photo record: ${data.fileName}")
-        val result = postgrest.from("photos")
-            .upsert(data) {
-                select()
-            }
-            .decodeSingle<RemotePhoto>()
-        return result.id ?: throw IllegalStateException("No ID returned for photo upsert")
+        Log.d(TAG, "Upserting photo: ${data.fileName}")
+        return upsert("photos", data.id, data.toMap())
     }
 
     suspend fun uploadPhoto(fileName: String, fileBytes: ByteArray): String {
-        Log.d(TAG, "Uploading photo file: $fileName (${fileBytes.size} bytes)")
-        val bucket = storage.from(PHOTOS_BUCKET)
-        bucket.upload(fileName, fileBytes) { upsert = true }
-        val publicUrl = bucket.publicUrl(fileName)
-        Log.d(TAG, "Photo uploaded, public URL: $publicUrl")
-        return publicUrl
+        Log.d(TAG, "Uploading photo: $fileName (${fileBytes.size} bytes)")
+        val ref = storage.reference.child("photos/${userId()}/$fileName")
+        ref.putBytes(fileBytes).await()
+        val url = ref.downloadUrl.await().toString()
+        Log.d(TAG, "Photo uploaded: $url")
+        return url
     }
 }

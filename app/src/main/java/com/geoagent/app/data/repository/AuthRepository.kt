@@ -1,12 +1,15 @@
 package com.geoagent.app.data.repository
 
-import io.github.jan.supabase.auth.Auth
-import io.github.jan.supabase.auth.providers.builtin.Email
-import io.github.jan.supabase.auth.status.SessionStatus
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
+import com.google.firebase.auth.FirebaseAuthWeakPasswordException
+import com.google.firebase.auth.UserProfileChangeRequest
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -18,15 +21,12 @@ data class UserInfo(
 
 @Singleton
 class AuthRepository @Inject constructor(
-    private val auth: Auth,
+    private val auth: FirebaseAuth,
 ) {
 
     suspend fun signIn(email: String, password: String): Result<Unit> {
         return try {
-            auth.signInWith(Email) {
-                this.email = email
-                this.password = password
-            }
+            auth.signInWithEmailAndPassword(email, password).await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -35,13 +35,12 @@ class AuthRepository @Inject constructor(
 
     suspend fun signUp(email: String, password: String, fullName: String): Result<Unit> {
         return try {
-            auth.signUpWith(Email) {
-                this.email = email
-                this.password = password
-                data = buildJsonObject {
-                    put("full_name", fullName)
-                }
-            }
+            val result = auth.createUserWithEmailAndPassword(email, password).await()
+            result.user?.updateProfile(
+                UserProfileChangeRequest.Builder()
+                    .setDisplayName(fullName)
+                    .build()
+            )?.await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -52,41 +51,30 @@ class AuthRepository @Inject constructor(
         try {
             auth.signOut()
         } catch (_: Exception) {
-            // Ignore errors on sign out
+            // Ignorar errores al cerrar sesión
         }
     }
 
-    fun isLoggedIn(): Boolean {
-        return auth.sessionStatus.value is SessionStatus.Authenticated
-    }
+    fun isLoggedIn(): Boolean = auth.currentUser != null
 
-    fun getCurrentUser(): Flow<UserInfo?> {
-        return auth.sessionStatus.map { status ->
-            when (status) {
-                is SessionStatus.Authenticated -> {
-                    val user = auth.currentUserOrNull()
-                    user?.let {
-                        UserInfo(
-                            id = it.id,
-                            email = it.email ?: "",
-                            fullName = it.userMetadata?.get("full_name")?.toString()
-                                ?.removeSurrounding("\""),
-                        )
-                    }
+    fun getCurrentUser(): Flow<UserInfo?> = callbackFlow {
+        val listener = FirebaseAuth.AuthStateListener { firebaseAuth ->
+            val user = firebaseAuth.currentUser
+            trySend(
+                user?.let {
+                    UserInfo(id = it.uid, email = it.email ?: "", fullName = it.displayName)
                 }
-                else -> null
-            }
+            )
         }
+        auth.addAuthStateListener(listener)
+        awaitClose { auth.removeAuthStateListener(listener) }
     }
 
-    suspend fun getCurrentUserName(): String? {
-        return try {
-            val user = auth.currentUserOrNull()
-            user?.userMetadata?.get("full_name")?.toString()?.removeSurrounding("\"")
-        } catch (_: Exception) {
-            null
-        }
-    }
+    suspend fun getCurrentUserName(): String? = auth.currentUser?.displayName
 
-    fun observeSessionStatus(): Flow<SessionStatus> = auth.sessionStatus
+    fun observeSessionStatus(): Flow<Boolean> = callbackFlow {
+        val listener = FirebaseAuth.AuthStateListener { trySend(it.currentUser != null) }
+        auth.addAuthStateListener(listener)
+        awaitClose { auth.removeAuthStateListener(listener) }
+    }
 }

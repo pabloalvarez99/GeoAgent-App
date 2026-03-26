@@ -48,6 +48,22 @@ data class RemoteSample(
     @SerialName("notes")
     val notes: String? = null,
 ) {
+    fun toMap(): Map<String, Any?> = mapOf(
+        "station_id" to stationId,
+        "code" to code,
+        "type" to type,
+        "weight" to weight,
+        "length" to length,
+        "description" to description,
+        "latitude" to latitude,
+        "longitude" to longitude,
+        "altitude" to altitude,
+        "destination" to destination,
+        "analysis_requested" to analysisRequested,
+        "status" to status,
+        "notes" to notes,
+    )
+
     companion object {
         fun fromEntity(
             entity: SampleEntity,

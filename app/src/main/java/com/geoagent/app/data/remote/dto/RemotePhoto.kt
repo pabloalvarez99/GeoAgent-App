@@ -34,6 +34,17 @@ data class RemotePhoto(
     @SerialName("taken_at")
     val takenAt: String? = null,
 ) {
+    fun toMap(): Map<String, Any?> = mapOf(
+        "station_id" to stationId,
+        "drill_hole_id" to drillHoleId,
+        "file_name" to fileName,
+        "storage_path" to storagePath,
+        "description" to description,
+        "latitude" to latitude,
+        "longitude" to longitude,
+        "taken_at" to takenAt,
+    )
+
     companion object {
         fun fromEntity(
             entity: PhotoEntity,

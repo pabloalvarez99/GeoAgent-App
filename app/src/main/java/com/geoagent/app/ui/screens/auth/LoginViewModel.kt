@@ -2,6 +2,10 @@ package com.geoagent.app.ui.screens.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
+import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import com.geoagent.app.data.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -117,19 +121,25 @@ class LoginViewModel @Inject constructor(
     }
 
     private fun mapAuthError(e: Throwable): String {
-        val message = e.message?.lowercase() ?: ""
-        return when {
-            "invalid login credentials" in message ->
+        return when (e) {
+            is FirebaseAuthInvalidCredentialsException ->
                 "Credenciales invalidas. Verifica tu correo y contrasena."
-            "email not confirmed" in message ->
-                "Correo no confirmado. Revisa tu bandeja de entrada."
-            "user already registered" in message ->
+            is FirebaseAuthInvalidUserException ->
+                "No existe una cuenta con este correo."
+            is FirebaseAuthUserCollisionException ->
                 "Este correo ya esta registrado."
-            "network" in message || "unable to resolve host" in message ->
-                "Error de conexion. Verifica tu internet."
-            "rate limit" in message ->
-                "Demasiados intentos. Espera un momento."
-            else -> "Error de autenticacion: ${e.message ?: "desconocido"}"
+            is FirebaseAuthWeakPasswordException ->
+                "La contrasena es demasiado debil."
+            else -> {
+                val message = e.message?.lowercase() ?: ""
+                when {
+                    "network" in message || "unable to resolve host" in message ->
+                        "Error de conexion. Verifica tu internet."
+                    "too many requests" in message ->
+                        "Demasiados intentos. Espera un momento."
+                    else -> "Error de autenticacion: ${e.message ?: "desconocido"}"
+                }
+            }
         }
     }
 }

@@ -55,6 +55,24 @@ data class RemoteDrillHole(
     @SerialName("notes")
     val notes: String? = null,
 ) {
+    fun toMap(): Map<String, Any?> = mapOf(
+        "project_id" to projectId,
+        "hole_id" to holeId,
+        "type" to type,
+        "latitude" to latitude,
+        "longitude" to longitude,
+        "altitude" to altitude,
+        "azimuth" to azimuth,
+        "inclination" to inclination,
+        "planned_depth" to plannedDepth,
+        "actual_depth" to actualDepth,
+        "start_date" to startDate,
+        "end_date" to endDate,
+        "status" to status,
+        "geologist" to geologist,
+        "notes" to notes,
+    )
+
     companion object {
         fun fromEntity(
             entity: DrillHoleEntity,

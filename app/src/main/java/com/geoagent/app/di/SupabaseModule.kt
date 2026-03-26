@@ -1,36 +1,27 @@
 package com.geoagent.app.di
 
-import com.geoagent.app.data.remote.SupabaseConfig
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
-import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.auth.Auth
-import io.github.jan.supabase.auth.auth
-import io.github.jan.supabase.postgrest.Postgrest
-import io.github.jan.supabase.postgrest.postgrest
-import io.github.jan.supabase.storage.Storage
-import io.github.jan.supabase.storage.storage
 import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object SupabaseModule {
+object FirebaseModule {
 
     @Provides
     @Singleton
-    fun provideSupabaseClient(): SupabaseClient = SupabaseConfig.client
+    fun provideFirebaseAuth(): FirebaseAuth = FirebaseAuth.getInstance()
 
     @Provides
     @Singleton
-    fun provideAuth(client: SupabaseClient): Auth = client.auth
+    fun provideFirestore(): FirebaseFirestore = FirebaseFirestore.getInstance()
 
     @Provides
     @Singleton
-    fun providePostgrest(client: SupabaseClient): Postgrest = client.postgrest
-
-    @Provides
-    @Singleton
-    fun provideStorage(client: SupabaseClient): Storage = client.storage
+    fun provideFirebaseStorage(): FirebaseStorage = FirebaseStorage.getInstance()
 }

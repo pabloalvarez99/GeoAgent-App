@@ -18,6 +18,12 @@ data class RemoteProject(
     @SerialName("location")
     val location: String,
 ) {
+    fun toMap(): Map<String, Any?> = mapOf(
+        "name" to name,
+        "description" to description,
+        "location" to location,
+    )
+
     companion object {
         fun fromEntity(entity: ProjectEntity, remoteId: String? = null): RemoteProject {
             return RemoteProject(
