@@ -211,9 +211,19 @@ class SyncWorker @AssistedInject constructor(
                 }
             }
 
-            // 8. Photos: Firebase Storage requires Blaze plan — skip cloud upload,
-            //    photos remain stored locally on the device only.
-            Log.d(TAG, "Photo sync skipped (Firebase Storage not available on Spark plan)")
+            // 8. Sync photos (upload file bytes + create DB record)
+            val pendingPhotos = photoDao.getPendingSync()
+            Log.d(TAG, "Syncing ${pendingPhotos.size} photos...")
+            for (photo in pendingPhotos) {
+                try {
+                    syncPhoto(photo)
+                    syncedCount++
+                    Log.d(TAG, "Synced photo '${photo.fileName}'")
+                } catch (e: Exception) {
+                    errorCount++
+                    Log.e(TAG, "Failed to sync photo id=${photo.id}: ${e.message}", e)
+                }
+            }
 
         } catch (e: Exception) {
             Log.e(TAG, "Sync failed with unexpected error", e)
