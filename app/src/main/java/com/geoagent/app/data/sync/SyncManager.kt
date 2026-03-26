@@ -44,7 +44,11 @@ class SyncManager @Inject constructor(
     }
 
     fun syncNow(): LiveData<List<WorkInfo>> {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
         val syncRequest = OneTimeWorkRequestBuilder<SyncWorker>()
+            .setConstraints(constraints)
             .build()
 
         val workManager = WorkManager.getInstance(context)

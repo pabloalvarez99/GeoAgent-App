@@ -211,7 +211,7 @@ class ExportHelper @Inject constructor(
         FileWriter(collarFile).use { writer ->
             writer.write("HoleID,Easting,Northing,Elevation,MaxDepth,Type,Azimuth,Dip\n")
             drillHoles.forEach { dh ->
-                writer.write("${dh.holeId},${dh.longitude},${dh.latitude},${dh.altitude ?: 0.0},${dh.actualDepth ?: dh.plannedDepth},${dh.type},${dh.azimuth},${dh.inclination}\n")
+                writer.write("${csvEscape(dh.holeId)},${dh.longitude},${dh.latitude},${dh.altitude ?: 0.0},${dh.actualDepth ?: dh.plannedDepth},${csvEscape(dh.type)},${dh.azimuth},${dh.inclination}\n")
             }
         }
         files.add(collarFile)
@@ -221,10 +221,10 @@ class ExportHelper @Inject constructor(
         FileWriter(surveyFile).use { writer ->
             writer.write("HoleID,Depth,Azimuth,Dip\n")
             drillHoles.forEach { dh ->
-                writer.write("${dh.holeId},0,${dh.azimuth},${dh.inclination}\n")
+                writer.write("${csvEscape(dh.holeId)},0,${dh.azimuth},${dh.inclination}\n")
                 val maxDepth = dh.actualDepth ?: dh.plannedDepth
                 if (maxDepth > 0) {
-                    writer.write("${dh.holeId},$maxDepth,${dh.azimuth},${dh.inclination}\n")
+                    writer.write("${csvEscape(dh.holeId)},$maxDepth,${dh.azimuth},${dh.inclination}\n")
                 }
             }
         }
@@ -236,7 +236,7 @@ class ExportHelper @Inject constructor(
             writer.write("HoleID,From,To,RockType,RockGroup,Alteration,Mineralization,MineralPct,RQD,Recovery\n")
             drillHoles.forEach { dh ->
                 intervals[dh.id]?.forEach { iv ->
-                    writer.write("${dh.holeId},${iv.fromDepth},${iv.toDepth},${iv.rockType},${iv.rockGroup},${iv.alteration ?: ""},${iv.mineralization ?: ""},${iv.mineralizationPercent ?: ""},${iv.rqd ?: ""},${iv.recovery ?: ""}\n")
+                    writer.write("${csvEscape(dh.holeId)},${iv.fromDepth},${iv.toDepth},${csvEscape(iv.rockType)},${csvEscape(iv.rockGroup)},${csvEscape(iv.alteration)},${csvEscape(iv.mineralization)},${iv.mineralizationPercent ?: ""},${iv.rqd ?: ""},${iv.recovery ?: ""}\n")
                 }
             }
         }
@@ -338,6 +338,16 @@ class ExportHelper @Inject constructor(
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         context.startActivity(Intent.createChooser(intent, "Compartir archivos"))
+    }
+
+    /** Wraps a CSV field in quotes if it contains commas, quotes, or newlines. */
+    private fun csvEscape(value: Any?): String {
+        val s = value?.toString() ?: ""
+        return if (s.contains(',') || s.contains('"') || s.contains('\n')) {
+            "\"${s.replace("\"", "\"\"")}\""
+        } else {
+            s
+        }
     }
 
     private fun getMimeType(fileName: String): String {
