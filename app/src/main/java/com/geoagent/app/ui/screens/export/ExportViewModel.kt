@@ -172,14 +172,17 @@ class ExportViewModel @Inject constructor(
         val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
         val projectName = project.name.replace(Regex("[^a-zA-Z0-9_-]"), "_")
         val zipFile = File(getExportDir(), "${projectName}_mining_$timestamp.zip")
-        ZipOutputStream(BufferedOutputStream(FileOutputStream(zipFile))).use { zos ->
-            csvFiles.forEach { file ->
-                zos.putNextEntry(ZipEntry(file.name))
-                file.inputStream().use { it.copyTo(zos) }
-                zos.closeEntry()
+        try {
+            ZipOutputStream(BufferedOutputStream(FileOutputStream(zipFile))).use { zos ->
+                csvFiles.forEach { file ->
+                    zos.putNextEntry(ZipEntry(file.name))
+                    file.inputStream().use { it.copyTo(zos) }
+                    zos.closeEntry()
+                }
             }
+        } finally {
+            csvFiles.forEach { it.delete() }
         }
-        csvFiles.forEach { it.delete() }
 
         return zipFile
     }
