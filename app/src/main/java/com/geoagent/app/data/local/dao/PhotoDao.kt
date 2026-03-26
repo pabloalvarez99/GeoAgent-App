@@ -59,4 +59,7 @@ interface PhotoDao {
         """
     )
     suspend fun updateSyncStatus(id: Long, status: String, remoteId: String?, remoteUrl: String?)
+
+    @Query("SELECT * FROM photos WHERE remote_id = :remoteId LIMIT 1")
+    suspend fun getByRemoteId(remoteId: String): PhotoEntity?
 }

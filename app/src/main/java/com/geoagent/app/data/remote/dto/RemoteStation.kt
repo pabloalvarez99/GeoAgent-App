@@ -50,6 +50,19 @@ data class RemoteStation(
     )
 
     companion object {
+        fun fromFirestoreMap(id: String, data: Map<String, Any>): RemoteStation = RemoteStation(
+            id = id,
+            projectId = data["project_id"] as? String ?: "",
+            code = data["code"] as? String ?: "",
+            latitude = (data["latitude"] as? Number)?.toDouble() ?: 0.0,
+            longitude = (data["longitude"] as? Number)?.toDouble() ?: 0.0,
+            altitude = (data["altitude"] as? Number)?.toDouble(),
+            date = data["date"] as? String ?: "",
+            geologist = data["geologist"] as? String ?: "",
+            description = data["description"] as? String ?: "",
+            weatherConditions = data["weather_conditions"] as? String,
+        )
+
         fun fromEntity(
             entity: StationEntity,
             projectRemoteId: String,

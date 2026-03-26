@@ -33,5 +33,12 @@ data class RemoteProject(
                 location = entity.location,
             )
         }
+
+        fun fromFirestoreMap(id: String, data: Map<String, Any>): RemoteProject = RemoteProject(
+            id = id,
+            name = data["name"] as? String ?: "",
+            description = data["description"] as? String ?: "",
+            location = data["location"] as? String ?: "",
+        )
     }
 }

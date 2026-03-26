@@ -32,4 +32,10 @@ interface LithologyDao {
 
     @Query("UPDATE lithologies SET sync_status = :status, remote_id = :remoteId WHERE id = :id")
     suspend fun updateSyncStatus(id: Long, status: String, remoteId: String?)
+
+    @Query("SELECT COUNT(*) FROM lithologies WHERE sync_status != 'SYNCED'")
+    fun getPendingSyncCount(): Flow<Int>
+
+    @Query("SELECT * FROM lithologies WHERE remote_id = :remoteId LIMIT 1")
+    suspend fun getByRemoteId(remoteId: String): LithologyEntity?
 }

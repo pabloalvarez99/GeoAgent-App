@@ -85,6 +85,28 @@ data class RemoteDrillInterval(
     )
 
     companion object {
+        fun fromFirestoreMap(id: String, data: Map<String, Any>): RemoteDrillInterval = RemoteDrillInterval(
+            id = id,
+            drillHoleId = data["drill_hole_id"] as? String ?: "",
+            fromDepth = (data["from_depth"] as? Number)?.toDouble() ?: 0.0,
+            toDepth = (data["to_depth"] as? Number)?.toDouble() ?: 0.0,
+            rockType = data["rock_type"] as? String ?: "",
+            rockGroup = data["rock_group"] as? String ?: "",
+            color = data["color"] as? String ?: "",
+            texture = data["texture"] as? String ?: "",
+            grainSize = data["grain_size"] as? String ?: "",
+            mineralogy = data["mineralogy"] as? String ?: "",
+            alteration = data["alteration"] as? String,
+            alterationIntensity = data["alteration_intensity"] as? String,
+            mineralization = data["mineralization"] as? String,
+            mineralizationPercent = (data["mineralization_percent"] as? Number)?.toDouble(),
+            rqd = (data["rqd"] as? Number)?.toDouble(),
+            recovery = (data["recovery"] as? Number)?.toDouble(),
+            structure = data["structure"] as? String,
+            weathering = data["weathering"] as? String,
+            notes = data["notes"] as? String,
+        )
+
         fun fromEntity(
             entity: DrillIntervalEntity,
             drillHoleRemoteId: String,

@@ -69,6 +69,24 @@ data class RemoteLithology(
     )
 
     companion object {
+        fun fromFirestoreMap(id: String, data: Map<String, Any>): RemoteLithology = RemoteLithology(
+            id = id,
+            stationId = data["station_id"] as? String ?: "",
+            rockType = data["rock_type"] as? String ?: "",
+            rockGroup = data["rock_group"] as? String ?: "",
+            color = data["color"] as? String ?: "",
+            texture = data["texture"] as? String ?: "",
+            grainSize = data["grain_size"] as? String ?: "",
+            mineralogy = data["mineralogy"] as? String ?: "",
+            alteration = data["alteration"] as? String,
+            alterationIntensity = data["alteration_intensity"] as? String,
+            mineralization = data["mineralization"] as? String,
+            mineralizationPercent = (data["mineralization_percent"] as? Number)?.toDouble(),
+            structure = data["structure"] as? String,
+            weathering = data["weathering"] as? String,
+            notes = data["notes"] as? String,
+        )
+
         fun fromEntity(
             entity: LithologyEntity,
             stationRemoteId: String,

@@ -46,6 +46,18 @@ data class RemotePhoto(
     )
 
     companion object {
+        fun fromFirestoreMap(id: String, data: Map<String, Any>): RemotePhoto = RemotePhoto(
+            id = id,
+            stationId = data["station_id"] as? String,
+            drillHoleId = data["drill_hole_id"] as? String,
+            fileName = data["file_name"] as? String ?: "",
+            storagePath = data["storage_path"] as? String,
+            description = data["description"] as? String,
+            latitude = (data["latitude"] as? Number)?.toDouble(),
+            longitude = (data["longitude"] as? Number)?.toDouble(),
+            takenAt = data["taken_at"] as? String,
+        )
+
         fun fromEntity(
             entity: PhotoEntity,
             stationRemoteId: String? = null,

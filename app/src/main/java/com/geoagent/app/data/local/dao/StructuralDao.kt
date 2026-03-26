@@ -32,4 +32,10 @@ interface StructuralDao {
 
     @Query("UPDATE structural_data SET sync_status = :status, remote_id = :remoteId WHERE id = :id")
     suspend fun updateSyncStatus(id: Long, status: String, remoteId: String?)
+
+    @Query("SELECT COUNT(*) FROM structural_data WHERE sync_status != 'SYNCED'")
+    fun getPendingSyncCount(): Flow<Int>
+
+    @Query("SELECT * FROM structural_data WHERE remote_id = :remoteId LIMIT 1")
+    suspend fun getByRemoteId(remoteId: String): StructuralEntity?
 }

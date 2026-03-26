@@ -44,4 +44,7 @@ interface StationDao {
 
     @Query("UPDATE stations SET sync_status = :status, remote_id = :remoteId WHERE id = :id")
     suspend fun updateSyncStatus(id: Long, status: String, remoteId: String?)
+
+    @Query("SELECT * FROM stations WHERE remote_id = :remoteId LIMIT 1")
+    suspend fun getByRemoteId(remoteId: String): StationEntity?
 }

@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import androidx.work.workDataOf
 import com.geoagent.app.data.local.dao.DrillHoleDao
 import com.geoagent.app.data.local.dao.DrillIntervalDao
 import com.geoagent.app.data.local.dao.LithologyDao
@@ -13,7 +14,14 @@ import com.geoagent.app.data.local.dao.ProjectDao
 import com.geoagent.app.data.local.dao.SampleDao
 import com.geoagent.app.data.local.dao.StationDao
 import com.geoagent.app.data.local.dao.StructuralDao
+import com.geoagent.app.data.local.entity.DrillHoleEntity
+import com.geoagent.app.data.local.entity.DrillIntervalEntity
+import com.geoagent.app.data.local.entity.LithologyEntity
 import com.geoagent.app.data.local.entity.PhotoEntity
+import com.geoagent.app.data.local.entity.ProjectEntity
+import com.geoagent.app.data.local.entity.SampleEntity
+import com.geoagent.app.data.local.entity.StationEntity
+import com.geoagent.app.data.local.entity.StructuralEntity
 import com.geoagent.app.data.remote.RemoteDataSource
 import com.geoagent.app.data.remote.dto.RemoteDrillHole
 import com.geoagent.app.data.remote.dto.RemoteDrillInterval
@@ -23,11 +31,11 @@ import com.geoagent.app.data.remote.dto.RemoteProject
 import com.geoagent.app.data.remote.dto.RemoteSample
 import com.geoagent.app.data.remote.dto.RemoteStation
 import com.geoagent.app.data.remote.dto.RemoteStructural
-import androidx.work.workDataOf
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.flow.firstOrNull
 import java.io.File
+import java.time.Instant
 
 @HiltWorker
 class SyncWorker @AssistedInject constructor(
@@ -60,6 +68,14 @@ class SyncWorker @AssistedInject constructor(
         var errorCount = 0
 
         try {
+            // Phase 1: Pull remote data into local DB (inserts new records from other devices)
+            try {
+                pullFromRemote()
+            } catch (e: Exception) {
+                Log.w(TAG, "Pull phase failed, continuing with push: ${e.message}", e)
+            }
+
+            // Phase 2: Push local pending changes to Firestore
             // 1. Sync projects first (no parent dependency)
             val pendingProjects = projectDao.getPendingSync()
             Log.d(TAG, "Syncing ${pendingProjects.size} projects...")
@@ -239,6 +255,262 @@ class SyncWorker @AssistedInject constructor(
             )
         } else {
             Result.success()
+        }
+    }
+
+    // ---- Pull phase: fetch remote → insert new local records ----
+
+    /**
+     * Downloads all remote documents and inserts any that don't yet exist locally.
+     * Records already present (by remoteId) are skipped regardless of sync status,
+     * preserving any unsaved local changes. This enables multi-device use.
+     */
+    private suspend fun pullFromRemote() {
+        Log.d(TAG, "Pull phase: fetching remote data...")
+        val now = System.currentTimeMillis()
+
+        // remoteId → localId maps built during pull, reused by push phase
+        val remoteProjectToLocal = mutableMapOf<String, Long>()
+        val remoteStationToLocal = mutableMapOf<String, Long>()
+        val remoteDrillHoleToLocal = mutableMapOf<String, Long>()
+
+        // 1. Pull projects
+        remoteDataSource.fetchAllProjects().forEach { rp ->
+            val remoteId = rp.id ?: return@forEach
+            val existing = projectDao.getByRemoteId(remoteId)
+            val localId = if (existing == null) {
+                Log.d(TAG, "Pull: inserting new project '${rp.name}'")
+                projectDao.insert(ProjectEntity(
+                    name = rp.name,
+                    description = rp.description,
+                    location = rp.location,
+                    createdAt = now,
+                    updatedAt = now,
+                    syncStatus = SYNC_STATUS_SYNCED,
+                    remoteId = remoteId,
+                ))
+            } else {
+                existing.id
+            }
+            remoteProjectToLocal[remoteId] = localId
+            projectIdMap[localId] = remoteId
+        }
+
+        // 2. Pull stations
+        remoteDataSource.fetchAllStations().forEach { rs ->
+            val remoteId = rs.id ?: return@forEach
+            val localProjectId = remoteProjectToLocal[rs.projectId] ?: return@forEach
+            val existing = stationDao.getByRemoteId(remoteId)
+            val localId = if (existing == null) {
+                Log.d(TAG, "Pull: inserting new station '${rs.code}'")
+                stationDao.insert(StationEntity(
+                    projectId = localProjectId,
+                    code = rs.code,
+                    latitude = rs.latitude,
+                    longitude = rs.longitude,
+                    altitude = rs.altitude,
+                    date = parseIsoDate(rs.date),
+                    geologist = rs.geologist,
+                    description = rs.description,
+                    weatherConditions = rs.weatherConditions,
+                    createdAt = now,
+                    updatedAt = now,
+                    syncStatus = SYNC_STATUS_SYNCED,
+                    remoteId = remoteId,
+                ))
+            } else {
+                existing.id
+            }
+            remoteStationToLocal[remoteId] = localId
+            stationIdMap[localId] = remoteId
+        }
+
+        // 3. Pull lithologies
+        remoteDataSource.fetchAllLithologies().forEach { rl ->
+            val remoteId = rl.id ?: return@forEach
+            val localStationId = remoteStationToLocal[rl.stationId] ?: return@forEach
+            if (lithologyDao.getByRemoteId(remoteId) == null) {
+                Log.d(TAG, "Pull: inserting new lithology '${rl.rockType}'")
+                lithologyDao.insert(LithologyEntity(
+                    stationId = localStationId,
+                    rockType = rl.rockType,
+                    rockGroup = rl.rockGroup,
+                    color = rl.color,
+                    texture = rl.texture,
+                    grainSize = rl.grainSize,
+                    mineralogy = rl.mineralogy,
+                    alteration = rl.alteration,
+                    alterationIntensity = rl.alterationIntensity,
+                    mineralization = rl.mineralization,
+                    mineralizationPercent = rl.mineralizationPercent,
+                    structure = rl.structure,
+                    weathering = rl.weathering,
+                    notes = rl.notes,
+                    createdAt = now,
+                    updatedAt = now,
+                    syncStatus = SYNC_STATUS_SYNCED,
+                    remoteId = remoteId,
+                ))
+            }
+        }
+
+        // 4. Pull structural data
+        remoteDataSource.fetchAllStructuralData().forEach { rs ->
+            val remoteId = rs.id ?: return@forEach
+            val localStationId = remoteStationToLocal[rs.stationId] ?: return@forEach
+            if (structuralDao.getByRemoteId(remoteId) == null) {
+                Log.d(TAG, "Pull: inserting new structural '${rs.type}'")
+                structuralDao.insert(StructuralEntity(
+                    stationId = localStationId,
+                    type = rs.type,
+                    strike = rs.strike,
+                    dip = rs.dip,
+                    dipDirection = rs.dipDirection,
+                    movement = rs.movement,
+                    thickness = rs.thickness,
+                    filling = rs.filling,
+                    roughness = rs.roughness,
+                    continuity = rs.continuity,
+                    notes = rs.notes,
+                    createdAt = now,
+                    updatedAt = now,
+                    syncStatus = SYNC_STATUS_SYNCED,
+                    remoteId = remoteId,
+                ))
+            }
+        }
+
+        // 5. Pull samples
+        remoteDataSource.fetchAllSamples().forEach { rs ->
+            val remoteId = rs.id ?: return@forEach
+            val localStationId = remoteStationToLocal[rs.stationId] ?: return@forEach
+            if (sampleDao.getByRemoteId(remoteId) == null) {
+                Log.d(TAG, "Pull: inserting new sample '${rs.code}'")
+                sampleDao.insert(SampleEntity(
+                    stationId = localStationId,
+                    code = rs.code,
+                    type = rs.type,
+                    weight = rs.weight,
+                    length = rs.length,
+                    description = rs.description,
+                    latitude = rs.latitude,
+                    longitude = rs.longitude,
+                    altitude = rs.altitude,
+                    destination = rs.destination,
+                    analysisRequested = rs.analysisRequested,
+                    status = rs.status,
+                    notes = rs.notes,
+                    createdAt = now,
+                    updatedAt = now,
+                    syncStatus = SYNC_STATUS_SYNCED,
+                    remoteId = remoteId,
+                ))
+            }
+        }
+
+        // 6. Pull drill holes
+        remoteDataSource.fetchAllDrillHoles().forEach { rh ->
+            val remoteId = rh.id ?: return@forEach
+            val localProjectId = remoteProjectToLocal[rh.projectId] ?: return@forEach
+            val existing = drillHoleDao.getByRemoteId(remoteId)
+            val localId = if (existing == null) {
+                Log.d(TAG, "Pull: inserting new drill hole '${rh.holeId}'")
+                drillHoleDao.insert(DrillHoleEntity(
+                    projectId = localProjectId,
+                    holeId = rh.holeId,
+                    type = rh.type,
+                    latitude = rh.latitude,
+                    longitude = rh.longitude,
+                    altitude = rh.altitude,
+                    azimuth = rh.azimuth,
+                    inclination = rh.inclination,
+                    plannedDepth = rh.plannedDepth,
+                    actualDepth = rh.actualDepth,
+                    startDate = rh.startDate?.let { parseIsoDate(it) },
+                    endDate = rh.endDate?.let { parseIsoDate(it) },
+                    status = rh.status,
+                    geologist = rh.geologist,
+                    notes = rh.notes,
+                    createdAt = now,
+                    updatedAt = now,
+                    syncStatus = SYNC_STATUS_SYNCED,
+                    remoteId = remoteId,
+                ))
+            } else {
+                existing.id
+            }
+            remoteDrillHoleToLocal[remoteId] = localId
+            drillHoleIdMap[localId] = remoteId
+        }
+
+        // 7. Pull drill intervals
+        remoteDataSource.fetchAllDrillIntervals().forEach { ri ->
+            val remoteId = ri.id ?: return@forEach
+            val localDrillHoleId = remoteDrillHoleToLocal[ri.drillHoleId] ?: return@forEach
+            if (drillIntervalDao.getByRemoteId(remoteId) == null) {
+                Log.d(TAG, "Pull: inserting new interval ${ri.fromDepth}-${ri.toDepth}")
+                drillIntervalDao.insert(DrillIntervalEntity(
+                    drillHoleId = localDrillHoleId,
+                    fromDepth = ri.fromDepth,
+                    toDepth = ri.toDepth,
+                    rockType = ri.rockType,
+                    rockGroup = ri.rockGroup,
+                    color = ri.color,
+                    texture = ri.texture,
+                    grainSize = ri.grainSize,
+                    mineralogy = ri.mineralogy,
+                    alteration = ri.alteration,
+                    alterationIntensity = ri.alterationIntensity,
+                    mineralization = ri.mineralization,
+                    mineralizationPercent = ri.mineralizationPercent,
+                    rqd = ri.rqd,
+                    recovery = ri.recovery,
+                    structure = ri.structure,
+                    weathering = ri.weathering,
+                    notes = ri.notes,
+                    createdAt = now,
+                    updatedAt = now,
+                    syncStatus = SYNC_STATUS_SYNCED,
+                    remoteId = remoteId,
+                ))
+            }
+        }
+
+        // 8. Pull photo metadata (remote_url serves as display source for non-local photos)
+        remoteDataSource.fetchAllPhotos().forEach { rp ->
+            val remoteId = rp.id ?: return@forEach
+            if (photoDao.getByRemoteId(remoteId) == null) {
+                val localStationId = rp.stationId?.let { remoteStationToLocal[it] }
+                val localDrillHoleId = rp.drillHoleId?.let { remoteDrillHoleToLocal[it] }
+                val takenAtMs = parseIsoDate(rp.takenAt)
+                Log.d(TAG, "Pull: inserting new photo '${rp.fileName}'")
+                photoDao.insert(PhotoEntity(
+                    stationId = localStationId,
+                    drillHoleId = localDrillHoleId,
+                    filePath = rp.storagePath ?: "",
+                    fileName = rp.fileName,
+                    description = rp.description,
+                    latitude = rp.latitude,
+                    longitude = rp.longitude,
+                    takenAt = takenAtMs,
+                    createdAt = now,
+                    updatedAt = now,
+                    syncStatus = SYNC_STATUS_SYNCED,
+                    remoteId = remoteId,
+                    remoteUrl = rp.storagePath,
+                ))
+            }
+        }
+
+        Log.d(TAG, "Pull phase complete.")
+    }
+
+    private fun parseIsoDate(isoString: String?): Long {
+        if (isoString == null) return System.currentTimeMillis()
+        return try {
+            Instant.parse(isoString).toEpochMilli()
+        } catch (e: Exception) {
+            System.currentTimeMillis()
         }
     }
 

@@ -105,4 +105,54 @@ class RemoteDataSource @Inject constructor(
         Log.d(TAG, "Photo uploaded: $url")
         return url
     }
+
+    // ---- Fetch all (pull/download from Firestore) ----
+
+    private suspend fun fetchAll(collection: String): List<Pair<String, Map<String, Any>>> {
+        val snapshot = col(collection).get().await()
+        return snapshot.documents.mapNotNull { doc ->
+            val data = doc.data ?: return@mapNotNull null
+            doc.id to data
+        }
+    }
+
+    suspend fun fetchAllProjects(): List<RemoteProject> =
+        fetchAll("projects").mapNotNull { (id, data) ->
+            runCatching { RemoteProject.fromFirestoreMap(id, data) }.getOrNull()
+        }
+
+    suspend fun fetchAllStations(): List<RemoteStation> =
+        fetchAll("stations").mapNotNull { (id, data) ->
+            runCatching { RemoteStation.fromFirestoreMap(id, data) }.getOrNull()
+        }
+
+    suspend fun fetchAllLithologies(): List<RemoteLithology> =
+        fetchAll("lithologies").mapNotNull { (id, data) ->
+            runCatching { RemoteLithology.fromFirestoreMap(id, data) }.getOrNull()
+        }
+
+    suspend fun fetchAllStructuralData(): List<RemoteStructural> =
+        fetchAll("structural_data").mapNotNull { (id, data) ->
+            runCatching { RemoteStructural.fromFirestoreMap(id, data) }.getOrNull()
+        }
+
+    suspend fun fetchAllSamples(): List<RemoteSample> =
+        fetchAll("samples").mapNotNull { (id, data) ->
+            runCatching { RemoteSample.fromFirestoreMap(id, data) }.getOrNull()
+        }
+
+    suspend fun fetchAllDrillHoles(): List<RemoteDrillHole> =
+        fetchAll("drill_holes").mapNotNull { (id, data) ->
+            runCatching { RemoteDrillHole.fromFirestoreMap(id, data) }.getOrNull()
+        }
+
+    suspend fun fetchAllDrillIntervals(): List<RemoteDrillInterval> =
+        fetchAll("drill_intervals").mapNotNull { (id, data) ->
+            runCatching { RemoteDrillInterval.fromFirestoreMap(id, data) }.getOrNull()
+        }
+
+    suspend fun fetchAllPhotos(): List<RemotePhoto> =
+        fetchAll("photos").mapNotNull { (id, data) ->
+            runCatching { RemotePhoto.fromFirestoreMap(id, data) }.getOrNull()
+        }
 }

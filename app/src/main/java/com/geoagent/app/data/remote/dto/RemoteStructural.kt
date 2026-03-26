@@ -57,6 +57,21 @@ data class RemoteStructural(
     )
 
     companion object {
+        fun fromFirestoreMap(id: String, data: Map<String, Any>): RemoteStructural = RemoteStructural(
+            id = id,
+            stationId = data["station_id"] as? String ?: "",
+            type = data["type"] as? String ?: "",
+            strike = (data["strike"] as? Number)?.toDouble() ?: 0.0,
+            dip = (data["dip"] as? Number)?.toDouble() ?: 0.0,
+            dipDirection = data["dip_direction"] as? String ?: "",
+            movement = data["movement"] as? String,
+            thickness = (data["thickness"] as? Number)?.toDouble(),
+            filling = data["filling"] as? String,
+            roughness = data["roughness"] as? String,
+            continuity = data["continuity"] as? String,
+            notes = data["notes"] as? String,
+        )
+
         fun fromEntity(
             entity: StructuralEntity,
             stationRemoteId: String,

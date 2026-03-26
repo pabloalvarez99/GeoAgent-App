@@ -65,6 +65,23 @@ data class RemoteSample(
     )
 
     companion object {
+        fun fromFirestoreMap(id: String, data: Map<String, Any>): RemoteSample = RemoteSample(
+            id = id,
+            stationId = data["station_id"] as? String ?: "",
+            code = data["code"] as? String ?: "",
+            type = data["type"] as? String ?: "",
+            weight = (data["weight"] as? Number)?.toDouble(),
+            length = (data["length"] as? Number)?.toDouble(),
+            description = data["description"] as? String ?: "",
+            latitude = (data["latitude"] as? Number)?.toDouble(),
+            longitude = (data["longitude"] as? Number)?.toDouble(),
+            altitude = (data["altitude"] as? Number)?.toDouble(),
+            destination = data["destination"] as? String,
+            analysisRequested = data["analysis_requested"] as? String,
+            status = data["status"] as? String ?: "Recolectada",
+            notes = data["notes"] as? String,
+        )
+
         fun fromEntity(
             entity: SampleEntity,
             stationRemoteId: String,

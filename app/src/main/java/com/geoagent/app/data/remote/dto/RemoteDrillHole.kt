@@ -74,6 +74,25 @@ data class RemoteDrillHole(
     )
 
     companion object {
+        fun fromFirestoreMap(id: String, data: Map<String, Any>): RemoteDrillHole = RemoteDrillHole(
+            id = id,
+            projectId = data["project_id"] as? String ?: "",
+            holeId = data["hole_id"] as? String ?: "",
+            type = data["type"] as? String ?: "",
+            latitude = (data["latitude"] as? Number)?.toDouble() ?: 0.0,
+            longitude = (data["longitude"] as? Number)?.toDouble() ?: 0.0,
+            altitude = (data["altitude"] as? Number)?.toDouble(),
+            azimuth = (data["azimuth"] as? Number)?.toDouble() ?: 0.0,
+            inclination = (data["inclination"] as? Number)?.toDouble() ?: 0.0,
+            plannedDepth = (data["planned_depth"] as? Number)?.toDouble() ?: 0.0,
+            actualDepth = (data["actual_depth"] as? Number)?.toDouble(),
+            startDate = data["start_date"] as? String,
+            endDate = data["end_date"] as? String,
+            status = data["status"] as? String ?: "En Progreso",
+            geologist = data["geologist"] as? String ?: "",
+            notes = data["notes"] as? String,
+        )
+
         fun fromEntity(
             entity: DrillHoleEntity,
             projectRemoteId: String,
