@@ -129,23 +129,29 @@ class StructuralFormViewModel @Inject constructor(
     fun save() {
         val state = _uiState.value
         if (state.isSaving) return
+
+        // Validate required fields in priority order before parsing numeric values
+        val typeError = FormValidation.validateRequired(state.type, "Tipo de estructura")
+        if (typeError != null) {
+            _uiState.update { it.copy(errorMessage = typeError) }
+            return
+        }
         val strikeVal = FormValidation.parseDouble(state.strike)
-        val dipVal = FormValidation.parseDouble(state.dip)
-
-        val validationError = FormValidation.validateRequired(state.type, "Tipo de estructura")
-            ?: FormValidation.validateStrike(strikeVal)
-            ?: FormValidation.validateDip(dipVal)
-            ?: FormValidation.validateRequired(state.dipDirection, "Direccion de manteo")
-            ?: FormValidation.validatePositive(FormValidation.parseDouble(state.thickness), "Espesor")
-
         if (strikeVal == null) {
             _uiState.update { it.copy(errorMessage = "Ingrese el rumbo") }
             return
         }
+        val dipVal = FormValidation.parseDouble(state.dip)
         if (dipVal == null) {
             _uiState.update { it.copy(errorMessage = "Ingrese el manteo") }
             return
         }
+
+        val validationError = FormValidation.validateStrike(strikeVal)
+            ?: FormValidation.validateDip(dipVal)
+            ?: FormValidation.validateRequired(state.dipDirection, "Direccion de manteo")
+            ?: FormValidation.validatePositive(FormValidation.parseDouble(state.thickness), "Espesor")
+
         if (validationError != null) {
             _uiState.update { it.copy(errorMessage = validationError) }
             return

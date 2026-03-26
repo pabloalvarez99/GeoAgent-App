@@ -2,6 +2,8 @@ package com.geoagent.app.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.RoomDatabase
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.geoagent.app.data.local.dao.DrillHoleDao
 import com.geoagent.app.data.local.dao.DrillIntervalDao
 import com.geoagent.app.data.local.dao.LithologyDao
@@ -31,6 +33,13 @@ object DatabaseModule {
             "geoagent.db"
         )
             .addMigrations(GeoAgentDatabase.MIGRATION_1_2, GeoAgentDatabase.MIGRATION_2_3)
+            .addCallback(object : RoomDatabase.Callback() {
+                override fun onOpen(db: SupportSQLiteDatabase) {
+                    // SQLite foreign key enforcement is off by default.
+                    // This enables CASCADE deletes defined on entity ForeignKey annotations.
+                    db.execSQL("PRAGMA foreign_keys=ON")
+                }
+            })
             .build()
     }
 
