@@ -124,8 +124,8 @@ class DrillIntervalFormViewModel @Inject constructor(
                 } else {
                     drillHoleRepository.createInterval(
                         drillHoleId = drillHoleId,
-                        fromDepth = fromDepth!!,
-                        toDepth = toDepth!!,
+                        fromDepth = fromDepth,
+                        toDepth = toDepth,
                         rockGroup = rockGroup,
                         rockType = rockType,
                         color = color,

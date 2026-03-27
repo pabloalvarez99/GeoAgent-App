@@ -366,12 +366,13 @@ fun DrillHoleCreateScreen(
                                 text = if (gpsAccuracy != null) "±%.0f m".format(gpsAccuracy) else "--",
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Medium,
-                                color = if (gpsAccuracy != null && gpsAccuracy!! <= 10f) {
-                                    MaterialTheme.colorScheme.onSecondaryContainer
-                                } else if (gpsAccuracy != null) {
-                                    MaterialTheme.colorScheme.error
-                                } else {
-                                    MaterialTheme.colorScheme.onSecondaryContainer
+                                color = when {
+                                    gpsAccuracy != null && gpsAccuracy <= 10f ->
+                                        MaterialTheme.colorScheme.onSecondaryContainer
+                                    gpsAccuracy != null ->
+                                        MaterialTheme.colorScheme.error
+                                    else ->
+                                        MaterialTheme.colorScheme.onSecondaryContainer
                                 },
                             )
                         }
