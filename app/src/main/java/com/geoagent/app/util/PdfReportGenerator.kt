@@ -16,7 +16,6 @@ import com.geoagent.app.data.local.entity.ProjectEntity
 import com.geoagent.app.data.local.entity.SampleEntity
 import com.geoagent.app.data.local.entity.StationEntity
 import com.geoagent.app.data.local.entity.StructuralEntity
-import java.io.File
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.io.FileOutputStream
@@ -205,7 +204,7 @@ class PdfReportGenerator @Inject constructor(
                             }
                             val file = File(photo.filePath)
                             if (file.exists()) {
-                                val original = BitmapFactory.decodeFile(photo.filePath)
+                                val original = decodeSampledBitmap(photo.filePath, thumbW.toInt(), thumbH.toInt())
                                 if (original != null) {
                                     val scaled = Bitmap.createScaledBitmap(original, thumbW.toInt(), thumbH.toInt(), true)
                                     original.recycle()
@@ -294,7 +293,7 @@ class PdfReportGenerator @Inject constructor(
                             }
                             val file = File(photo.filePath)
                             if (file.exists()) {
-                                val original = BitmapFactory.decodeFile(photo.filePath)
+                                val original = decodeSampledBitmap(photo.filePath, thumbW.toInt(), thumbH.toInt())
                                 if (original != null) {
                                     val scaled = Bitmap.createScaledBitmap(original, thumbW.toInt(), thumbH.toInt(), true)
                                     original.recycle()
@@ -331,5 +330,30 @@ class PdfReportGenerator @Inject constructor(
         } finally {
             document.close()
         }
+    }
+
+    /**
+     * Decodes a bitmap from [filePath] at a reduced resolution close to
+     * [reqWidth] × [reqHeight] to avoid loading full-resolution camera
+     * images (~48 MB for 12 MP) into memory.
+     */
+    private fun decodeSampledBitmap(filePath: String, reqWidth: Int, reqHeight: Int): Bitmap? {
+        // First pass: read dimensions only
+        val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(filePath, options)
+        if (options.outWidth <= 0 || options.outHeight <= 0) return null
+
+        // Calculate inSampleSize (power of 2 that keeps both dimensions >= request)
+        var sampleSize = 1
+        val halfW = options.outWidth / 2
+        val halfH = options.outHeight / 2
+        while (halfW / sampleSize >= reqWidth && halfH / sampleSize >= reqHeight) {
+            sampleSize *= 2
+        }
+
+        // Second pass: decode with sample size
+        options.inJustDecodeBounds = false
+        options.inSampleSize = sampleSize
+        return BitmapFactory.decodeFile(filePath, options)
     }
 }
