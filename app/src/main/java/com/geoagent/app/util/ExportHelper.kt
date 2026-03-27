@@ -283,6 +283,10 @@ class ExportHelper @Inject constructor(
         project: ProjectEntity,
         stations: List<StationEntity>,
         drillHoles: List<DrillHoleEntity>,
+        lithologies: Map<Long, List<LithologyEntity>> = emptyMap(),
+        structuralData: Map<Long, List<StructuralEntity>> = emptyMap(),
+        samples: Map<Long, List<SampleEntity>> = emptyMap(),
+        intervals: Map<Long, List<DrillIntervalEntity>> = emptyMap(),
     ): File {
         val features = mutableListOf<JsonObject>()
 
@@ -307,6 +311,37 @@ class ExportHelper @Inject constructor(
                         put("date", JsonPrimitive(DateFormatter.formatDateTime(s.date)))
                         s.altitude?.let { put("altitude", JsonPrimitive(it)) }
                         s.weatherConditions?.let { put("weatherConditions", JsonPrimitive(it)) }
+
+                        // Lithology summary
+                        lithologies[s.id]?.let { liths ->
+                            if (liths.isNotEmpty()) {
+                                put("rockTypes", JsonPrimitive(liths.joinToString(", ") { "${it.rockType} (${it.rockGroup})" }))
+                                liths.firstOrNull()?.let { l ->
+                                    put("primaryRockType", JsonPrimitive(l.rockType))
+                                    put("primaryRockGroup", JsonPrimitive(l.rockGroup))
+                                    l.alteration?.let { put("alteration", JsonPrimitive(it)) }
+                                    l.mineralization?.let { put("mineralization", JsonPrimitive(it)) }
+                                }
+                            }
+                        }
+
+                        // Structural summary
+                        structuralData[s.id]?.let { structs ->
+                            if (structs.isNotEmpty()) {
+                                put("structureCount", JsonPrimitive(structs.size))
+                                put("structures", JsonPrimitive(structs.joinToString("; ") {
+                                    "${it.type}: ${it.strike}°/${it.dip}°${it.dipDirection}"
+                                }))
+                            }
+                        }
+
+                        // Sample summary
+                        samples[s.id]?.let { samps ->
+                            if (samps.isNotEmpty()) {
+                                put("sampleCount", JsonPrimitive(samps.size))
+                                put("sampleCodes", JsonPrimitive(samps.joinToString(", ") { it.code }))
+                            }
+                        }
                     }),
                 ))
             )
@@ -325,17 +360,28 @@ class ExportHelper @Inject constructor(
                         "type" to JsonPrimitive("Point"),
                         "coordinates" to JsonArray(coords),
                     )),
-                    "properties" to JsonObject(mapOf(
-                        "type" to JsonPrimitive("drillhole"),
-                        "holeId" to JsonPrimitive(dh.holeId),
-                        "drillType" to JsonPrimitive(dh.type),
-                        "geologist" to JsonPrimitive(dh.geologist),
-                        "azimuth" to JsonPrimitive(dh.azimuth),
-                        "inclination" to JsonPrimitive(dh.inclination),
-                        "plannedDepth" to JsonPrimitive(dh.plannedDepth),
-                        "actualDepth" to JsonPrimitive(dh.actualDepth ?: 0.0),
-                        "status" to JsonPrimitive(dh.status),
-                    )),
+                    "properties" to JsonObject(buildMap {
+                        put("type", JsonPrimitive("drillhole"))
+                        put("holeId", JsonPrimitive(dh.holeId))
+                        put("drillType", JsonPrimitive(dh.type))
+                        put("geologist", JsonPrimitive(dh.geologist))
+                        put("azimuth", JsonPrimitive(dh.azimuth))
+                        put("inclination", JsonPrimitive(dh.inclination))
+                        put("plannedDepth", JsonPrimitive(dh.plannedDepth))
+                        put("actualDepth", JsonPrimitive(dh.actualDepth ?: 0.0))
+                        put("status", JsonPrimitive(dh.status))
+                        dh.notes?.let { put("notes", JsonPrimitive(it)) }
+                        dh.startDate?.let { put("startDate", JsonPrimitive(DateFormatter.formatDate(it))) }
+                        dh.endDate?.let { put("endDate", JsonPrimitive(DateFormatter.formatDate(it))) }
+
+                        // Interval count and depth summary
+                        intervals[dh.id]?.let { ivs ->
+                            if (ivs.isNotEmpty()) {
+                                put("intervalCount", JsonPrimitive(ivs.size))
+                                put("loggedDepth", JsonPrimitive(ivs.maxOf { it.toDepth }))
+                            }
+                        }
+                    }),
                 ))
             )
         }

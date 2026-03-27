@@ -197,6 +197,10 @@ class ExportViewModel @Inject constructor(
         val project = projectRepository.getById(projectId).first() ?: error("Proyecto no encontrado")
         val stations = stationRepository.getByProject(projectId).first()
         val drillHoles = drillHoleRepository.getByProject(projectId).first()
-        return exportHelper.exportGeoJson(project, stations, drillHoles)
+        val lithologies = stations.associate { it.id to lithologyRepository.getByStation(it.id).first() }
+        val structuralData = stations.associate { it.id to structuralRepository.getByStation(it.id).first() }
+        val samples = stations.associate { it.id to sampleRepository.getByStation(it.id).first() }
+        val intervals = drillHoles.associate { it.id to drillHoleRepository.getIntervals(it.id).first() }
+        return exportHelper.exportGeoJson(project, stations, drillHoles, lithologies, structuralData, samples, intervals)
     }
 }
