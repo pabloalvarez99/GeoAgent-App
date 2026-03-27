@@ -1,17 +1,22 @@
 package com.geoagent.app.util
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.RectF
 import android.graphics.pdf.PdfDocument
 import com.geoagent.app.data.local.entity.DrillHoleEntity
 import com.geoagent.app.data.local.entity.DrillIntervalEntity
 import com.geoagent.app.data.local.entity.LithologyEntity
+import com.geoagent.app.data.local.entity.PhotoEntity
 import com.geoagent.app.data.local.entity.ProjectEntity
 import com.geoagent.app.data.local.entity.SampleEntity
 import com.geoagent.app.data.local.entity.StationEntity
 import com.geoagent.app.data.local.entity.StructuralEntity
+import java.io.File
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.io.FileOutputStream
@@ -58,6 +63,8 @@ class PdfReportGenerator @Inject constructor(
         samples: Map<Long, List<SampleEntity>>,
         drillHoles: List<DrillHoleEntity>,
         intervals: Map<Long, List<DrillIntervalEntity>>,
+        stationPhotos: Map<Long, List<PhotoEntity>> = emptyMap(),
+        drillHolePhotos: Map<Long, List<PhotoEntity>> = emptyMap(),
     ): File {
         val document = PdfDocument()
         try {
@@ -97,6 +104,9 @@ class PdfReportGenerator @Inject constructor(
         y += 18f
         val totalIntervals = intervals.values.sumOf { it.size }
         canvas.drawText("Intervalos de logging: $totalIntervals", margin + 20f, y, bodyPaint)
+        y += 18f
+        val totalPhotos = stationPhotos.values.sumOf { it.size } + drillHolePhotos.values.sumOf { it.size }
+        canvas.drawText("Fotos: $totalPhotos", margin + 20f, y, bodyPaint)
 
         // Footer
         canvas.drawText("Generado por GeoAgent", margin, (pageHeight - 30).toFloat(), smallPaint)
@@ -175,6 +185,46 @@ class PdfReportGenerator @Inject constructor(
                     y += 12f
                 }
 
+                // Photos for this station
+                stationPhotos[station.id]?.let { photos ->
+                    if (photos.isNotEmpty()) {
+                        if (y > pageHeight - 40) {
+                            document.finishPage(currentPage)
+                            currentPage = document.startPage(PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNum++).create())
+                            canvas = currentPage.canvas; y = margin + 20f
+                        }
+                        canvas.drawText("  Fotos (${photos.size}):", margin + 20f, y, smallPaint)
+                        y += 14f
+                        photos.forEach { photo ->
+                            val thumbH = 100f
+                            val thumbW = 133f
+                            if (y > pageHeight - thumbH - 20f) {
+                                document.finishPage(currentPage)
+                                currentPage = document.startPage(PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNum++).create())
+                                canvas = currentPage.canvas; y = margin + 20f
+                            }
+                            val file = File(photo.filePath)
+                            if (file.exists()) {
+                                val original = BitmapFactory.decodeFile(photo.filePath)
+                                if (original != null) {
+                                    val scaled = Bitmap.createScaledBitmap(original, thumbW.toInt(), thumbH.toInt(), true)
+                                    original.recycle()
+                                    canvas.drawBitmap(scaled, null, RectF(margin + 20f, y, margin + 20f + thumbW, y + thumbH), null)
+                                    scaled.recycle()
+                                    if (!photo.description.isNullOrBlank()) {
+                                        canvas.drawText(photo.description.take(60), margin + 20f + thumbW + 8f, y + 20f, smallPaint)
+                                    }
+                                    canvas.drawText(DateFormatter.formatDateTime(photo.takenAt), margin + 20f + thumbW + 8f, y + 34f, smallPaint)
+                                    y += thumbH + 6f
+                                }
+                            } else if (!photo.description.isNullOrBlank()) {
+                                canvas.drawText("    Foto: ${photo.description.take(70)}", margin + 20f, y, smallPaint)
+                                y += 12f
+                            }
+                        }
+                    }
+                }
+
                 y += 10f
             }
 
@@ -222,6 +272,46 @@ class PdfReportGenerator @Inject constructor(
                     }
                     canvas.drawText("  ${iv.fromDepth}-${iv.toDepth}m: ${iv.rockType} (${iv.rockGroup}) ${iv.alteration ?: ""} ${iv.mineralization ?: ""}", margin + 20f, y, smallPaint)
                     y += 12f
+                }
+
+                // Photos for this drill hole
+                drillHolePhotos[dh.id]?.let { photos ->
+                    if (photos.isNotEmpty()) {
+                        if (y > pageHeight - 40) {
+                            document.finishPage(currentPage)
+                            currentPage = document.startPage(PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNum++).create())
+                            canvas = currentPage.canvas; y = margin + 20f
+                        }
+                        canvas.drawText("  Fotos (${photos.size}):", margin + 20f, y, smallPaint)
+                        y += 14f
+                        photos.forEach { photo ->
+                            val thumbH = 100f
+                            val thumbW = 133f
+                            if (y > pageHeight - thumbH - 20f) {
+                                document.finishPage(currentPage)
+                                currentPage = document.startPage(PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNum++).create())
+                                canvas = currentPage.canvas; y = margin + 20f
+                            }
+                            val file = File(photo.filePath)
+                            if (file.exists()) {
+                                val original = BitmapFactory.decodeFile(photo.filePath)
+                                if (original != null) {
+                                    val scaled = Bitmap.createScaledBitmap(original, thumbW.toInt(), thumbH.toInt(), true)
+                                    original.recycle()
+                                    canvas.drawBitmap(scaled, null, RectF(margin + 20f, y, margin + 20f + thumbW, y + thumbH), null)
+                                    scaled.recycle()
+                                    if (!photo.description.isNullOrBlank()) {
+                                        canvas.drawText(photo.description.take(60), margin + 20f + thumbW + 8f, y + 20f, smallPaint)
+                                    }
+                                    canvas.drawText(DateFormatter.formatDateTime(photo.takenAt), margin + 20f + thumbW + 8f, y + 34f, smallPaint)
+                                    y += thumbH + 6f
+                                }
+                            } else if (!photo.description.isNullOrBlank()) {
+                                canvas.drawText("    Foto: ${photo.description.take(70)}", margin + 20f, y, smallPaint)
+                                y += 12f
+                            }
+                        }
+                    }
                 }
 
                 y += 10f

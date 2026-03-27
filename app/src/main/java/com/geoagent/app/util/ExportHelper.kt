@@ -7,6 +7,7 @@ import androidx.core.content.FileProvider
 import com.geoagent.app.data.local.entity.DrillHoleEntity
 import com.geoagent.app.data.local.entity.DrillIntervalEntity
 import com.geoagent.app.data.local.entity.LithologyEntity
+import com.geoagent.app.data.local.entity.PhotoEntity
 import com.geoagent.app.data.local.entity.ProjectEntity
 import com.geoagent.app.data.local.entity.SampleEntity
 import com.geoagent.app.data.local.entity.StationEntity
@@ -43,6 +44,7 @@ class ExportHelper @Inject constructor(
         samples: Map<Long, List<SampleEntity>>,
         drillHoles: List<DrillHoleEntity>,
         intervals: Map<Long, List<DrillIntervalEntity>>,
+        photos: List<PhotoEntity> = emptyList(),
     ): File {
         val workbook = XSSFWorkbook()
         val fileName = "GeoAgent_${sanitizeName(project.name)}_${DateFormatter.formatForFileName(System.currentTimeMillis())}.xlsx"
@@ -193,6 +195,31 @@ class ExportHelper @Inject constructor(
                 row.createCell(15).setCellValue(iv.structure ?: "")
                 row.createCell(16).setCellValue(iv.weathering ?: "")
                 row.createCell(17).setCellValue(iv.notes ?: "")
+            }
+        }
+
+        // Photos sheet
+        if (photos.isNotEmpty()) {
+            val stationCodeMap = stations.associate { it.id to it.code }
+            val drillHoleCodeMap = drillHoles.associate { it.id to it.holeId }
+
+            val photosSheet = workbook.createSheet("Fotos")
+            val photosHeader = photosSheet.createRow(0)
+            listOf("Estacion/Sondaje", "Descripcion", "Fecha", "Latitud", "Longitud", "Archivo")
+                .forEachIndexed { i, h -> photosHeader.createCell(i).setCellValue(h) }
+            photos.forEachIndexed { idx, photo ->
+                val row = photosSheet.createRow(idx + 1)
+                val parentCode = when {
+                    photo.stationId != null -> stationCodeMap[photo.stationId] ?: "Estacion ${photo.stationId}"
+                    photo.drillHoleId != null -> drillHoleCodeMap[photo.drillHoleId] ?: "Sondaje ${photo.drillHoleId}"
+                    else -> "Proyecto"
+                }
+                row.createCell(0).setCellValue(parentCode)
+                row.createCell(1).setCellValue(photo.description ?: "")
+                row.createCell(2).setCellValue(DateFormatter.formatDateTime(photo.takenAt))
+                row.createCell(3).setCellValue(photo.latitude ?: 0.0)
+                row.createCell(4).setCellValue(photo.longitude ?: 0.0)
+                row.createCell(5).setCellValue(photo.fileName)
             }
         }
 

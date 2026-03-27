@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.geoagent.app.data.repository.DrillHoleRepository
 import com.geoagent.app.data.repository.LithologyRepository
+import com.geoagent.app.data.repository.PhotoRepository
 import com.geoagent.app.data.repository.ProjectRepository
 import com.geoagent.app.data.repository.SampleRepository
 import com.geoagent.app.data.repository.StationRepository
@@ -54,6 +55,7 @@ class ExportViewModel @Inject constructor(
     private val lithologyRepository: LithologyRepository,
     private val structuralRepository: StructuralRepository,
     private val sampleRepository: SampleRepository,
+    private val photoRepository: PhotoRepository,
     private val pdfReportGenerator: PdfReportGenerator,
     private val exportHelper: ExportHelper,
 ) : ViewModel() {
@@ -126,7 +128,8 @@ class ExportViewModel @Inject constructor(
         val structuralData = stations.associate { it.id to structuralRepository.getByStation(it.id).first() }
         val samples = stations.associate { it.id to sampleRepository.getByStation(it.id).first() }
         val intervals = drillHoles.associate { it.id to drillHoleRepository.getIntervals(it.id).first() }
-        return exportHelper.exportToExcel(project, stations, lithologies, structuralData, samples, drillHoles, intervals)
+        val photos = photoRepository.getByProject(projectId).first()
+        return exportHelper.exportToExcel(project, stations, lithologies, structuralData, samples, drillHoles, intervals, photos)
     }
 
     private suspend fun exportPdfReport(): File {
@@ -146,6 +149,9 @@ class ExportViewModel @Inject constructor(
         val intervals = drillHoles.associate { dh ->
             dh.id to drillHoleRepository.getIntervals(dh.id).first()
         }
+        val allPhotos = photoRepository.getByProject(projectId).first()
+        val stationPhotos = allPhotos.filter { it.stationId != null }.groupBy { it.stationId!! }
+        val drillHolePhotos = allPhotos.filter { it.drillHoleId != null }.groupBy { it.drillHoleId!! }
 
         return pdfReportGenerator.generateProjectReport(
             project = project,
@@ -155,6 +161,8 @@ class ExportViewModel @Inject constructor(
             samples = samples,
             drillHoles = drillHoles,
             intervals = intervals,
+            stationPhotos = stationPhotos,
+            drillHolePhotos = drillHolePhotos,
         )
     }
 
