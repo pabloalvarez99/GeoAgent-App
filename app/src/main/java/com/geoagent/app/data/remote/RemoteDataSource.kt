@@ -28,6 +28,8 @@ class RemoteDataSource @Inject constructor(
         private const val TAG = "RemoteDataSource"
     }
 
+    fun isAuthenticated(): Boolean = auth.currentUser != null
+
     private fun userId(): String =
         auth.currentUser?.uid ?: throw IllegalStateException("Usuario no autenticado")
 

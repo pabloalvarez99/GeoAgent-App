@@ -121,29 +121,36 @@ class SettingsViewModel @Inject constructor(
     private var syncJob: Job? = null
 
     fun syncNow() {
+        if (!authRepository.isLoggedIn()) {
+            _uiState.update { it.copy(syncError = "Debes iniciar sesion para sincronizar.") }
+            return
+        }
         syncJob?.cancel()
         _uiState.update { it.copy(isSyncing = true, syncError = null) }
         val workInfos = syncManager.syncNow()
         syncJob = viewModelScope.launch {
             workInfos.asFlow().collect { infoList ->
                 val info = infoList.firstOrNull() ?: return@collect
-                when {
-                    info.state.isFinished -> {
-                        val succeeded = info.state == androidx.work.WorkInfo.State.SUCCEEDED
-                        val errorMsg = info.outputData.getString("error")
-                        val ts = if (succeeded) System.currentTimeMillis() else null
-                        if (ts != null) preferencesHelper.lastSyncTimestamp = ts
-                        _uiState.update {
-                            it.copy(
-                                isSyncing = false,
-                                lastSyncTimestamp = ts ?: it.lastSyncTimestamp,
-                                syncError = if (!succeeded) (errorMsg ?: "Error durante la sincronizacion.") else null,
-                            )
-                        }
-                        syncManager.schedulePeriodic()
-                        syncJob = null
+                if (info.state.isFinished) {
+                    val succeeded = info.state == androidx.work.WorkInfo.State.SUCCEEDED
+                    val errorMsg = info.outputData.getString("error")
+                    val warning = info.outputData.getString("warning")
+                    val ts = if (succeeded) System.currentTimeMillis() else null
+                    if (ts != null) preferencesHelper.lastSyncTimestamp = ts
+                    _uiState.update {
+                        it.copy(
+                            isSyncing = false,
+                            lastSyncTimestamp = ts ?: it.lastSyncTimestamp,
+                            syncError = when {
+                                !succeeded -> errorMsg ?: "Error durante la sincronizacion."
+                                warning != null -> warning
+                                else -> null
+                            },
+                        )
                     }
-                    else -> _uiState.update { it.copy(isSyncing = true) }
+                    syncManager.schedulePeriodic()
+                    syncJob?.cancel()
+                    syncJob = null
                 }
             }
         }

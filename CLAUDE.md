@@ -57,41 +57,62 @@
 
 ## Project Overview
 Android native app (Kotlin + Jetpack Compose) for field geology data collection.
-Offline-first with Supabase cloud sync.
+Offline-first with Firebase cloud sync (Firestore + Auth + Storage).
 
 ## Tech Stack
 - **Language:** Kotlin
 - **UI:** Jetpack Compose + Material 3
-- **Database:** Room (SQLite) for local, Supabase (PostgreSQL) for cloud
-- **DI:** Hilt
+- **Database:** Room (SQLite) for local, Firebase Firestore for cloud
+- **Auth:** Firebase Authentication
+- **Storage:** Firebase Storage (photos)
+- **DI:** Hilt (`@HiltViewModel`, `@HiltWorker`)
 - **Async:** Coroutines + Flow
-- **Sync:** WorkManager
-- **Navigation:** Compose Navigation with type-safe routes
+- **Sync:** WorkManager (periodic + manual)
+- **Navigation:** Compose Navigation with type-safe `@Serializable` routes
+- **Export:** Apache POI (Excel .xlsx), Android PdfDocument (PDF), GeoJSON, CSV (collar/survey/assay)
 
 ## Architecture
-- `data/local/entity/` - Room entities
-- `data/local/dao/` - Room DAOs
-- `data/local/database/` - Room database
-- `data/remote/` - Supabase client and remote data source
-- `data/remote/dto/` - Supabase DTOs
-- `data/repository/` - Repositories (single source of truth)
-- `data/sync/` - Sync engine (WorkManager)
-- `di/` - Hilt modules
-- `ui/screens/` - Screen composables + ViewModels
+- `data/local/entity/` - Room entities (8: Project, Station, Lithology, Structural, Sample, DrillHole, DrillInterval, Photo)
+- `data/local/dao/` - Room DAOs (8 matching entities)
+- `data/local/database/` - GeoAgentDatabase + migrations (1→2→3)
+- `data/remote/RemoteDataSource.kt` - Firebase Firestore/Storage operations
+- `data/remote/dto/` - Firebase DTOs with `toMap()` / `fromFirestoreMap()` (8 files)
+- `data/repository/` - Repositories (8, single source of truth pattern)
+- `data/sync/` - SyncManager, SyncWorker (`@HiltWorker`), ConnectivityObserver
+- `di/` - Hilt modules: DatabaseModule, FirebaseModule (file: SupabaseModule.kt), NetworkModule
+- `ui/screens/` - 13 feature areas, 40 files (Screen + ViewModel per feature)
 - `ui/components/` - Reusable UI components
-- `ui/navigation/` - Navigation routes and host
+- `ui/navigation/` - Routes.kt (sealed `@Serializable` routes), GeoAgentNavHost, AuthNavigation
 - `ui/theme/` - Material 3 theme
-- `util/` - Utilities (GPS, dates, export, PDF, validation)
+- `util/` - CodeGenerator, DateFormatter, ExportHelper, FormValidation, LocationHelper, PreferencesHelper, PdfReportGenerator
+
+## Screens
+- **auth/** - Login (Firebase Auth)
+- **project/** - List, Detail
+- **station/** - List, Detail, Create
+- **lithology/** - Form (per station)
+- **structural/** - Form (per station)
+- **sample/** - Form (per station)
+- **drillhole/** - List, Detail, Create + DrillIntervalForm
+- **photo/** - CameraCapture, PhotoGallery
+- **map/** - Google Maps view (stations + drill holes, multiple map types)
+- **export/** - PDF report, Excel, GeoJSON, Collar/Survey/Assay CSV (ZIP)
+- **settings/** - Sync controls, coordinate format, preferences
+- **home/** - Dashboard
 
 ## Conventions
 - All UI text in **Spanish**
 - Large touch targets (48dp+ buttons) for field use with gloves
 - Offline-first: all data saved to Room first, synced when WiFi available
-- Entity syncStatus: PENDING -> SYNCED, MODIFIED -> SYNCED
+- Entity syncStatus: PENDING → SYNCED, MODIFIED → SYNCED
 - Use `Flow` for reactive UI, `suspend` for writes
 - Package: `com.geoagent.app`
+- DateFormatter uses thread-safe `DateTimeFormatter` (not `SimpleDateFormat`)
+- PDF photo embedding uses `decodeSampledBitmap()` to prevent OOM
 
-## Supabase
-- Project: jagkrzsgxboqlbgyrkza
-- Region: West US (Oregon)
-- Migrations in `supabase/migrations/`
+## Firebase
+- Config: `app/google-services.json`
+- Firestore structure: `users/{userId}/{collection}/{docId}`
+- Storage: `photos/{userId}/{fileName}`
+- Rules: `firestore.rules`, `storage.rules`
+- Legacy `supabase/` directory exists with migration SQL (not used by app)

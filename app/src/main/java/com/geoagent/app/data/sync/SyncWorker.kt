@@ -69,6 +69,14 @@ class SyncWorker @AssistedInject constructor(
         var syncedCount = 0
         var errorCount = 0
 
+        // Early auth check — fail fast with a clear message
+        if (remoteDataSource.isAuthenticated().not()) {
+            Log.w(TAG, "Sync aborted: user not authenticated")
+            return Result.failure(
+                workDataOf("error" to "Usuario no autenticado. Inicia sesion e intenta de nuevo.")
+            )
+        }
+
         try {
             // Phase 1: Pull remote data into local DB (inserts new records from other devices)
             try {
@@ -245,19 +253,34 @@ class SyncWorker @AssistedInject constructor(
 
         } catch (e: Exception) {
             Log.e(TAG, "Sync failed with unexpected error", e)
-            return Result.failure(
-                workDataOf("error" to (e.message ?: "Error inesperado"))
-            )
+            val msg = when {
+                e is IllegalStateException && e.message?.contains("autenticado") == true ->
+                    "Sesion expirada. Cierra sesion e inicia de nuevo."
+                e.message?.contains("PERMISSION_DENIED", ignoreCase = true) == true ->
+                    "Permisos denegados en Firebase. Contacta al administrador."
+                e.message?.contains("UNAVAILABLE", ignoreCase = true) == true ||
+                e.message?.contains("network", ignoreCase = true) == true ->
+                    "Sin conexion a internet. Intenta mas tarde."
+                else -> e.message ?: "Error inesperado durante la sincronizacion."
+            }
+            return Result.failure(workDataOf("error" to msg))
         }
 
         Log.d(TAG, "Sync completed: $syncedCount synced, $errorCount errors")
-        return if (errorCount > 0 && syncedCount == 0) {
-            Result.failure(
-                workDataOf("error" to "Fallaron todos los $errorCount elementos. Verifica tu conexion y los permisos en Firebase.")
+        return when {
+            errorCount > 0 && syncedCount == 0 -> Result.failure(
+                workDataOf("error" to "Fallaron los $errorCount elementos. Verifica tu conexion y permisos en Firebase.")
             )
-        } else {
-            preferencesHelper.lastSyncTimestamp = System.currentTimeMillis()
-            Result.success()
+            errorCount > 0 -> {
+                preferencesHelper.lastSyncTimestamp = System.currentTimeMillis()
+                Result.success(
+                    workDataOf("warning" to "Sincronizados $syncedCount, fallaron $errorCount elementos.")
+                )
+            }
+            else -> {
+                preferencesHelper.lastSyncTimestamp = System.currentTimeMillis()
+                Result.success()
+            }
         }
     }
 
