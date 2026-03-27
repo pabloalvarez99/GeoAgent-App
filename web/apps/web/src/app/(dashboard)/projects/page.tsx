@@ -1,0 +1,248 @@
+'use client';
+
+import { useState } from 'react';
+import Link from 'next/link';
+import {
+  Plus,
+  FolderOpen,
+  MapPin,
+  Loader2,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  Mountain,
+} from 'lucide-react';
+import { useProjects } from '@/lib/hooks/use-projects';
+import { useStations } from '@/lib/hooks/use-stations';
+import { useDrillHoles } from '@/lib/hooks/use-drillholes';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { ProjectForm } from '@/components/forms/project-form';
+import type { GeoProject } from '@geoagent/geo-shared/types';
+import type { ProjectFormData } from '@geoagent/geo-shared/validation';
+import { formatDate } from '@/lib/utils';
+
+// Mini counter hook that doesn't require parent to pass down IDs
+function ProjectStats({ projectId }: { projectId: string }) {
+  const { stations } = useStations(projectId);
+  const { drillHoles } = useDrillHoles(projectId);
+  return (
+    <div className="flex gap-3 text-xs text-muted-foreground">
+      <span>{stations.length} estaciones</span>
+      <span>·</span>
+      <span>{drillHoles.length} sondajes</span>
+    </div>
+  );
+}
+
+export default function ProjectsPage() {
+  const { projects, loading, addProject, editProject, removeProject } = useProjects();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<GeoProject | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<GeoProject | null>(null);
+
+  async function handleCreate(data: ProjectFormData) {
+    await addProject(data);
+    setCreateOpen(false);
+  }
+
+  async function handleEdit(data: ProjectFormData) {
+    if (!editTarget) return;
+    await editProject(editTarget.id, data);
+    setEditTarget(null);
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    await removeProject(deleteTarget.id);
+    setDeleteTarget(null);
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Proyectos</h1>
+          <p className="text-sm text-muted-foreground">
+            {loading ? '...' : `${projects.length} proyecto${projects.length !== 1 ? 's' : ''}`}
+          </p>
+        </div>
+        <Button onClick={() => setCreateOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Nuevo proyecto
+        </Button>
+      </div>
+
+      {/* Loading */}
+      {loading && (
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span className="text-sm">Cargando proyectos...</span>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!loading && projects.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
+          <div className="rounded-full bg-muted p-6">
+            <Mountain className="h-10 w-10 text-muted-foreground" />
+          </div>
+          <div>
+            <p className="font-medium">Sin proyectos todavía</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Crea tu primer proyecto de geología de campo
+            </p>
+          </div>
+          <Button onClick={() => setCreateOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Crear proyecto
+          </Button>
+        </div>
+      )}
+
+      {/* Project grid */}
+      {!loading && projects.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {projects.map((project) => (
+            <Card
+              key={project.id}
+              className="group relative hover:border-primary/50 transition-colors"
+            >
+              {/* Context menu */}
+              <div className="absolute top-3 right-3 z-10">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setEditTarget(project)}>
+                      <Pencil className="h-4 w-4 mr-2" />
+                      Editar
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onClick={() => setDeleteTarget(project)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Eliminar
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              <Link href={`/projects/${project.id}`}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-start gap-3">
+                    <div className="rounded-lg bg-primary/10 p-2 shrink-0">
+                      <FolderOpen className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <CardTitle className="text-base truncate">{project.name}</CardTitle>
+                      <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+                        <MapPin className="h-3 w-3 shrink-0" />
+                        <span className="truncate">{project.location}</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription className="line-clamp-2 text-xs mb-3">
+                    {project.description}
+                  </CardDescription>
+                  <ProjectStats projectId={project.id} />
+                </CardContent>
+              </Link>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Create dialog */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nuevo proyecto</DialogTitle>
+            <DialogDescription>
+              Los datos se sincronizan automáticamente con la app Android
+            </DialogDescription>
+          </DialogHeader>
+          <ProjectForm
+            onSubmit={handleCreate}
+            onCancel={() => setCreateOpen(false)}
+            submitLabel="Crear proyecto"
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit dialog */}
+      <Dialog open={!!editTarget} onOpenChange={(o) => !o && setEditTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar proyecto</DialogTitle>
+          </DialogHeader>
+          {editTarget && (
+            <ProjectForm
+              defaultValues={editTarget}
+              onSubmit={handleEdit}
+              onCancel={() => setEditTarget(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar proyecto?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se eliminará <strong>&quot;{deleteTarget?.name}&quot;</strong>. Esta acción no se puede
+              deshacer. Los datos en la app Android permanecerán hasta la próxima sincronización.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}

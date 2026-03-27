@@ -116,3 +116,5 @@ Offline-first with Firebase cloud sync (Firestore + Auth + Storage).
 - Storage: `photos/{userId}/{fileName}`
 - Rules: `firestore.rules`, `storage.rules`
 - Legacy `supabase/` directory exists with migration SQL (not used by app)
+
+ve actualizando bitacora.md despues de cada prompt y cambios significativos

@@ -1,0 +1,15 @@
+{
+  "name": "geoagent-web",
+  "private": true,
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "web": "turbo run dev --filter=@geoagent/web",
+    "desktop": "turbo run dev --filter=@geoagent/desktop"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.3"
+  },
+  "packageManager": "pnpm@11.0.0-beta.2"
+}
