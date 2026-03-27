@@ -130,7 +130,8 @@ class StationCreateViewModel @Inject constructor(
             preferencesHelper.lastGeologistName = _geologist.value.trim()
 
             if (isEditing) {
-                val existing = stationRepository.getById(editStationId!!).first()!!
+                val existing = stationRepository.getById(editStationId!!).first()
+                    ?: throw IllegalStateException("Estacion no encontrada")
                 stationRepository.update(
                     existing.copy(
                         code = _code.value.trim(),

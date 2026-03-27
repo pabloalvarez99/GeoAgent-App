@@ -165,7 +165,8 @@ class DrillHoleCreateViewModel @Inject constructor(
                 preferencesHelper.lastGeologistName = geologist.trim()
 
                 if (isEditing) {
-                    val existing = drillHoleRepository.getById(editDrillHoleId!!).first()!!
+                    val existing = drillHoleRepository.getById(editDrillHoleId!!).first()
+                        ?: throw IllegalStateException("Sondaje no encontrado")
                     drillHoleRepository.update(
                         existing.copy(
                             holeId = holeId,

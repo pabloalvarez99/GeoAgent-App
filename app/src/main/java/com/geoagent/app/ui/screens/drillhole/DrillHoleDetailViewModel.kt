@@ -63,8 +63,12 @@ class DrillHoleDetailViewModel @Inject constructor(
     fun deleteDrillHole(onDeleted: () -> Unit) {
         val current = drillHole.value ?: return
         viewModelScope.launch {
-            drillHoleRepository.delete(current)
-            onDeleted()
+            try {
+                drillHoleRepository.delete(current)
+                onDeleted()
+            } catch (e: Exception) {
+                android.util.Log.e("DrillHoleDetailVM", "Failed to delete drill hole", e)
+            }
         }
     }
 

@@ -71,8 +71,12 @@ class StationDetailViewModel @Inject constructor(
     fun deleteStation(onDeleted: () -> Unit) {
         val current = station.value ?: return
         viewModelScope.launch {
-            stationRepository.delete(current)
-            onDeleted()
+            try {
+                stationRepository.delete(current)
+                onDeleted()
+            } catch (e: Exception) {
+                android.util.Log.e("StationDetailVM", "Failed to delete station", e)
+            }
         }
     }
 

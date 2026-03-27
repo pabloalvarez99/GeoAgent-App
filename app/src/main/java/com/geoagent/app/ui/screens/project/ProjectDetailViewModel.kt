@@ -74,8 +74,13 @@ class ProjectDetailViewModel @Inject constructor(
     fun deleteProject(onDeleted: () -> Unit) {
         val current = project.value ?: return
         viewModelScope.launch {
-            projectRepository.delete(current)
-            onDeleted()
+            try {
+                projectRepository.delete(current)
+                onDeleted()
+            } catch (e: Exception) {
+                // Room delete with CASCADE shouldn't fail, but guard anyway
+                android.util.Log.e("ProjectDetailVM", "Failed to delete project", e)
+            }
         }
     }
 }
