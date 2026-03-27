@@ -1,6 +1,6 @@
 {
   "framework": "nextjs",
-  "buildCommand": "pnpm turbo build --filter=@geoagent/web...",
+  "buildCommand": "npx turbo build --filter=@geoagent/web...",
   "outputDirectory": "apps/web/.next",
-  "installCommand": "pnpm install"
+  "installCommand": "npm install"
 }
