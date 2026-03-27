@@ -79,7 +79,7 @@ Offline-first with Firebase cloud sync (Firestore + Auth + Storage).
 - `data/remote/dto/` - Firebase DTOs with `toMap()` / `fromFirestoreMap()` (8 files)
 - `data/repository/` - Repositories (8, single source of truth pattern)
 - `data/sync/` - SyncManager, SyncWorker (`@HiltWorker`), ConnectivityObserver
-- `di/` - Hilt modules: DatabaseModule, FirebaseModule (file: SupabaseModule.kt), NetworkModule
+- `di/` - Hilt modules: DatabaseModule, FirebaseModule, NetworkModule
 - `ui/screens/` - 13 feature areas, 40 files (Screen + ViewModel per feature)
 - `ui/components/` - Reusable UI components
 - `ui/navigation/` - Routes.kt (sealed `@Serializable` routes), GeoAgentNavHost, AuthNavigation
