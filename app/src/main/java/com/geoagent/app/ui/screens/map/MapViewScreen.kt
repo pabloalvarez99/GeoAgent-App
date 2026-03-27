@@ -183,8 +183,9 @@ fun MapViewScreen(
 
     // Center camera on data points once loaded
     LaunchedEffect(centerPoint, centeredOnce) {
-        if (!centeredOnce && centerPoint != null) {
-            val (lat, lng) = centerPoint!!
+        val center = centerPoint
+        if (!centeredOnce && center != null) {
+            val (lat, lng) = center
             cameraPositionState.animate(
                 CameraUpdateFactory.newLatLngZoom(LatLng(lat, lng), 13f),
             )
@@ -341,18 +342,17 @@ fun MapViewScreen(
     }
 
     // Marker detail bottom sheet
-    if (selectedMarker != null) {
+    selectedMarker?.let { marker ->
         ModalBottomSheet(
             onDismissRequest = { selectedMarker = null },
             sheetState = bottomSheetState,
         ) {
             MarkerBottomSheet(
-                marker = selectedMarker!!,
+                marker = marker,
                 onNavigate = {
-                    val m = selectedMarker!!
                     selectedMarker = null
-                    if (m.type == "station") onNavigateToStation(m.id)
-                    else onNavigateToDrillHole(m.id)
+                    if (marker.type == "station") onNavigateToStation(marker.id)
+                    else onNavigateToDrillHole(marker.id)
                 },
                 onDismiss = { selectedMarker = null },
                 formatCoordinate = viewModel::formatCoordinate,

@@ -50,7 +50,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExportScreen(
-    projectId: Long,
     onNavigateBack: () -> Unit,
     viewModel: ExportViewModel = hiltViewModel(),
 ) {

@@ -254,10 +254,8 @@ fun GeoAgentNavHost() {
             )
         }
 
-        composable<Route.Export> { backStackEntry ->
-            val route = backStackEntry.toRoute<Route.Export>()
+        composable<Route.Export> {
             ExportScreen(
-                projectId = route.projectId,
                 onNavigateBack = { navController.popBackStack() }
             )
         }
