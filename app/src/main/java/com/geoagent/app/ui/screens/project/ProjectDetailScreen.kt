@@ -75,7 +75,7 @@ fun ProjectDetailScreen(
     var showEditDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
-    if (showDeleteDialog && project != null) {
+    if (showDeleteDialog) project?.let { proj ->
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
             icon = {
@@ -87,7 +87,7 @@ fun ProjectDetailScreen(
             },
             title = { Text("Eliminar Proyecto") },
             text = {
-                Text("Se eliminara el proyecto \"${project!!.name}\" y TODOS sus datos asociados (estaciones, sondajes, muestras, fotos). Esta accion no se puede deshacer.")
+                Text("Se eliminara el proyecto \"${proj.name}\" y TODOS sus datos asociados (estaciones, sondajes, muestras, fotos). Esta accion no se puede deshacer.")
             },
             confirmButton = {
                 TextButton(
@@ -110,11 +110,11 @@ fun ProjectDetailScreen(
         )
     }
 
-    if (showEditDialog && project != null) {
+    if (showEditDialog) project?.let { proj ->
         EditProjectDialog(
-            currentName = project!!.name,
-            currentDescription = project!!.description,
-            currentLocation = project!!.location,
+            currentName = proj.name,
+            currentDescription = proj.description,
+            currentLocation = proj.location,
             onDismiss = { showEditDialog = false },
             onSave = { name, description, location ->
                 viewModel.updateProject(name, description, location)
