@@ -6,6 +6,7 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  getDocs,
   onSnapshot,
   query,
   where,
@@ -254,4 +255,50 @@ export function subscribeToPhotos(
 
 export async function deletePhoto(userId: string, photoId: string) {
   return deleteDoc(userDoc(userId, COLLECTIONS.PHOTOS, photoId));
+}
+
+// ── One-time reads for exports ──────────────────────────────────────────────
+async function getAll<T>(q: Query<DocumentData>): Promise<T[]> {
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() })) as T[];
+}
+
+export async function getStationsOnce(userId: string, projectId: string) {
+  return getAll(
+    query(userCollection(userId, COLLECTIONS.STATIONS), where('projectId', '==', projectId)),
+  );
+}
+
+export async function getDrillHolesOnce(userId: string, projectId: string) {
+  return getAll(
+    query(userCollection(userId, COLLECTIONS.DRILL_HOLES), where('projectId', '==', projectId)),
+  );
+}
+
+export async function getLithologiesOnce(userId: string, stationId: string) {
+  return getAll(
+    query(userCollection(userId, COLLECTIONS.LITHOLOGIES), where('stationId', '==', stationId)),
+  );
+}
+
+export async function getStructuralOnce(userId: string, stationId: string) {
+  return getAll(
+    query(userCollection(userId, COLLECTIONS.STRUCTURAL_DATA), where('stationId', '==', stationId)),
+  );
+}
+
+export async function getSamplesOnce(userId: string, stationId: string) {
+  return getAll(
+    query(userCollection(userId, COLLECTIONS.SAMPLES), where('stationId', '==', stationId)),
+  );
+}
+
+export async function getIntervalsOnce(userId: string, drillHoleId: string) {
+  return getAll(
+    query(
+      userCollection(userId, COLLECTIONS.DRILL_INTERVALS),
+      where('drillHoleId', '==', drillHoleId),
+      orderBy('fromDepth', 'asc'),
+    ),
+  );
 }

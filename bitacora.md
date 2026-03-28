@@ -456,77 +456,54 @@ export const drillIntervalSchema = z.object({
 
 ## 10. Fases de Implementación
 
-### ✅ COMPLETADO
+### ✅ COMPLETADO (Fases 1-7)
 
-- [x] Plan de arquitectura creado y aprobado
-- [x] `bitacora.md` creado (este archivo)
-- [x] `web/package.json` creado (workspace root)
-- [x] `web/pnpm-workspace.yaml` creado
-- [x] Directorios creados: `web/apps/web/src/`, `web/packages/geo-shared/src/`, `web/apps/desktop/electron-src/`
+#### Fase 1: Foundation
+- [x] Monorepo npm workspaces (Turborepo)
+- [x] Next.js 15 + shadcn/ui + Tailwind dark theme
+- [x] `geo-shared` package (types, constants, validation zod)
+- [x] Firebase Web SDK v11 (Firestore + Auth + Storage)
+- [x] Firebase Auth: login/logout con AuthContext
+- [x] Layout: sidebar + header + rutas protegidas (middleware)
+- [x] Vercel deployment funcionando (npm, no pnpm — ver "Decisiones Técnicas")
 
-### 🔄 EN PROGRESO
+#### Fase 2: Proyectos + Dashboard
+- [x] Dashboard `/` con stats y proyectos recientes
+- [x] `/projects` lista con búsqueda, crear, editar, eliminar
+- [x] `/projects/[id]` detalle con contadores en tiempo real
 
-- [ ] `web/turbo.json`
-- [ ] `web/apps/web/package.json` (Next.js 16 + todas las dependencias)
-- [ ] `web/apps/web/next.config.ts`
-- [ ] `web/apps/web/tsconfig.json`
-- [ ] `web/apps/web/tailwind.config.ts`
-- [ ] `web/packages/geo-shared/package.json`
-- [ ] `web/packages/geo-shared/src/types.ts`
-- [ ] `web/packages/geo-shared/src/constants.ts`
-- [ ] `web/packages/geo-shared/src/validation.ts`
+#### Fase 3: Estaciones
+- [x] hooks: `use-stations.ts`, `use-lithologies.ts`, `use-structural.ts`, `use-samples.ts`
+- [x] `/projects/[id]/stations` lista con búsqueda
+- [x] `/projects/[id]/stations/new` crear/editar con GPS capture
+- [x] `/projects/[id]/stations/[stId]` detalle con tabs litología/estructural/muestras
+- [x] Formularios: StationForm, LithologyForm, StructuralForm, SampleForm
 
-### ⏳ PENDIENTE — Fase 1: Foundation
+#### Fase 4: Sondajes
+- [x] hooks: `use-drillholes.ts` (incluye `useDrillIntervals`)
+- [x] `/projects/[id]/drillholes` lista con depth bars + status icons
+- [x] `/projects/[id]/drillholes/new` crear/editar con GPS
+- [x] `/projects/[id]/drillholes/[dhId]` detalle con tabla de intervalos, RQD, Recovery
+- [x] Formularios: DrillHoleForm, IntervalForm
 
-- [ ] `web/apps/web/src/lib/firebase/init.ts` — Firebase Web SDK init
-- [ ] `web/apps/web/src/lib/firebase/auth.tsx` — AuthContext + useAuth hook
-- [ ] `web/apps/web/src/lib/firebase/firestore.ts` — helpers CRUD
-- [ ] `web/apps/web/src/app/layout.tsx` — root layout
-- [ ] `web/apps/web/src/app/globals.css` — Tailwind + CSS vars
-- [ ] `web/apps/web/src/middleware.ts` — proteger rutas con Firebase Auth
-- [ ] `web/apps/web/src/app/(auth)/login/page.tsx` — pantalla login
-- [ ] `web/apps/web/src/app/(dashboard)/layout.tsx` — sidebar + header
-- [ ] `web/apps/web/src/components/layout/sidebar.tsx`
-- [ ] `web/apps/web/src/components/layout/header.tsx`
-- [ ] instalar dependencias: `pnpm install` en `web/`
-- [ ] instalar shadcn/ui: `npx shadcn@latest init`
+#### Fase 5: Mapa
+- [x] `/projects/[id]/map` — Google Maps con marcadores estaciones (azul) + sondajes (violeta)
+- [x] Panel lateral de detalle al hacer clic en marcador
+- [x] Manejo de API key no configurado
 
-### ⏳ PENDIENTE — Fase 2: Proyectos + Dashboard
+#### Fase 6: Fotos
+- [x] `use-photos.ts` hook
+- [x] `/projects/[id]/photos` — galería grid con URLs de Firebase Storage
+- [x] Viewer full-screen, delete con confirmación
 
-- [ ] `web/apps/web/src/lib/hooks/use-projects.ts` — Firestore onSnapshot
-- [ ] `web/apps/web/src/app/(dashboard)/page.tsx` — dashboard con stats
-- [ ] `web/apps/web/src/app/(dashboard)/projects/page.tsx` — lista proyectos
-- [ ] `web/apps/web/src/app/(dashboard)/projects/[id]/page.tsx` — detalle
+#### Fase 7: Exportación
+- [x] `lib/export/pdf.ts` — jsPDF + autotable (reporte completo)
+- [x] `lib/export/excel.ts` — XLSX workbook multi-hoja
+- [x] `lib/export/geojson.ts` — FeatureCollection con estaciones + sondajes
+- [x] `lib/export/csv.ts` — CSV collar/survey/assay (formato industria)
+- [x] `/projects/[id]/export` — página con 4 export cards
 
-### ⏳ PENDIENTE — Fase 3: Estaciones
-
-- [ ] hooks: `use-stations.ts`, `use-lithologies.ts`, `use-structural.ts`, `use-samples.ts`
-- [ ] páginas: stations list, station detail, station create/edit
-- [ ] forms: LithologyForm, StructuralForm, SampleForm
-
-### ⏳ PENDIENTE — Fase 4: Sondajes
-
-- [ ] hooks: `use-drillholes.ts`, `use-intervals.ts`
-- [ ] páginas: drillholes list, detail, create/edit
-- [ ] tabla inline de intervalos (TanStack Table editable)
-- [ ] gráfico columna litológica (recharts)
-
-### ⏳ PENDIENTE — Fase 5: Mapa + Fotos
-
-- [ ] `src/components/map/map-view.tsx` — Google Maps con marcadores
-- [ ] `src/app/(dashboard)/projects/[id]/map/page.tsx`
-- [ ] galería de fotos (Firebase Storage URLs)
-- [ ] upload multi-foto drag & drop
-
-### ⏳ PENDIENTE — Fase 6: Exportación
-
-- [ ] `src/lib/export/pdf.ts` — jsPDF (mirror PdfReportGenerator.kt)
-- [ ] `src/lib/export/excel.ts` — SheetJS (mirror ExportHelper.kt)
-- [ ] `src/lib/export/geojson.ts` — GeoJSON export
-- [ ] `src/lib/export/csv.ts` — CSV collar/survey/assay
-- [ ] página export con preview PDF
-
-### ⏳ PENDIENTE — Fase 7: Electron Desktop
+### ⏳ PENDIENTE — Fase 8: Electron Desktop
 
 - [ ] `web/apps/desktop/electron-src/main.ts`
 - [ ] `web/apps/desktop/electron-src/preload.ts`
@@ -535,16 +512,15 @@ export const drillIntervalSchema = z.object({
 - [ ] build: genera `GeoAgent-Setup.exe`
 - [ ] auto-update via GitHub Releases
 
-### ⏳ PENDIENTE — Fase 8: Features PC-Exclusivos
+### ⏳ PENDIENTE — Fase 9: Features PC-Exclusivos
 
-- [ ] Importación CSV/Excel → bulk create
 - [ ] Dashboard analytics con recharts
-- [ ] Atajos de teclado
-- [ ] Vista dividida mapa + lista
+- [ ] Settings page
+- [ ] Importación CSV/Excel → bulk create
 
-### ⏳ PENDIENTE — Fase 9: Deploy
+### ⏳ PENDIENTE — Fase 10: Deploy Final
 
-- [ ] Variables de entorno en Vercel
+- [ ] Variables de entorno en Vercel (Google Maps API key)
 - [ ] GitHub Actions CI/CD
 - [ ] PWA manifest
 - [ ] GitHub Actions build Electron → GitHub Releases
@@ -633,4 +609,12 @@ Todo el trabajo nuevo va en commits separados del Android.
 
 ---
 
-*Última actualización: 2026-03-27 — Iniciando Fase 1*
+### ⚠️ Decisión Técnica: pnpm → npm
+
+Vercel + Node.js 22 + pnpm 9.x tenía un bug fatal (`ERR_INVALID_THIS: URLSearchParams` en undici).
+**Solución:** Cambio completo a npm workspaces. El `web/package.json` usa `"packageManager": "npm@10.9.2"` y
+`web/vercel.json` usa `"installCommand": "npm install"`. Las dependencias internas usan `"*"` en vez de `"workspace:*"`.
+
+---
+
+*Última actualización: 2026-03-27 — Fases 1-7 completadas. Pendiente: Electron, analytics, deploy final.*
