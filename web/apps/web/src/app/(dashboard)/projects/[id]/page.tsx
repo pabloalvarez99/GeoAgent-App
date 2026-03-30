@@ -15,6 +15,18 @@ import {
   Pencil,
   Trash2,
 } from 'lucide-react';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+  PieChart,
+  Pie,
+  Legend,
+} from 'recharts';
 import { useProject, useProjects } from '@/lib/hooks/use-projects';
 import { useStations } from '@/lib/hooks/use-stations';
 import { useDrillHoles } from '@/lib/hooks/use-drillholes';
@@ -161,6 +173,84 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           </Card>
         ))}
       </div>
+
+      {/* Analytics — shown only when there is data */}
+      {(drillHoles.length > 0 || stations.length > 0) && (
+        <div className="grid sm:grid-cols-2 gap-4">
+          {/* Drill hole depth progress */}
+          {drillHoles.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2 pt-4 px-4">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Profundidad planificada vs real (m)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4">
+                <ResponsiveContainer width="100%" height={180}>
+                  <BarChart
+                    data={drillHoles.map((d) => ({
+                      name: d.holeId,
+                      Planificada: d.plannedDepth,
+                      Real: d.actualDepth ?? 0,
+                    }))}
+                    margin={{ top: 0, right: 0, left: -20, bottom: 0 }}
+                  >
+                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} />
+                    <Tooltip
+                      contentStyle={{ background: '#18181b', border: '1px solid #3f3f46', fontSize: 12 }}
+                    />
+                    <Bar dataKey="Planificada" fill="#6366f1" radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="Real" fill="#22c55e" radius={[3, 3, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Drill hole status distribution */}
+          {drillHoles.length > 0 && (() => {
+            const statusMap: Record<string, number> = {};
+            drillHoles.forEach((d) => {
+              statusMap[d.status] = (statusMap[d.status] ?? 0) + 1;
+            });
+            const pieData = Object.entries(statusMap).map(([name, value]) => ({ name, value }));
+            const COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#64748b'];
+            return (
+              <Card>
+                <CardHeader className="pb-2 pt-4 px-4">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Estado de sondajes
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 pb-4">
+                  <ResponsiveContainer width="100%" height={180}>
+                    <PieChart>
+                      <Pie
+                        data={pieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={40}
+                        outerRadius={65}
+                        paddingAngle={3}
+                        dataKey="value"
+                      >
+                        {pieData.map((_, index) => (
+                          <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{ background: '#18181b', border: '1px solid #3f3f46', fontSize: 12 }}
+                      />
+                      <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            );
+          })()}
+        </div>
+      )}
 
       {/* Sub navigation */}
       <div className="flex flex-wrap gap-2">
