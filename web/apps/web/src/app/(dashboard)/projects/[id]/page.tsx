@@ -40,6 +40,7 @@ import {
 import { ProjectForm } from '@/components/forms/project-form';
 import type { ProjectFormData } from '@geoagent/geo-shared/validation';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 const subNavItems = [
   { href: 'stations', label: 'Estaciones', icon: Layers },
@@ -80,13 +81,23 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   }
 
   async function handleEdit(data: ProjectFormData) {
-    await editProject(id, data);
-    setEditOpen(false);
+    try {
+      await editProject(id, data);
+      toast.success('Proyecto actualizado');
+      setEditOpen(false);
+    } catch {
+      toast.error('Error al actualizar proyecto');
+    }
   }
 
   async function handleDelete() {
-    await removeProject(id);
-    router.replace('/projects');
+    try {
+      await removeProject(id);
+      toast.success('Proyecto eliminado');
+      router.replace('/projects');
+    } catch {
+      toast.error('Error al eliminar proyecto');
+    }
   }
 
   return (

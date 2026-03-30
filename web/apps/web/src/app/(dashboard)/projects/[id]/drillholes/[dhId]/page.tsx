@@ -42,6 +42,7 @@ import {
 import { IntervalForm } from '@/components/forms/interval-form';
 import type { DrillIntervalFormData } from '@geoagent/geo-shared/validation';
 import type { GeoDrillInterval } from '@geoagent/geo-shared/types';
+import { toast } from 'sonner';
 
 const statusIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   'Completado': CheckCircle2,
@@ -82,9 +83,14 @@ export default function DrillHoleDetailPage({
   const StatusIcon = statusIcons[drillHole.status] ?? Clock;
 
   async function handleIntervalSubmit(data: DrillIntervalFormData) {
-    await saveInterval({ ...data, drillHoleId: dhId }, editInterval?.id);
-    setIntervalOpen(false);
-    setEditInterval(null);
+    try {
+      await saveInterval({ ...data, drillHoleId: dhId }, editInterval?.id);
+      toast.success('Intervalo guardado');
+      setIntervalOpen(false);
+      setEditInterval(null);
+    } catch {
+      toast.error('Error al guardar intervalo');
+    }
   }
 
   return (
@@ -282,7 +288,7 @@ export default function DrillHoleDetailPage({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => { removeInterval(deleteInterval!.id); setDeleteInterval(null); }}
+              onClick={async () => { try { await removeInterval(deleteInterval!.id); toast.success('Intervalo eliminado'); } catch { toast.error('Error al eliminar intervalo'); } setDeleteInterval(null); }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Eliminar

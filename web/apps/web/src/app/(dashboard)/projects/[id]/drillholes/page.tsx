@@ -44,6 +44,7 @@ import {
 import { DrillHoleForm } from '@/components/forms/drillhole-form';
 import type { DrillHoleFormData } from '@geoagent/geo-shared/validation';
 import type { GeoDrillHole } from '@geoagent/geo-shared/types';
+import { toast } from 'sonner';
 
 const statusIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   'Completado': CheckCircle2,
@@ -78,14 +79,24 @@ export default function DrillHolesPage({ params }: { params: Promise<{ id: strin
 
   async function handleEdit(data: DrillHoleFormData) {
     if (!editTarget) return;
-    await editDrillHole(editTarget.id, data);
-    setEditTarget(null);
+    try {
+      await editDrillHole(editTarget.id, data);
+      toast.success('Sondaje actualizado');
+      setEditTarget(null);
+    } catch {
+      toast.error('Error al actualizar sondaje');
+    }
   }
 
   async function handleDelete() {
     if (!deleteTarget) return;
-    await removeDrillHole(deleteTarget.id);
-    setDeleteTarget(null);
+    try {
+      await removeDrillHole(deleteTarget.id);
+      toast.success('Sondaje eliminado');
+      setDeleteTarget(null);
+    } catch {
+      toast.error('Error al eliminar sondaje');
+    }
   }
 
   return (

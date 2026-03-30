@@ -9,6 +9,7 @@ import { useProject } from '@/lib/hooks/use-projects';
 import { Button } from '@/components/ui/button';
 import { DrillHoleForm } from '@/components/forms/drillhole-form';
 import type { DrillHoleFormData } from '@geoagent/geo-shared/validation';
+import { toast } from 'sonner';
 
 export default function NewDrillHolePage({ params }: { params: Promise<{ id: string }> }) {
   const { id: projectId } = use(params);
@@ -17,8 +18,13 @@ export default function NewDrillHolePage({ params }: { params: Promise<{ id: str
   const { addDrillHole } = useDrillHoles(projectId);
 
   async function handleSubmit(data: DrillHoleFormData) {
-    await addDrillHole({ ...data, projectId });
-    router.push(`/projects/${projectId}/drillholes`);
+    try {
+      await addDrillHole({ ...data, projectId });
+      toast.success('Sondaje creado');
+      router.push(`/projects/${projectId}/drillholes`);
+    } catch {
+      toast.error('Error al crear sondaje');
+    }
   }
 
   return (

@@ -45,6 +45,7 @@ import { ProjectForm } from '@/components/forms/project-form';
 import type { GeoProject } from '@geoagent/geo-shared/types';
 import type { ProjectFormData } from '@geoagent/geo-shared/validation';
 import { formatDate } from '@/lib/utils';
+import { toast } from 'sonner';
 
 // Mini counter hook that doesn't require parent to pass down IDs
 function ProjectStats({ projectId }: { projectId: string }) {
@@ -66,20 +67,35 @@ export default function ProjectsPage() {
   const [deleteTarget, setDeleteTarget] = useState<GeoProject | null>(null);
 
   async function handleCreate(data: ProjectFormData) {
-    await addProject(data);
-    setCreateOpen(false);
+    try {
+      await addProject(data);
+      toast.success('Proyecto creado');
+      setCreateOpen(false);
+    } catch {
+      toast.error('Error al crear proyecto');
+    }
   }
 
   async function handleEdit(data: ProjectFormData) {
     if (!editTarget) return;
-    await editProject(editTarget.id, data);
-    setEditTarget(null);
+    try {
+      await editProject(editTarget.id, data);
+      toast.success('Proyecto actualizado');
+      setEditTarget(null);
+    } catch {
+      toast.error('Error al actualizar proyecto');
+    }
   }
 
   async function handleDelete() {
     if (!deleteTarget) return;
-    await removeProject(deleteTarget.id);
-    setDeleteTarget(null);
+    try {
+      await removeProject(deleteTarget.id);
+      toast.success('Proyecto eliminado');
+      setDeleteTarget(null);
+    } catch {
+      toast.error('Error al eliminar proyecto');
+    }
   }
 
   return (

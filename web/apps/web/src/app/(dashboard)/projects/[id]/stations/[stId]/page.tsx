@@ -47,6 +47,7 @@ import { StructuralForm } from '@/components/forms/structural-form';
 import { SampleForm } from '@/components/forms/sample-form';
 import type { LithologyFormData, StructuralFormData, SampleFormData } from '@geoagent/geo-shared/validation';
 import type { GeoLithology, GeoStructural, GeoSample } from '@geoagent/geo-shared/types';
+import { toast } from 'sonner';
 
 export default function StationDetailPage({
   params,
@@ -90,23 +91,38 @@ export default function StationDetailPage({
 
   // Lithology handlers
   async function handleLithoSubmit(data: LithologyFormData) {
-    await addOrUpdateLithology({ ...data, stationId: stId }, lithoEdit?.id);
-    setLithoOpen(false);
-    setLithoEdit(null);
+    try {
+      await addOrUpdateLithology({ ...data, stationId: stId }, lithoEdit?.id);
+      toast.success('Litología guardada');
+      setLithoOpen(false);
+      setLithoEdit(null);
+    } catch {
+      toast.error('Error al guardar litología');
+    }
   }
 
   // Structural handlers
   async function handleStructSubmit(data: StructuralFormData) {
-    await addOrUpdateStructural({ ...data, stationId: stId }, structEdit?.id);
-    setStructOpen(false);
-    setStructEdit(null);
+    try {
+      await addOrUpdateStructural({ ...data, stationId: stId }, structEdit?.id);
+      toast.success('Dato estructural guardado');
+      setStructOpen(false);
+      setStructEdit(null);
+    } catch {
+      toast.error('Error al guardar dato estructural');
+    }
   }
 
   // Sample handlers
   async function handleSampleSubmit(data: SampleFormData) {
-    await addOrUpdateSample({ ...data, stationId: stId }, sampleEdit?.id);
-    setSampleOpen(false);
-    setSampleEdit(null);
+    try {
+      await addOrUpdateSample({ ...data, stationId: stId }, sampleEdit?.id);
+      toast.success('Muestra guardada');
+      setSampleOpen(false);
+      setSampleEdit(null);
+    } catch {
+      toast.error('Error al guardar muestra');
+    }
   }
 
   return (
@@ -349,7 +365,7 @@ export default function StationDetailPage({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => { removeLithology(lithoDelete!.id); setLithoDelete(null); }}
+              onClick={async () => { try { await removeLithology(lithoDelete!.id); toast.success('Litología eliminada'); } catch { toast.error('Error al eliminar litología'); } setLithoDelete(null); }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Eliminar
@@ -382,7 +398,7 @@ export default function StationDetailPage({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => { removeStructural(structDelete!.id); setStructDelete(null); }}
+              onClick={async () => { try { await removeStructural(structDelete!.id); toast.success('Dato estructural eliminado'); } catch { toast.error('Error al eliminar dato estructural'); } setStructDelete(null); }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Eliminar
@@ -415,7 +431,7 @@ export default function StationDetailPage({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => { removeSample(sampleDelete!.id); setSampleDelete(null); }}
+              onClick={async () => { try { await removeSample(sampleDelete!.id); toast.success('Muestra eliminada'); } catch { toast.error('Error al eliminar muestra'); } setSampleDelete(null); }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Eliminar

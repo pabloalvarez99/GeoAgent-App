@@ -9,6 +9,7 @@ import { useProject } from '@/lib/hooks/use-projects';
 import { Button } from '@/components/ui/button';
 import { StationForm } from '@/components/forms/station-form';
 import type { StationFormData } from '@geoagent/geo-shared/validation';
+import { toast } from 'sonner';
 
 export default function NewStationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: projectId } = use(params);
@@ -17,8 +18,13 @@ export default function NewStationPage({ params }: { params: Promise<{ id: strin
   const { addStation } = useStations(projectId);
 
   async function handleSubmit(data: StationFormData) {
-    await addStation({ ...data, projectId });
-    router.push(`/projects/${projectId}/stations`);
+    try {
+      await addStation({ ...data, projectId });
+      toast.success('Estación creada');
+      router.push(`/projects/${projectId}/stations`);
+    } catch {
+      toast.error('Error al crear estación');
+    }
   }
 
   return (

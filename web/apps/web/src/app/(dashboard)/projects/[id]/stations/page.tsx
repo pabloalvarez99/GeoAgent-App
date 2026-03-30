@@ -40,6 +40,7 @@ import {
 import { StationForm } from '@/components/forms/station-form';
 import type { StationFormData } from '@geoagent/geo-shared/validation';
 import type { GeoStation } from '@geoagent/geo-shared/types';
+import { toast } from 'sonner';
 
 export default function StationsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: projectId } = use(params);
@@ -61,15 +62,25 @@ export default function StationsPage({ params }: { params: Promise<{ id: string 
 
   async function handleEdit(data: StationFormData) {
     if (!editTarget) return;
-    await editStation(editTarget.id, data);
-    setEditOpen(false);
-    setEditTarget(null);
+    try {
+      await editStation(editTarget.id, data);
+      toast.success('Estación actualizada');
+      setEditOpen(false);
+      setEditTarget(null);
+    } catch {
+      toast.error('Error al actualizar estación');
+    }
   }
 
   async function handleDelete() {
     if (!deleteTarget) return;
-    await removeStation(deleteTarget.id);
-    setDeleteTarget(null);
+    try {
+      await removeStation(deleteTarget.id);
+      toast.success('Estación eliminada');
+      setDeleteTarget(null);
+    } catch {
+      toast.error('Error al eliminar estación');
+    }
   }
 
   return (
