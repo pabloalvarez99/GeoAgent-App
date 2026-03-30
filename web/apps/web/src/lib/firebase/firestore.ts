@@ -46,10 +46,9 @@ export function subscribeToCollection<T>(
 
 // Projects
 export function subscribeToProjects(userId: string, onData: (items: any[]) => void) {
-  const q = query(
-    userCollection(userId, COLLECTIONS.PROJECTS),
-    orderBy('updatedAt', 'desc'),
-  );
+  // No orderBy — Android writes 'updated_at' (snake_case), Firestore excludes docs
+  // without the sorted field. Sorting is handled client-side.
+  const q = query(userCollection(userId, COLLECTIONS.PROJECTS));
   return subscribeToCollection(q, onData);
 }
 
@@ -81,7 +80,6 @@ export function subscribeToStations(
   const q = query(
     userCollection(userId, COLLECTIONS.STATIONS),
     where('projectId', '==', projectId),
-    orderBy('updatedAt', 'desc'),
   );
   return subscribeToCollection(q, onData, onError);
 }
@@ -189,7 +187,6 @@ export function subscribeToDrillHoles(
   const q = query(
     userCollection(userId, COLLECTIONS.DRILL_HOLES),
     where('projectId', '==', projectId),
-    orderBy('updatedAt', 'desc'),
   );
   return subscribeToCollection(q, onData, onError);
 }

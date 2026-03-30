@@ -40,7 +40,7 @@ class RemoteDataSource @Inject constructor(
         val docRef = if (id != null) col(collection).document(id) else col(collection).document()
         val cleanData = HashMap<String, Any>()
         data.forEach { (k, v) -> if (v != null) cleanData[k] = v }
-        cleanData["updated_at"] = FieldValue.serverTimestamp()
+        cleanData["updatedAt"] = FieldValue.serverTimestamp()  // camelCase matches web
         docRef.set(cleanData, SetOptions.merge()).await()
         return docRef.id
     }
