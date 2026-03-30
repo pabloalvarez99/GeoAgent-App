@@ -13,6 +13,8 @@ import {
   MapPin,
   Mountain,
   Loader2,
+  Download,
+  Smartphone,
 } from 'lucide-react';
 import { useProjects } from '@/lib/hooks/use-projects';
 import { useAuth } from '@/lib/firebase/auth';
@@ -194,6 +196,29 @@ export default function DashboardPage() {
           </p>
         )}
       </div>
+
+      {/* Android App Download */}
+      <Card className="border-primary/20 bg-primary/5">
+        <CardContent className="flex items-center justify-between gap-4 py-4 px-4">
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-primary/15 p-2.5 shrink-0">
+              <Smartphone className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="font-semibold text-sm">GeoAgent para Android</p>
+              <p className="text-xs text-muted-foreground">
+                Recoge datos en campo con GPS, cámara y modo sin conexión
+              </p>
+            </div>
+          </div>
+          <Button size="sm" asChild className="shrink-0">
+            <a href="/geoagent-latest.apk" download="GeoAgent.apk">
+              <Download className="h-3.5 w-3.5 mr-1.5" />
+              Descargar APK
+            </a>
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }

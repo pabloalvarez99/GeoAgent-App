@@ -362,14 +362,15 @@ fun DrillHoleCreateScreen(
                                 color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
                             )
                             Spacer(modifier = Modifier.height(4.dp))
+                            val accuracy = gpsAccuracy
                             Text(
-                                text = if (gpsAccuracy != null) "±%.0f m".format(gpsAccuracy) else "--",
+                                text = if (accuracy != null) "±%.0f m".format(accuracy) else "--",
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Medium,
                                 color = when {
-                                    gpsAccuracy != null && gpsAccuracy <= 10f ->
+                                    accuracy != null && accuracy <= 10f ->
                                         MaterialTheme.colorScheme.onSecondaryContainer
-                                    gpsAccuracy != null ->
+                                    accuracy != null ->
                                         MaterialTheme.colorScheme.error
                                     else ->
                                         MaterialTheme.colorScheme.onSecondaryContainer
