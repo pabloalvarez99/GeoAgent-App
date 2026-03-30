@@ -1,4 +1,4 @@
-name: Build & Deploy APK
+name: Build & Deploy
 
 on:
   push:
@@ -6,7 +6,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-deploy:
+  # ── Job 1: Build Android APK + publish to GitHub Releases ───────────────────
+  build-apk:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -39,65 +40,40 @@ jobs:
         run: |
           gh release delete latest --yes 2>/dev/null || true
           gh release create latest \
-            app/build/outputs/apk/debug/app-debug.apk#geoagent.apk \
+            app/build/outputs/apk/debug/app-debug.apk#app-debug.apk \
             --title "GeoAgent - Última build" \
             --notes "Build #${{ github.run_number }} · commit ${{ github.sha }}" \
             --latest
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Crear página de descarga
-        run: |
-          APK_URL="https://github.com/${{ github.repository }}/releases/latest/download/geoagent.apk"
-          mkdir -p dist
-          cat > dist/index.html << EOF
-          <!DOCTYPE html>
-          <html lang="es">
-          <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>GeoAgent</title>
-            <style>
-              *{box-sizing:border-box;margin:0;padding:0}
-              body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f172a;color:#f1f5f9;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
-              .card{background:#1e293b;border-radius:24px;padding:52px 40px;text-align:center;max-width:380px;width:100%;box-shadow:0 32px 64px rgba(0,0,0,.6)}
-              .icon{font-size:64px;margin-bottom:20px}
-              h1{font-size:2rem;font-weight:800;color:#38bdf8;margin-bottom:6px}
-              .sub{color:#64748b;font-size:.95rem;margin-bottom:32px}
-              .btn{display:flex;align-items:center;justify-content:center;gap:10px;background:#0284c7;color:#fff;padding:18px 0;border-radius:14px;text-decoration:none;font-weight:700;font-size:1.1rem;letter-spacing:.01em;transition:background .15s,transform .15s;box-shadow:0 4px 24px rgba(2,132,199,.35)}
-              .btn:hover{background:#0369a1;transform:translateY(-2px)}
-              .btn:active{transform:translateY(0)}
-              .meta{margin-top:20px;font-size:.75rem;color:#334155}
-              .badge{display:inline-block;background:#0c3249;color:#7dd3fc;padding:4px 12px;border-radius:20px;font-size:.78rem;font-weight:600;margin-bottom:28px}
-            </style>
-          </head>
-          <body>
-            <div class="card">
-              <div class="icon">⛰️</div>
-              <h1>GeoAgent</h1>
-              <p class="sub">App de geología de campo para Android</p>
-              <span class="badge">Build #${{ github.run_number }}</span>
-              <a class="btn" href="${APK_URL}">
-                <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 15V3"/><path d="m8 11 4 4 4-4"/><path d="M2 17l.621 2.485A2 2 0 0 0 4.561 21h14.878a2 2 0 0 0 1.94-1.515L22 17"/></svg>
-                Descargar APK
-              </a>
-              <p class="meta">Commit ${{ github.sha }} · ${{ github.ref_name }}</p>
-            </div>
-          </body>
-          </html>
-          EOF
+  # ── Job 2: Deploy Next.js web app to Vercel ─────────────────────────────────
+  deploy-web:
+    runs-on: ubuntu-latest
 
-      - name: Deploy Firebase Rules
-        run: |
-          npm install -g firebase-tools
-          firebase deploy --only firestore:rules,storage --token "$FIREBASE_TOKEN" --project geoagent-app
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: Deploy a Vercel
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Pull Vercel environment & build
         run: |
-          cd dist
-          npx vercel --token ${{ secrets.VERCEL_TOKEN }} --prod --yes
+          cd web
+          vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+          vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_PROJECT_ID: prj_904BfKPW4v7CEwtpo9Qw3zdUj5BC
+
+      - name: Deploy prebuilt output to Vercel
+        run: |
+          cd web
+          vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: prj_904BfKPW4v7CEwtpo9Qw3zdUj5BC
