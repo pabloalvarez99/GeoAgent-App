@@ -212,7 +212,7 @@ export default function DashboardPage() {
             </div>
           </div>
           <Button size="sm" asChild className="shrink-0">
-            <a href="/geoagent-latest.apk" download="GeoAgent.apk">
+            <a href="https://github.com/pabloalvarez99/GeoAgent-App/releases/latest/download/app-debug.apk" download="GeoAgent.apk">
               <Download className="h-3.5 w-3.5 mr-1.5" />
               Descargar APK
             </a>
