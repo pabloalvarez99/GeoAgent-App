@@ -22,10 +22,12 @@ export function useStations(projectId: string) {
       return;
     }
     setLoading(true);
-    const unsub = subscribeToStations(user.uid, projectId, (data) => {
-      setStations(data as GeoStation[]);
-      setLoading(false);
-    });
+    const unsub = subscribeToStations(
+      user.uid,
+      projectId,
+      (data) => { setStations(data as GeoStation[]); setLoading(false); },
+      () => setLoading(false),
+    );
     return unsub;
   }, [user, projectId]);
 

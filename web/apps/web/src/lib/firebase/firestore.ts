@@ -76,13 +76,14 @@ export function subscribeToStations(
   userId: string,
   projectId: string,
   onData: (items: any[]) => void,
+  onError?: (err: Error) => void,
 ) {
   const q = query(
     userCollection(userId, COLLECTIONS.STATIONS),
     where('projectId', '==', projectId),
     orderBy('updatedAt', 'desc'),
   );
-  return subscribeToCollection(q, onData);
+  return subscribeToCollection(q, onData, onError);
 }
 
 export async function createStation(userId: string, data: Omit<any, 'id'>) {
@@ -183,13 +184,14 @@ export function subscribeToDrillHoles(
   userId: string,
   projectId: string,
   onData: (items: any[]) => void,
+  onError?: (err: Error) => void,
 ) {
   const q = query(
     userCollection(userId, COLLECTIONS.DRILL_HOLES),
     where('projectId', '==', projectId),
     orderBy('updatedAt', 'desc'),
   );
-  return subscribeToCollection(q, onData);
+  return subscribeToCollection(q, onData, onError);
 }
 
 export async function createDrillHole(userId: string, data: Omit<any, 'id'>) {

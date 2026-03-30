@@ -399,6 +399,7 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
                 defaultCenter={center}
                 defaultZoom={defaultZoom}
                 mapTypeId={mapTypeId}
+                mapId="geoagent-map"
                 disableDefaultUI={false}
                 mapTypeControl={false}
                 fullscreenControl={false}

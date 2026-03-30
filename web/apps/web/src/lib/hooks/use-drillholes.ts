@@ -25,10 +25,12 @@ export function useDrillHoles(projectId: string) {
       return;
     }
     setLoading(true);
-    const unsub = subscribeToDrillHoles(user.uid, projectId, (data) => {
-      setDrillHoles(data as GeoDrillHole[]);
-      setLoading(false);
-    });
+    const unsub = subscribeToDrillHoles(
+      user.uid,
+      projectId,
+      (data) => { setDrillHoles(data as GeoDrillHole[]); setLoading(false); },
+      () => setLoading(false),
+    );
     return unsub;
   }, [user, projectId]);
 
