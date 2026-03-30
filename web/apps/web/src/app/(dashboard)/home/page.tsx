@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useProjects } from '@/lib/hooks/use-projects';
 import { useAuth } from '@/lib/firebase/auth';
+import { subscribeToAllStations, subscribeToAllDrillHoles } from '@/lib/firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
@@ -52,6 +54,15 @@ function StatCard({
 export default function DashboardPage() {
   const { user } = useAuth();
   const { projects, loading } = useProjects();
+  const [stationCount, setStationCount] = useState<number | null>(null);
+  const [drillHoleCount, setDrillHoleCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    const unsubStations = subscribeToAllStations(user.uid, (items) => setStationCount(items.length));
+    const unsubDrillHoles = subscribeToAllDrillHoles(user.uid, (items) => setDrillHoleCount(items.length));
+    return () => { unsubStations(); unsubDrillHoles(); };
+  }, [user]);
 
   const displayName =
     user?.displayName || user?.email?.split('@')[0] || 'Geólogo';
@@ -84,15 +95,15 @@ export default function DashboardPage() {
         <StatCard
           icon={Layers}
           label="Estaciones"
-          value="—"
-          sub="ver en proyectos"
+          value={stationCount ?? '—'}
+          sub={stationCount === null ? 'Cargando...' : undefined}
           iconColor="text-blue-400"
         />
         <StatCard
           icon={Drill}
           label="Sondajes"
-          value="—"
-          sub="ver en proyectos"
+          value={drillHoleCount ?? '—'}
+          sub={drillHoleCount === null ? 'Cargando...' : undefined}
           iconColor="text-purple-400"
         />
       </div>

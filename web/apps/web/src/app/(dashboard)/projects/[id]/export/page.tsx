@@ -28,6 +28,7 @@ import { downloadPDF } from '@/lib/export/pdf';
 import { downloadExcel } from '@/lib/export/excel';
 import { downloadGeoJSON } from '@/lib/export/geojson';
 import { downloadCsvBundle } from '@/lib/export/csv';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -129,10 +130,12 @@ export default function ExportPage({ params }: { params: Promise<{ id: string }>
         intervals: allIntervals as any,
       });
       setPdfStatus('done');
+      toast.success('PDF generado correctamente');
       setTimeout(() => setPdfStatus('idle'), 3000);
     } catch (e) {
       console.error(e);
       setPdfStatus('error');
+      toast.error('Error al generar el PDF');
       setTimeout(() => setPdfStatus('idle'), 3000);
     }
   }
@@ -163,28 +166,36 @@ export default function ExportPage({ params }: { params: Promise<{ id: string }>
         intervals: allIntervals as any,
       });
       setExcelStatus('done');
+      toast.success('Excel generado correctamente');
       setTimeout(() => setExcelStatus('idle'), 3000);
     } catch (e) {
       console.error(e);
       setExcelStatus('error');
+      toast.error('Error al generar el Excel');
       setTimeout(() => setExcelStatus('idle'), 3000);
     }
   }
 
-  function handleGeoJSON() {
-    if (!project) return;
+  async function handleGeoJSON() {
+    if (!user || !project) return;
     setGeojsonStatus('loading');
     try {
+      const [allStations, allDrillHoles] = await Promise.all([
+        getStationsOnce(user.uid, id),
+        getDrillHolesOnce(user.uid, id),
+      ]);
       downloadGeoJSON({
         projectName: project.name,
-        stations: stations as any,
-        drillHoles: drillHoles as any,
+        stations: allStations as any,
+        drillHoles: allDrillHoles as any,
       }, project.name.replace(/\s+/g, '_'));
       setGeojsonStatus('done');
+      toast.success('GeoJSON exportado correctamente');
       setTimeout(() => setGeojsonStatus('idle'), 3000);
     } catch (e) {
       console.error(e);
       setGeojsonStatus('error');
+      toast.error('Error al generar el GeoJSON');
       setTimeout(() => setGeojsonStatus('idle'), 3000);
     }
   }
@@ -206,10 +217,12 @@ export default function ExportPage({ params }: { params: Promise<{ id: string }>
 
       downloadCsvBundle(allDrillHoles as any, enriched, project.name.replace(/\s+/g, '_'));
       setCsvStatus('done');
+      toast.success('CSVs exportados correctamente');
       setTimeout(() => setCsvStatus('idle'), 3000);
     } catch (e) {
       console.error(e);
       setCsvStatus('error');
+      toast.error('Error al generar los CSVs');
       setTimeout(() => setCsvStatus('idle'), 3000);
     }
   }

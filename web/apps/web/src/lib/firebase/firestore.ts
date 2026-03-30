@@ -257,6 +257,17 @@ export async function deletePhoto(userId: string, photoId: string) {
   return deleteDoc(userDoc(userId, COLLECTIONS.PHOTOS, photoId));
 }
 
+// ── Global stats (all projects) ─────────────────────────────────────────────
+export function subscribeToAllStations(userId: string, onData: (items: any[]) => void) {
+  const q = query(userCollection(userId, COLLECTIONS.STATIONS));
+  return subscribeToCollection(q, onData);
+}
+
+export function subscribeToAllDrillHoles(userId: string, onData: (items: any[]) => void) {
+  const q = query(userCollection(userId, COLLECTIONS.DRILL_HOLES));
+  return subscribeToCollection(q, onData);
+}
+
 // ── One-time reads for exports ──────────────────────────────────────────────
 async function getAll<T>(q: Query<DocumentData>): Promise<T[]> {
   const snap = await getDocs(q);
