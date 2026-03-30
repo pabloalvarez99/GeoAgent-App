@@ -1,12 +1,17 @@
 'use client';
 
-import { use, useState, useEffect } from 'react';
+import { use, useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ref, getDownloadURL } from 'firebase/storage';
-import { storage } from '@/lib/firebase/client';
+import { ref as storageRef, getDownloadURL, uploadBytesResumable } from 'firebase/storage';
+import { addDoc, serverTimestamp } from 'firebase/firestore';
+import { storage, db } from '@/lib/firebase/client';
+import { userCollection } from '@/lib/firebase/firestore';
 import { usePhotos } from '@/lib/hooks/use-photos';
 import { useProject } from '@/lib/hooks/use-projects';
+import { useAuth } from '@/lib/firebase/auth';
+import { COLLECTIONS } from '@geoagent/geo-shared/constants';
+import { toast } from 'sonner';
 import {
   ArrowLeft,
   Camera,
@@ -15,6 +20,7 @@ import {
   ImageIcon,
   MapPin,
   CalendarDays,
+  Upload,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -67,6 +73,7 @@ function SkeletonCard() {
 
 export default function ProjectPhotosPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: projectId } = use(params);
+  const { user } = useAuth();
   const { project } = useProject(projectId);
   const { photos, loading, removePhoto } = usePhotos({ projectId });
 
@@ -77,6 +84,60 @@ export default function ProjectPhotosPage({ params }: { params: Promise<{ id: st
   // Which photo is pending deletion confirmation
   const [deleteTarget, setDeleteTarget] = useState<GeoPhoto | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // Upload state
+  const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function uploadFiles(files: FileList | File[]) {
+    if (!user || files.length === 0) return;
+    setUploading(true);
+    const arr = Array.from(files);
+    try {
+      await Promise.all(
+        arr.map(async (file) => {
+          const uniqueName = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+          const path = `photos/${user.uid}/${uniqueName}`;
+          const fileRef = storageRef(storage, path);
+          await uploadBytesResumable(fileRef, file).then(
+            () => Promise.resolve(),
+            (err) => { throw err; },
+          );
+          const downloadUrl = await getDownloadURL(fileRef);
+          await addDoc(userCollection(user.uid, COLLECTIONS.PHOTOS), {
+            projectId,
+            fileName: file.name,
+            storagePath: path,
+            description: file.name.replace(/\.[^.]+$/, ''),
+            takenAt: new Date().toISOString(),
+            updatedAt: serverTimestamp(),
+          });
+          // Immediately cache the URL so the new photo renders
+          return { path, downloadUrl };
+        }),
+      );
+      toast.success(
+        arr.length === 1
+          ? '1 foto subida correctamente'
+          : `${arr.length} fotos subidas correctamente`,
+      );
+    } catch (e) {
+      console.error(e);
+      toast.error('Error al subir las fotos');
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setDragOver(false);
+      const files = Array.from(e.dataTransfer.files).filter((f) => f.type.startsWith('image/'));
+      if (files.length) uploadFiles(files);
+    },
+    [user, projectId],
+  );
 
   // Fetch Firebase Storage download URLs whenever the photo list changes
   useEffect(() => {
@@ -88,7 +149,7 @@ export default function ProjectPhotosPage({ params }: { params: Promise<{ id: st
         photos.map(async (photo) => {
           if (photo.storagePath) {
             try {
-              const url = await getDownloadURL(ref(storage, photo.storagePath));
+              const url = await getDownloadURL(storageRef(storage, photo.storagePath));
               urlMap[photo.id] = url;
             } catch {
               // Photo missing from Storage — skip silently
@@ -124,7 +185,32 @@ export default function ProjectPhotosPage({ params }: { params: Promise<{ id: st
   const lightboxUrl = lightboxPhoto ? photoUrls[lightboxPhoto.id] : undefined;
 
   return (
-    <div className="space-y-6">
+    <div
+      className="space-y-6"
+      onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={handleDrop}
+    >
+      {/* Drag overlay */}
+      {dragOver && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-primary/10 border-4 border-dashed border-primary rounded-xl pointer-events-none">
+          <div className="text-center">
+            <Upload className="h-12 w-12 text-primary mx-auto mb-2" />
+            <p className="text-lg font-semibold text-primary">Suelta las imágenes aquí</p>
+          </div>
+        </div>
+      )}
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={(e) => e.target.files && uploadFiles(e.target.files)}
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -144,11 +230,24 @@ export default function ProjectPhotosPage({ params }: { params: Promise<{ id: st
           </div>
         </div>
 
-        {!loading && photos.length > 0 && (
-          <Badge variant="secondary" className="shrink-0">
-            {photos.length} foto{photos.length !== 1 ? 's' : ''}
-          </Badge>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          {!loading && photos.length > 0 && (
+            <Badge variant="secondary">
+              {photos.length} foto{photos.length !== 1 ? 's' : ''}
+            </Badge>
+          )}
+          <Button
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+          >
+            {uploading ? (
+              <><Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />Subiendo...</>
+            ) : (
+              <><Upload className="h-3.5 w-3.5 mr-2" />Subir fotos</>
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Content */}
@@ -170,9 +269,13 @@ export default function ProjectPhotosPage({ params }: { params: Promise<{ id: st
               No hay fotos en este proyecto
             </p>
             <p className="text-sm text-muted-foreground/60">
-              Captura fotos desde la app Android.
+              Arrastra imágenes aquí o usa el botón &quot;Subir fotos&quot;.
             </p>
           </div>
+          <Button onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+            <Upload className="h-4 w-4 mr-2" />
+            Subir fotos
+          </Button>
         </div>
       ) : (
         // Photo grid
