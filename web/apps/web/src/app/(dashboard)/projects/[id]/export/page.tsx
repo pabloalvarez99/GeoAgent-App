@@ -23,6 +23,7 @@ import {
   getStructuralOnce,
   getSamplesOnce,
   getIntervalsOnce,
+  getPhotosOnce,
 } from '@/lib/firebase/firestore';
 import { downloadPDF } from '@/lib/export/pdf';
 import { downloadExcel } from '@/lib/export/excel';
@@ -112,22 +113,45 @@ export default function ExportPage({ params }: { params: Promise<{ id: string }>
     if (!user || !project) return;
     setPdfStatus('loading');
     try {
-      const [allStations, allDrillHoles] = await Promise.all([
+      // Fetch primary collections in parallel
+      const [allStations, allDrillHoles, rawPhotos] = await Promise.all([
         getStationsOnce(user.uid, id),
         getDrillHolesOnce(user.uid, id),
+        getPhotosOnce(user.uid, id),
       ]);
 
-      const [allLithologies, allIntervals] = await Promise.all([
+      // Fetch per-station and per-hole sub-data in parallel
+      const [allLithologies, allStructural, allSamples, allIntervals] = await Promise.all([
         Promise.all(allStations.map((s: any) => getLithologiesOnce(user.uid, s.id))).then((r) => r.flat()),
+        Promise.all(allStations.map((s: any) => getStructuralOnce(user.uid, s.id))).then((r) => r.flat()),
+        Promise.all(allStations.map((s: any) => getSamplesOnce(user.uid, s.id))).then((r) => r.flat()),
         Promise.all(allDrillHoles.map((d: any) => getIntervalsOnce(user.uid, d.id))).then((r) => r.flat()),
       ]);
+
+      // Resolve Firebase Storage download URLs for photos
+      const { getDownloadURL, ref: storageRef } = await import('firebase/storage');
+      const { storage } = await import('@/lib/firebase/client');
+      const photosWithUrls = await Promise.all(
+        (rawPhotos as any[]).map(async (photo) => {
+          if (!photo.storagePath) return { ...photo, downloadUrl: undefined };
+          try {
+            const url = await getDownloadURL(storageRef(storage, photo.storagePath));
+            return { ...photo, downloadUrl: url };
+          } catch {
+            return { ...photo, downloadUrl: undefined };
+          }
+        }),
+      );
 
       await downloadPDF({
         project: project as GeoProject,
         stations: allStations as any,
         lithologies: allLithologies as any,
+        structural: allStructural as any,
+        samples: allSamples as any,
         drillHoles: allDrillHoles as any,
         intervals: allIntervals as any,
+        photos: photosWithUrls as any,
       });
       setPdfStatus('done');
       toast.success('PDF generado correctamente');

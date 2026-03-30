@@ -313,3 +313,9 @@ export async function getIntervalsOnce(userId: string, drillHoleId: string) {
     ),
   );
 }
+
+export async function getPhotosOnce(userId: string, projectId: string) {
+  return getAll(
+    query(userCollection(userId, COLLECTIONS.PHOTOS), where('projectId', '==', projectId)),
+  );
+}
