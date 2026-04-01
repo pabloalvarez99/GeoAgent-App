@@ -1,3 +1,18 @@
+## Bitácora — Regla Obligatoria
+
+**SIEMPRE actualiza `bitacora.md` al final de cada sesión, después de cada deploy y después de cualquier cambio significativo.**
+
+`bitacora.md` es el único documento de contexto que permite a Claude Code (en cualquier PC, desde cero) entender el proyecto completo sin conocimiento previo. Debe contener:
+- Estado actual de cada fase (✅ COMPLETADO / ⏳ PENDIENTE)
+- Últimos cambios realizados (qué se hizo y por qué)
+- Decisiones técnicas importantes
+- URLs de servicios deployados
+- Variables de entorno necesarias
+
+Si no actualizas `bitacora.md`, la próxima sesión empezará sin contexto y repetirá trabajo.
+
+---
+
 ## Workflow Orchestration
 
 ### 1. Plan Node Default

@@ -503,7 +503,101 @@ export const drillIntervalSchema = z.object({
 - [x] `lib/export/csv.ts` — CSV collar/survey/assay (formato industria)
 - [x] `/projects/[id]/export` — página con 4 export cards
 
-### ⏳ PENDIENTE — Fase 8: Electron Desktop
+### ✅ COMPLETADO — Fase 8: API Rust (Axum)
+
+**Qué es:** Backend REST en Rust que actúa como proxy/gateway a Firebase Firestore.
+**Por qué:** Proveer una API limpia y centralizada para sincronización 100% Android↔Web usando el mismo Firestore como SSOT.
+
+**Ubicación:** `web/apps/api/`
+
+**Stack:**
+- `axum 0.7` — HTTP framework async
+- `reqwest 0.12` — cliente HTTP para Firestore REST API
+- `base64 0.22` — decode JWT payload sin verificar firma (Firestore valida implícitamente)
+- `tower-http 0.5` — CORS + trace logging
+- `uuid 1`, `chrono 0.4`, `serde_json 1`, `anyhow`, `thiserror`, `tokio 1`
+
+**Arquitectura:**
+```
+Cliente (web/Android) → [Authorization: Bearer {firebase_id_token}]
+    → Rust API (Axum)
+        → decode JWT payload base64 → extrae UID (campo `sub`)
+        → llama Firestore REST API con el mismo token
+        → Firestore valida token y enforces security rules
+        → convierte formato verbose Firestore → JSON limpio
+    → responde JSON limpio al cliente
+```
+
+**Endpoints disponibles:** (todas requieren `Authorization: Bearer {firebase_id_token}`)
+```
+GET  /api/v1/health
+GET  /api/v1/projects                     → lista proyectos del usuario
+POST /api/v1/projects                     → crear proyecto
+GET  /api/v1/projects/:id
+PATCH /api/v1/projects/:id
+DELETE /api/v1/projects/:id
+
+GET  /api/v1/stations?projectId=xxx       → filtrar por proyecto
+POST /api/v1/stations
+GET/PATCH/DELETE /api/v1/stations/:id
+
+GET  /api/v1/lithologies?stationId=xxx
+GET  /api/v1/structural?stationId=xxx     → Firestore: "structural_data"
+GET  /api/v1/samples?stationId=xxx
+GET  /api/v1/drillholes?projectId=xxx     → Firestore: "drill_holes"
+GET  /api/v1/intervals?drillHoleId=xxx   → Firestore: "drill_intervals"
+GET  /api/v1/photos?projectId|stationId|drillHoleId=xxx
+(mismo CRUD para todos)
+```
+
+**Conversión Firestore:**
+- `{stringValue: "x"}` → `"x"` y viceversa
+- `{integerValue: "42"}` → `42` (NOTE: Firestore guarda enteros como string)
+- `{doubleValue: 1.5}` → `1.5`
+- `{timestampValue: "..."}` → `"..."` (ISO 8601)
+- `{nullValue: null}` → `null`
+
+**Deploy:** Fly.io — `fly.toml` en `web/apps/api/`
+- App name: `geoagent-api`
+- Region: `iad` (us-east)
+- Memoria: 256MB shared CPU
+- Auto-stop/start habilitado (free tier)
+
+**CI/CD:** `.github/workflows/deploy-api.yml`
+- Triggers en cambios a `web/apps/api/**`
+- `cargo check` para verificar compilación
+- `flyctl deploy --remote-only` (build en Fly.io, no en CI)
+- Requiere secret: `FLY_API_TOKEN`
+
+**Para deployar manualmente:**
+```bash
+cd web/apps/api
+flyctl deploy
+```
+
+**Para correr localmente:**
+```bash
+cd web/apps/api
+FIREBASE_PROJECT_ID=geoagent-app cargo run
+# API disponible en http://localhost:8080
+```
+
+**Archivos clave:**
+- `src/firestore.rs` — FirestoreClient + conversión bidireccional
+- `src/auth.rs` — AuthUser extractor (decode JWT payload)
+- `src/error.rs` — AppError con IntoResponse
+- `src/routes/` — CRUD handlers por colección
+
+**PENDIENTE para completar deploy:**
+- [ ] Crear cuenta en fly.io: `flyctl auth signup`
+- [ ] Crear app: `cd web/apps/api && flyctl apps create geoagent-api`
+- [ ] Primer deploy: `flyctl deploy`
+- [ ] Agregar secret en GitHub: `FLY_API_TOKEN` (obtener con `flyctl auth token`)
+- [ ] Actualizar web hooks para usar API URL (env var `NEXT_PUBLIC_API_URL`)
+
+---
+
+### ⏳ PENDIENTE — Fase 9: Electron Desktop
 
 - [ ] `web/apps/desktop/electron-src/main.ts`
 - [ ] `web/apps/desktop/electron-src/preload.ts`
@@ -512,18 +606,27 @@ export const drillIntervalSchema = z.object({
 - [ ] build: genera `GeoAgent-Setup.exe`
 - [ ] auto-update via GitHub Releases
 
-### ⏳ PENDIENTE — Fase 9: Features PC-Exclusivos
+### ⏳ PENDIENTE — Fase 10: Electron Desktop
+
+- [ ] `web/apps/desktop/electron-src/main.ts`
+- [ ] `web/apps/desktop/electron-src/preload.ts`
+- [ ] `web/apps/desktop/package.json`
+- [ ] `web/apps/desktop/electron-builder.yml`
+- [ ] build: genera `GeoAgent-Setup.exe`
+- [ ] auto-update via GitHub Releases
+
+### ⏳ PENDIENTE — Fase 11: Features PC-Exclusivos
 
 - [ ] Dashboard analytics con recharts
-- [ ] Settings page
 - [ ] Importación CSV/Excel → bulk create
+- [ ] Integración web hooks con Rust API (`NEXT_PUBLIC_API_URL`)
 
-### ⏳ PENDIENTE — Fase 10: Deploy Final
+### ⏳ PENDIENTE — Fase 12: Deploy Final
 
 - [ ] Variables de entorno en Vercel (Google Maps API key)
-- [ ] GitHub Actions CI/CD
 - [ ] PWA manifest
 - [ ] GitHub Actions build Electron → GitHub Releases
+- [ ] Completar deploy Rust API en Fly.io (ver checklist Fase 8)
 
 ---
 
@@ -617,4 +720,25 @@ Vercel + Node.js 22 + pnpm 9.x tenía un bug fatal (`ERR_INVALID_THIS: URLSearch
 
 ---
 
-*Última actualización: 2026-03-27 — Fases 1-7 completadas. Pendiente: Electron, analytics, deploy final.*
+---
+
+## 16. Últimos Cambios (más reciente primero)
+
+### 2026-04-01 — Rust API + botón Sincronizar + regla bitácora
+- **Botón "Sincronizar ahora"** agregado en `/settings` (`web/apps/web/src/app/(dashboard)/settings/page.tsx`). Llama `router.refresh()` con spinner + confirmación verde. Estaba completamente ausente.
+- **API Rust (Axum)** creada en `web/apps/api/` — proxy REST a Firebase Firestore con CRUD completo para las 8 colecciones. Ver Fase 8 arriba para detalles completos.
+- **`CLAUDE.md`** actualizado con regla obligatoria de actualizar `bitacora.md` después de cada cambio.
+- **CI/CD** agregado: `.github/workflows/deploy-api.yml` para deploy automático a Fly.io.
+- **Pendiente**: hacer el primer deploy manual a Fly.io y agregar `FLY_API_TOKEN` en GitHub Secrets.
+
+### 2026-03-30 — Fix sincronización Android↔Web
+- `87c7edc` — fix: field name mismatch que ocultaba todos los datos Android en la web.
+
+### 2026-03-27 — Fases 1-7 completadas
+- Web app Next.js 15 + Firebase completamente funcional.
+- Exportación PDF, Excel, GeoJSON, CSV.
+- Mapa Google Maps, galería de fotos, dashboard.
+
+---
+
+*Última actualización: 2026-04-01 — Fases 1-8 completadas (Rust API pendiente deploy). Ver sección 16 para historial de cambios.*
