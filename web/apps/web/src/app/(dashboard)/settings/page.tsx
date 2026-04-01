@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
@@ -9,6 +10,8 @@ import {
   Info,
   Wifi,
   Shield,
+  RefreshCw,
+  CheckCircle2,
 } from 'lucide-react';
 import { useAuth } from '@/lib/firebase/auth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -67,10 +70,24 @@ function InfoRow({ label, value, mono = false }: { label: string; value: string;
 export default function SettingsPage() {
   const { user, signOut } = useAuth();
   const router = useRouter();
+  const [syncing, setSyncing] = useState(false);
+  const [syncDone, setSyncDone] = useState(false);
 
   async function handleSignOut() {
     await signOut();
     router.replace('/login');
+  }
+
+  async function handleSync() {
+    setSyncing(true);
+    setSyncDone(false);
+    // Force Next.js to revalidate all active server components / Client segments
+    router.refresh();
+    // Brief delay so the spinner is visible
+    await new Promise((r) => setTimeout(r, 1200));
+    setSyncing(false);
+    setSyncDone(true);
+    setTimeout(() => setSyncDone(false), 3000);
   }
 
   if (!user) return null;
@@ -174,6 +191,25 @@ export default function SettingsPage() {
               con la app Android a través de Firebase Firestore.
             </p>
           </div>
+
+          <Button
+            variant="outline"
+            onClick={handleSync}
+            disabled={syncing}
+            className="gap-2"
+          >
+            {syncDone ? (
+              <>
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                <span className="text-green-500">Datos actualizados</span>
+              </>
+            ) : (
+              <>
+                <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+                {syncing ? 'Sincronizando...' : 'Sincronizar ahora'}
+              </>
+            )}
+          </Button>
         </CardContent>
       </Card>
 
