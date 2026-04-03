@@ -766,4 +766,21 @@ Vercel + Node.js 22 + pnpm 9.x tenía un bug fatal (`ERR_INVALID_THIS: URLSearch
 
 ---
 
-*Última actualización: 2026-04-01 — Fases 1-8 completadas (Rust API pendiente deploy). Ver sección 16 para historial de cambios.*
+### 2026-04-03 — Verificación CLI completa + context.md
+
+**Verificación realizada 100% por CLI (sin browser):**
+
+- **Firestore:** Datos confirmados en camelCase ✓. Estaciones tienen `projectId`, `weatherConditions`, `updatedAt` correctos. Query `runQuery` funciona via REST API con token gcloud.
+- **Web (Vercel):** `https://web-taupe-three-27.vercel.app` responde 200. Settings page responde 200. JS bundle de settings contiene `"Sincronizar ahora"` + lógica `handleSync` ✓.
+- **CI/CD:** Build & Deploy (Vercel) `success` en commits recientes ✓. Deploy Rust API `failure` esperado (sin `FLY_API_TOKEN`) — `continue-on-error: true` protege el pipeline ✓.
+- **Firebase project ID real:** `geoagent-app` (no `geoagent-app-f4dc4` como se pensaba antes) — gcloud autenticado como `timadapa@gmail.com`.
+
+**Nuevo archivo creado:** `context.md` — documenta todos los CLIs, plugins, skills, MCP servers y limitaciones del entorno.
+
+**Pendiente permanente:**
+- [ ] Primer deploy Fly.io (manual): `flyctl auth login` + `flyctl apps create geoagent-api` + `flyctl deploy`
+- [ ] Agregar `FLY_API_TOKEN` en GitHub Secrets para CI automático
+
+---
+
+*Última actualización: 2026-04-03 — Verificación completa + context.md. Fases 1-8 operativas. Ver sección 16 para historial de cambios.*
