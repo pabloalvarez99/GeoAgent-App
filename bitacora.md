@@ -724,6 +724,31 @@ Vercel + Node.js 22 + pnpm 9.x tenía un bug fatal (`ERR_INVALID_THIS: URLSearch
 
 ## 16. Últimos Cambios (más reciente primero)
 
+### 2026-04-02 — Fix sincronización 100% Android↔Web
+
+**Problema encontrado:** Android DTOs usaban snake_case en `toMap()` y `fromFirestoreMap()` pero Firestore almacena camelCase (escrito por web). Resultado: Android escribía datos invisibles para la web, y no podía leer datos escritos por la web.
+
+**Diagnóstico:** Confirmado vía Firestore REST API (`gcloud auth print-access-token` + `runQuery`). Los documentos reales en Firestore tienen `projectId`, `stationId`, `weatherConditions`, etc. (camelCase). El `upsert()` en `RemoteDataSource.kt` ya escribe `updatedAt` camelCase (línea 43), pero los `toMap()` usaban snake_case.
+
+**Fix aplicado — 7 DTOs Android actualizados** (`toMap()` + `fromFirestoreMap()` + `@SerialName`):
+- `RemoteStation`: `project_id`→`projectId`, `weather_conditions`→`weatherConditions`
+- `RemoteLithology`: `station_id`→`stationId`, `rock_type`→`rockType`, `rock_group`→`rockGroup`, `grain_size`→`grainSize`, `alteration_intensity`→`alterationIntensity`, `mineralization_percent`→`mineralizationPercent`
+- `RemoteStructural`: `station_id`→`stationId`, `dip_direction`→`dipDirection`
+- `RemoteSample`: `station_id`→`stationId`, `analysis_requested`→`analysisRequested`
+- `RemoteDrillHole`: `project_id`→`projectId`, `hole_id`→`holeId`, `planned_depth`→`plannedDepth`, `actual_depth`→`actualDepth`, `start_date`→`startDate`, `end_date`→`endDate`
+- `RemoteDrillInterval`: `drill_hole_id`→`drillHoleId`, `from_depth`→`fromDepth`, `to_depth`→`toDepth` + todos los campos rock/grain/alteration
+- `RemotePhoto`: `project_id`→`projectId`, `station_id`→`stationId`, `drill_hole_id`→`drillHoleId`, `file_name`→`fileName`, `storage_path`→`storagePath`, `taken_at`→`takenAt`
+
+**RemoteProject**: ya estaba correcto (name, description, location son palabras simples).
+
+**Firestore index:** Creado índice compuesto en `drill_intervals(drillHoleId ASC, fromDepth ASC)` via `firestore.indexes.json` + `firebase deploy --only firestore:indexes`.
+
+**Web app:** Ya estaba correcto (queries en camelCase). Sin cambios en código web.
+
+**CLIs verificados:** gcloud ✓ (timadapa@gmail.com), firebase ✓ (proyecto geoagent-app), vercel ✓.
+
+**URL producción:** https://web-taupe-three-27.vercel.app
+
 ### 2026-04-01 — Rust API + botón Sincronizar + regla bitácora
 - **Botón "Sincronizar ahora"** agregado en `/settings` (`web/apps/web/src/app/(dashboard)/settings/page.tsx`). Llama `router.refresh()` con spinner + confirmación verde. Estaba completamente ausente.
 - **API Rust (Axum)** creada en `web/apps/api/` — proxy REST a Firebase Firestore con CRUD completo para las 8 colecciones. Ver Fase 8 arriba para detalles completos.
