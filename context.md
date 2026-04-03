@@ -31,8 +31,8 @@
 | `kubectl` | (incluido con Docker) | Docker bin | Kubernetes (disponible pero no usado) |
 | `curl` | MinGW64 | MinGW64 | HTTP requests desde bash |
 
-### CLIs NO instalados
-- `gh` (GitHub CLI) — **no disponible en bash**. Alternativa: usar GitHub REST API via `curl`
+### CLIs NO en PATH de bash por defecto (agregar manualmente)
+- `gh` (GitHub CLI) v2.89.0 — instalado en `C:\Program Files\GitHub CLI\gh.exe`. **Agregar al PATH:** `export PATH="$PATH:/c/Program Files/GitHub CLI"` (ya en `~/.bashrc` y `~/.bash_profile`). Autenticado como `pabloalvarez99`.
 - `flyctl` — **no en PATH de bash**. Disponible en Windows pero no encontrado. Para fly.io usar `flyctl` desde cmd/PowerShell o instalarlo globalmente
 
 ### Cuentas autenticadas
@@ -135,7 +135,7 @@ Skills invocables con `/nombre` o via la herramienta `Skill`:
 
 ## 8. Limitaciones Conocidas de este Entorno
 
-1. **`gh` CLI no disponible en bash** — usar `curl` con GitHub REST API o PowerShell
+1. **`gh` CLI requiere PATH manual en bash** — `export PATH="$PATH:/c/Program Files/GitHub CLI"` (ya guardado en `~/.bashrc`). Una vez en PATH, funciona normal.
 2. **Playwright no funciona** — Chrome falla al iniciar (exit code 0). No usar para verificación
 3. **`python3` no disponible en bash** — usar `node` para parsing JSON
 4. **`flyctl` no en PATH de bash** — correr desde cmd/PowerShell para deploy Fly.io
