@@ -1,0 +1,13 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "drill_intervals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "drillHoleId", "order": "ASCENDING" },
+        { "fieldPath": "fromDepth",   "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

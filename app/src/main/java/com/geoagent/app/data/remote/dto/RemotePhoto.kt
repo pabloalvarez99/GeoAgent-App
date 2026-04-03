@@ -10,19 +10,19 @@ data class RemotePhoto(
     @SerialName("id")
     val id: String? = null,
 
-    @SerialName("project_id")
+    @SerialName("projectId")
     val projectId: String? = null,
 
-    @SerialName("station_id")
+    @SerialName("stationId")
     val stationId: String? = null,
 
-    @SerialName("drill_hole_id")
+    @SerialName("drillHoleId")
     val drillHoleId: String? = null,
 
-    @SerialName("file_name")
+    @SerialName("fileName")
     val fileName: String,
 
-    @SerialName("storage_path")
+    @SerialName("storagePath")
     val storagePath: String? = null,
 
     @SerialName("description")
@@ -34,33 +34,33 @@ data class RemotePhoto(
     @SerialName("longitude")
     val longitude: Double? = null,
 
-    @SerialName("taken_at")
+    @SerialName("takenAt")
     val takenAt: String? = null,
 ) {
     fun toMap(): Map<String, Any?> = mapOf(
-        "project_id" to projectId,
-        "station_id" to stationId,
-        "drill_hole_id" to drillHoleId,
-        "file_name" to fileName,
-        "storage_path" to storagePath,
+        "projectId" to projectId,
+        "stationId" to stationId,
+        "drillHoleId" to drillHoleId,
+        "fileName" to fileName,
+        "storagePath" to storagePath,
         "description" to description,
         "latitude" to latitude,
         "longitude" to longitude,
-        "taken_at" to takenAt,
+        "takenAt" to takenAt,
     )
 
     companion object {
         fun fromFirestoreMap(id: String, data: Map<String, Any>): RemotePhoto = RemotePhoto(
             id = id,
-            projectId = data["project_id"] as? String,
-            stationId = data["station_id"] as? String,
-            drillHoleId = data["drill_hole_id"] as? String,
-            fileName = data["file_name"] as? String ?: "",
-            storagePath = data["storage_path"] as? String,
+            projectId = data["projectId"] as? String,
+            stationId = data["stationId"] as? String,
+            drillHoleId = data["drillHoleId"] as? String,
+            fileName = data["fileName"] as? String ?: "",
+            storagePath = data["storagePath"] as? String,
             description = data["description"] as? String,
             latitude = (data["latitude"] as? Number)?.toDouble(),
             longitude = (data["longitude"] as? Number)?.toDouble(),
-            takenAt = data["taken_at"] as? String,
+            takenAt = data["takenAt"] as? String,
         )
 
         fun fromEntity(

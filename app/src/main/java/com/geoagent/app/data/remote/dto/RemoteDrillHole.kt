@@ -10,10 +10,10 @@ data class RemoteDrillHole(
     @SerialName("id")
     val id: String? = null,
 
-    @SerialName("project_id")
+    @SerialName("projectId")
     val projectId: String,
 
-    @SerialName("hole_id")
+    @SerialName("holeId")
     val holeId: String,
 
     @SerialName("type")
@@ -34,16 +34,16 @@ data class RemoteDrillHole(
     @SerialName("inclination")
     val inclination: Double,
 
-    @SerialName("planned_depth")
+    @SerialName("plannedDepth")
     val plannedDepth: Double,
 
-    @SerialName("actual_depth")
+    @SerialName("actualDepth")
     val actualDepth: Double? = null,
 
-    @SerialName("start_date")
+    @SerialName("startDate")
     val startDate: String? = null,
 
-    @SerialName("end_date")
+    @SerialName("endDate")
     val endDate: String? = null,
 
     @SerialName("status")
@@ -56,18 +56,18 @@ data class RemoteDrillHole(
     val notes: String? = null,
 ) {
     fun toMap(): Map<String, Any?> = mapOf(
-        "project_id" to projectId,
-        "hole_id" to holeId,
+        "projectId" to projectId,
+        "holeId" to holeId,
         "type" to type,
         "latitude" to latitude,
         "longitude" to longitude,
         "altitude" to altitude,
         "azimuth" to azimuth,
         "inclination" to inclination,
-        "planned_depth" to plannedDepth,
-        "actual_depth" to actualDepth,
-        "start_date" to startDate,
-        "end_date" to endDate,
+        "plannedDepth" to plannedDepth,
+        "actualDepth" to actualDepth,
+        "startDate" to startDate,
+        "endDate" to endDate,
         "status" to status,
         "geologist" to geologist,
         "notes" to notes,
@@ -76,18 +76,18 @@ data class RemoteDrillHole(
     companion object {
         fun fromFirestoreMap(id: String, data: Map<String, Any>): RemoteDrillHole = RemoteDrillHole(
             id = id,
-            projectId = data["project_id"] as? String ?: "",
-            holeId = data["hole_id"] as? String ?: "",
+            projectId = data["projectId"] as? String ?: "",
+            holeId = data["holeId"] as? String ?: "",
             type = data["type"] as? String ?: "",
             latitude = (data["latitude"] as? Number)?.toDouble() ?: 0.0,
             longitude = (data["longitude"] as? Number)?.toDouble() ?: 0.0,
             altitude = (data["altitude"] as? Number)?.toDouble(),
             azimuth = (data["azimuth"] as? Number)?.toDouble() ?: 0.0,
             inclination = (data["inclination"] as? Number)?.toDouble() ?: 0.0,
-            plannedDepth = (data["planned_depth"] as? Number)?.toDouble() ?: 0.0,
-            actualDepth = (data["actual_depth"] as? Number)?.toDouble(),
-            startDate = data["start_date"] as? String,
-            endDate = data["end_date"] as? String,
+            plannedDepth = (data["plannedDepth"] as? Number)?.toDouble() ?: 0.0,
+            actualDepth = (data["actualDepth"] as? Number)?.toDouble(),
+            startDate = data["startDate"] as? String,
+            endDate = data["endDate"] as? String,
             status = data["status"] as? String ?: "En Progreso",
             geologist = data["geologist"] as? String ?: "",
             notes = data["notes"] as? String,

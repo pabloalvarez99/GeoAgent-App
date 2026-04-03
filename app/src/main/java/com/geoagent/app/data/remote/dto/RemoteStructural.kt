@@ -9,7 +9,7 @@ data class RemoteStructural(
     @SerialName("id")
     val id: String? = null,
 
-    @SerialName("station_id")
+    @SerialName("stationId")
     val stationId: String,
 
     @SerialName("type")
@@ -21,7 +21,7 @@ data class RemoteStructural(
     @SerialName("dip")
     val dip: Double,
 
-    @SerialName("dip_direction")
+    @SerialName("dipDirection")
     val dipDirection: String,
 
     @SerialName("movement")
@@ -43,11 +43,11 @@ data class RemoteStructural(
     val notes: String? = null,
 ) {
     fun toMap(): Map<String, Any?> = mapOf(
-        "station_id" to stationId,
+        "stationId" to stationId,
         "type" to type,
         "strike" to strike,
         "dip" to dip,
-        "dip_direction" to dipDirection,
+        "dipDirection" to dipDirection,
         "movement" to movement,
         "thickness" to thickness,
         "filling" to filling,
@@ -59,11 +59,11 @@ data class RemoteStructural(
     companion object {
         fun fromFirestoreMap(id: String, data: Map<String, Any>): RemoteStructural = RemoteStructural(
             id = id,
-            stationId = data["station_id"] as? String ?: "",
+            stationId = data["stationId"] as? String ?: "",
             type = data["type"] as? String ?: "",
             strike = (data["strike"] as? Number)?.toDouble() ?: 0.0,
             dip = (data["dip"] as? Number)?.toDouble() ?: 0.0,
-            dipDirection = data["dip_direction"] as? String ?: "",
+            dipDirection = data["dipDirection"] as? String ?: "",
             movement = data["movement"] as? String,
             thickness = (data["thickness"] as? Number)?.toDouble(),
             filling = data["filling"] as? String,

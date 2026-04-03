@@ -9,13 +9,13 @@ data class RemoteLithology(
     @SerialName("id")
     val id: String? = null,
 
-    @SerialName("station_id")
+    @SerialName("stationId")
     val stationId: String,
 
-    @SerialName("rock_type")
+    @SerialName("rockType")
     val rockType: String,
 
-    @SerialName("rock_group")
+    @SerialName("rockGroup")
     val rockGroup: String,
 
     @SerialName("color")
@@ -24,7 +24,7 @@ data class RemoteLithology(
     @SerialName("texture")
     val texture: String,
 
-    @SerialName("grain_size")
+    @SerialName("grainSize")
     val grainSize: String,
 
     @SerialName("mineralogy")
@@ -33,13 +33,13 @@ data class RemoteLithology(
     @SerialName("alteration")
     val alteration: String? = null,
 
-    @SerialName("alteration_intensity")
+    @SerialName("alterationIntensity")
     val alterationIntensity: String? = null,
 
     @SerialName("mineralization")
     val mineralization: String? = null,
 
-    @SerialName("mineralization_percent")
+    @SerialName("mineralizationPercent")
     val mineralizationPercent: Double? = null,
 
     @SerialName("structure")
@@ -52,17 +52,17 @@ data class RemoteLithology(
     val notes: String? = null,
 ) {
     fun toMap(): Map<String, Any?> = mapOf(
-        "station_id" to stationId,
-        "rock_type" to rockType,
-        "rock_group" to rockGroup,
+        "stationId" to stationId,
+        "rockType" to rockType,
+        "rockGroup" to rockGroup,
         "color" to color,
         "texture" to texture,
-        "grain_size" to grainSize,
+        "grainSize" to grainSize,
         "mineralogy" to mineralogy,
         "alteration" to alteration,
-        "alteration_intensity" to alterationIntensity,
+        "alterationIntensity" to alterationIntensity,
         "mineralization" to mineralization,
-        "mineralization_percent" to mineralizationPercent,
+        "mineralizationPercent" to mineralizationPercent,
         "structure" to structure,
         "weathering" to weathering,
         "notes" to notes,
@@ -71,17 +71,17 @@ data class RemoteLithology(
     companion object {
         fun fromFirestoreMap(id: String, data: Map<String, Any>): RemoteLithology = RemoteLithology(
             id = id,
-            stationId = data["station_id"] as? String ?: "",
-            rockType = data["rock_type"] as? String ?: "",
-            rockGroup = data["rock_group"] as? String ?: "",
+            stationId = data["stationId"] as? String ?: "",
+            rockType = data["rockType"] as? String ?: "",
+            rockGroup = data["rockGroup"] as? String ?: "",
             color = data["color"] as? String ?: "",
             texture = data["texture"] as? String ?: "",
-            grainSize = data["grain_size"] as? String ?: "",
+            grainSize = data["grainSize"] as? String ?: "",
             mineralogy = data["mineralogy"] as? String ?: "",
             alteration = data["alteration"] as? String,
-            alterationIntensity = data["alteration_intensity"] as? String,
+            alterationIntensity = data["alterationIntensity"] as? String,
             mineralization = data["mineralization"] as? String,
-            mineralizationPercent = (data["mineralization_percent"] as? Number)?.toDouble(),
+            mineralizationPercent = (data["mineralizationPercent"] as? Number)?.toDouble(),
             structure = data["structure"] as? String,
             weathering = data["weathering"] as? String,
             notes = data["notes"] as? String,

@@ -10,7 +10,7 @@ data class RemoteStation(
     @SerialName("id")
     val id: String? = null,
 
-    @SerialName("project_id")
+    @SerialName("projectId")
     val projectId: String,
 
     @SerialName("code")
@@ -34,11 +34,11 @@ data class RemoteStation(
     @SerialName("description")
     val description: String,
 
-    @SerialName("weather_conditions")
+    @SerialName("weatherConditions")
     val weatherConditions: String? = null,
 ) {
     fun toMap(): Map<String, Any?> = mapOf(
-        "project_id" to projectId,
+        "projectId" to projectId,
         "code" to code,
         "latitude" to latitude,
         "longitude" to longitude,
@@ -46,13 +46,13 @@ data class RemoteStation(
         "date" to date,
         "geologist" to geologist,
         "description" to description,
-        "weather_conditions" to weatherConditions,
+        "weatherConditions" to weatherConditions,
     )
 
     companion object {
         fun fromFirestoreMap(id: String, data: Map<String, Any>): RemoteStation = RemoteStation(
             id = id,
-            projectId = data["project_id"] as? String ?: "",
+            projectId = data["projectId"] as? String ?: "",
             code = data["code"] as? String ?: "",
             latitude = (data["latitude"] as? Number)?.toDouble() ?: 0.0,
             longitude = (data["longitude"] as? Number)?.toDouble() ?: 0.0,
@@ -60,7 +60,7 @@ data class RemoteStation(
             date = data["date"] as? String ?: "",
             geologist = data["geologist"] as? String ?: "",
             description = data["description"] as? String ?: "",
-            weatherConditions = data["weather_conditions"] as? String,
+            weatherConditions = data["weatherConditions"] as? String,
         )
 
         fun fromEntity(

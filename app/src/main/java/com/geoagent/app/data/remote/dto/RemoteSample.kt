@@ -9,7 +9,7 @@ data class RemoteSample(
     @SerialName("id")
     val id: String? = null,
 
-    @SerialName("station_id")
+    @SerialName("stationId")
     val stationId: String,
 
     @SerialName("code")
@@ -39,7 +39,7 @@ data class RemoteSample(
     @SerialName("destination")
     val destination: String? = null,
 
-    @SerialName("analysis_requested")
+    @SerialName("analysisRequested")
     val analysisRequested: String? = null,
 
     @SerialName("status")
@@ -49,7 +49,7 @@ data class RemoteSample(
     val notes: String? = null,
 ) {
     fun toMap(): Map<String, Any?> = mapOf(
-        "station_id" to stationId,
+        "stationId" to stationId,
         "code" to code,
         "type" to type,
         "weight" to weight,
@@ -59,7 +59,7 @@ data class RemoteSample(
         "longitude" to longitude,
         "altitude" to altitude,
         "destination" to destination,
-        "analysis_requested" to analysisRequested,
+        "analysisRequested" to analysisRequested,
         "status" to status,
         "notes" to notes,
     )
@@ -67,7 +67,7 @@ data class RemoteSample(
     companion object {
         fun fromFirestoreMap(id: String, data: Map<String, Any>): RemoteSample = RemoteSample(
             id = id,
-            stationId = data["station_id"] as? String ?: "",
+            stationId = data["stationId"] as? String ?: "",
             code = data["code"] as? String ?: "",
             type = data["type"] as? String ?: "",
             weight = (data["weight"] as? Number)?.toDouble(),
@@ -77,7 +77,7 @@ data class RemoteSample(
             longitude = (data["longitude"] as? Number)?.toDouble(),
             altitude = (data["altitude"] as? Number)?.toDouble(),
             destination = data["destination"] as? String,
-            analysisRequested = data["analysis_requested"] as? String,
+            analysisRequested = data["analysisRequested"] as? String,
             status = data["status"] as? String ?: "Recolectada",
             notes = data["notes"] as? String,
         )

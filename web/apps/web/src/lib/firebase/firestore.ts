@@ -46,8 +46,7 @@ export function subscribeToCollection<T>(
 
 // Projects
 export function subscribeToProjects(userId: string, onData: (items: any[]) => void) {
-  // No orderBy — Android writes 'updated_at' (snake_case), Firestore excludes docs
-  // without the sorted field. Sorting is handled client-side.
+  // No orderBy — sorting done client-side to avoid requiring a composite index.
   const q = query(userCollection(userId, COLLECTIONS.PROJECTS));
   return subscribeToCollection(q, onData);
 }

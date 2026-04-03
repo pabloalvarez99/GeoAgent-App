@@ -9,19 +9,19 @@ data class RemoteDrillInterval(
     @SerialName("id")
     val id: String? = null,
 
-    @SerialName("drill_hole_id")
+    @SerialName("drillHoleId")
     val drillHoleId: String,
 
-    @SerialName("from_depth")
+    @SerialName("fromDepth")
     val fromDepth: Double,
 
-    @SerialName("to_depth")
+    @SerialName("toDepth")
     val toDepth: Double,
 
-    @SerialName("rock_type")
+    @SerialName("rockType")
     val rockType: String,
 
-    @SerialName("rock_group")
+    @SerialName("rockGroup")
     val rockGroup: String,
 
     @SerialName("color")
@@ -30,7 +30,7 @@ data class RemoteDrillInterval(
     @SerialName("texture")
     val texture: String,
 
-    @SerialName("grain_size")
+    @SerialName("grainSize")
     val grainSize: String,
 
     @SerialName("mineralogy")
@@ -39,13 +39,13 @@ data class RemoteDrillInterval(
     @SerialName("alteration")
     val alteration: String? = null,
 
-    @SerialName("alteration_intensity")
+    @SerialName("alterationIntensity")
     val alterationIntensity: String? = null,
 
     @SerialName("mineralization")
     val mineralization: String? = null,
 
-    @SerialName("mineralization_percent")
+    @SerialName("mineralizationPercent")
     val mineralizationPercent: Double? = null,
 
     @SerialName("rqd")
@@ -64,19 +64,19 @@ data class RemoteDrillInterval(
     val notes: String? = null,
 ) {
     fun toMap(): Map<String, Any?> = mapOf(
-        "drill_hole_id" to drillHoleId,
-        "from_depth" to fromDepth,
-        "to_depth" to toDepth,
-        "rock_type" to rockType,
-        "rock_group" to rockGroup,
+        "drillHoleId" to drillHoleId,
+        "fromDepth" to fromDepth,
+        "toDepth" to toDepth,
+        "rockType" to rockType,
+        "rockGroup" to rockGroup,
         "color" to color,
         "texture" to texture,
-        "grain_size" to grainSize,
+        "grainSize" to grainSize,
         "mineralogy" to mineralogy,
         "alteration" to alteration,
-        "alteration_intensity" to alterationIntensity,
+        "alterationIntensity" to alterationIntensity,
         "mineralization" to mineralization,
-        "mineralization_percent" to mineralizationPercent,
+        "mineralizationPercent" to mineralizationPercent,
         "rqd" to rqd,
         "recovery" to recovery,
         "structure" to structure,
@@ -87,19 +87,19 @@ data class RemoteDrillInterval(
     companion object {
         fun fromFirestoreMap(id: String, data: Map<String, Any>): RemoteDrillInterval = RemoteDrillInterval(
             id = id,
-            drillHoleId = data["drill_hole_id"] as? String ?: "",
-            fromDepth = (data["from_depth"] as? Number)?.toDouble() ?: 0.0,
-            toDepth = (data["to_depth"] as? Number)?.toDouble() ?: 0.0,
-            rockType = data["rock_type"] as? String ?: "",
-            rockGroup = data["rock_group"] as? String ?: "",
+            drillHoleId = data["drillHoleId"] as? String ?: "",
+            fromDepth = (data["fromDepth"] as? Number)?.toDouble() ?: 0.0,
+            toDepth = (data["toDepth"] as? Number)?.toDouble() ?: 0.0,
+            rockType = data["rockType"] as? String ?: "",
+            rockGroup = data["rockGroup"] as? String ?: "",
             color = data["color"] as? String ?: "",
             texture = data["texture"] as? String ?: "",
-            grainSize = data["grain_size"] as? String ?: "",
+            grainSize = data["grainSize"] as? String ?: "",
             mineralogy = data["mineralogy"] as? String ?: "",
             alteration = data["alteration"] as? String,
-            alterationIntensity = data["alteration_intensity"] as? String,
+            alterationIntensity = data["alterationIntensity"] as? String,
             mineralization = data["mineralization"] as? String,
-            mineralizationPercent = (data["mineralization_percent"] as? Number)?.toDouble(),
+            mineralizationPercent = (data["mineralizationPercent"] as? Number)?.toDouble(),
             rqd = (data["rqd"] as? Number)?.toDouble(),
             recovery = (data["recovery"] as? Number)?.toDouble(),
             structure = data["structure"] as? String,
