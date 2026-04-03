@@ -4,6 +4,8 @@ import path from 'path';
 const nextConfig: NextConfig = {
   // Silence monorepo workspace root warning
   outputFileTracingRoot: path.join(__dirname, '../../'),
+  // Static export for Electron desktop build (set NEXT_EXPORT=1)
+  ...(process.env.NEXT_EXPORT === '1' ? { output: 'export', images: { unoptimized: true } } : {}),
   images: {
     remotePatterns: [
       {

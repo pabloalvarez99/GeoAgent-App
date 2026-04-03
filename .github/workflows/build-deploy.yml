@@ -77,3 +77,46 @@ jobs:
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: prj_904BfKPW4v7CEwtpo9Qw3zdUj5BC
+
+  # ── Job 3: Build Electron .exe + publish to GitHub Releases ─────────────────
+  build-electron:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install web dependencies
+        run: cd web && npm install
+
+      - name: Build Next.js static export (for Electron)
+        run: cd web/apps/web && npm install && npm run build
+        env:
+          NEXT_EXPORT: '1'
+          NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
+          NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
+          NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
+
+      - name: Install Electron dependencies
+        run: cd web/apps/desktop && npm install
+
+      - name: Build Electron TypeScript
+        run: cd web/apps/desktop && npx tsc -p tsconfig.electron.json
+
+      - name: Build Electron installer (.exe)
+        run: cd web/apps/desktop && npx electron-builder --win --x64
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload .exe to GitHub Releases
+        run: |
+          EXE=$(ls web/apps/desktop/dist-build/*.exe | head -1)
+          gh release upload latest "$EXE#GeoAgent-Setup.exe" --clobber
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

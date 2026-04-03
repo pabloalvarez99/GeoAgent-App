@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -15,12 +15,39 @@ import {
   Loader2,
   Download,
   Smartphone,
+  Monitor,
+  FlaskConical,
+  BarChart3,
 } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Legend,
+} from 'recharts';
 import { useProjects } from '@/lib/hooks/use-projects';
 import { useAuth } from '@/lib/firebase/auth';
-import { subscribeToAllStations, subscribeToAllDrillHoles } from '@/lib/firebase/firestore';
+import {
+  subscribeToAllStations,
+  subscribeToAllDrillHoles,
+  subscribeToAllLithologies,
+  subscribeToAllSamples,
+} from '@/lib/firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+
+// ── Colores para gráficos ────────────────────────────────────────────────────
+const CHART_COLORS = [
+  '#22c55e', '#3b82f6', '#a855f7', '#f59e0b', '#ef4444',
+  '#06b6d4', '#ec4899', '#84cc16', '#f97316', '#8b5cf6',
+];
 
 function StatCard({
   icon: Icon,
@@ -53,27 +80,95 @@ function StatCard({
   );
 }
 
+// ── Custom tooltip para PieChart ─────────────────────────────────────────────
+function CustomPieTooltip({ active, payload }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-md border bg-popover px-3 py-1.5 text-xs shadow-md">
+      <p className="font-medium">{payload[0].name}</p>
+      <p className="text-muted-foreground">{payload[0].value} registro{payload[0].value !== 1 ? 's' : ''}</p>
+    </div>
+  );
+}
+
+// ── Custom tooltip para BarChart ─────────────────────────────────────────────
+function CustomBarTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-md border bg-popover px-3 py-1.5 text-xs shadow-md max-w-[200px]">
+      <p className="font-medium truncate">{label}</p>
+      {payload.map((p: any) => (
+        <p key={p.dataKey} style={{ color: p.fill }}>
+          {p.name}: {p.value}
+        </p>
+      ))}
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const { user } = useAuth();
   const { projects, loading } = useProjects();
-  const [stationCount, setStationCount] = useState<number | null>(null);
-  const [drillHoleCount, setDrillHoleCount] = useState<number | null>(null);
+  const [stations, setStations] = useState<any[]>([]);
+  const [drillHoles, setDrillHoles] = useState<any[]>([]);
+  const [lithologies, setLithologies] = useState<any[]>([]);
+  const [samples, setSamples] = useState<any[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
-    const unsubStations = subscribeToAllStations(user.uid, (items) => setStationCount(items.length));
-    const unsubDrillHoles = subscribeToAllDrillHoles(user.uid, (items) => setDrillHoleCount(items.length));
-    return () => { unsubStations(); unsubDrillHoles(); };
+    let resolved = 0;
+    const check = () => { resolved++; if (resolved >= 4) setDataLoading(false); };
+
+    const u1 = subscribeToAllStations(user.uid, (d) => { setStations(d); check(); });
+    const u2 = subscribeToAllDrillHoles(user.uid, (d) => { setDrillHoles(d); check(); });
+    const u3 = subscribeToAllLithologies(user.uid, (d) => { setLithologies(d); check(); });
+    const u4 = subscribeToAllSamples(user.uid, (d) => { setSamples(d); check(); });
+    return () => { u1(); u2(); u3(); u4(); };
   }, [user]);
 
   const displayName =
     user?.displayName || user?.email?.split('@')[0] || 'Geólogo';
 
-  const today = format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", {
-    locale: es,
-  });
+  const today = format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es });
 
   const recentProjects = projects.slice(0, 3);
+
+  // ── Gráfico 1: distribución de tipos de roca (lithologies) ──────────────
+  const rockTypeData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    lithologies.forEach((l) => {
+      const key = l.rockType || 'Sin tipo';
+      counts[key] = (counts[key] ?? 0) + 1;
+    });
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([name, value]) => ({ name, value }));
+  }, [lithologies]);
+
+  // ── Gráfico 2: actividad por proyecto (estaciones + sondajes) ───────────
+  const projectActivityData = useMemo(() => {
+    return projects.slice(0, 8).map((p) => ({
+      name: p.name.length > 14 ? p.name.slice(0, 14) + '…' : p.name,
+      Estaciones: stations.filter((s) => s.projectId === p.id).length,
+      Sondajes: drillHoles.filter((d) => d.projectId === p.id).length,
+    }));
+  }, [projects, stations, drillHoles]);
+
+  // ── Gráfico 3: progreso de sondajes (plannedDepth vs actualDepth) ────────
+  const drillProgressData = useMemo(() => {
+    return drillHoles
+      .filter((d) => d.plannedDepth > 0)
+      .slice(0, 8)
+      .map((d) => ({
+        name: d.holeId?.length > 10 ? d.holeId.slice(0, 10) + '…' : (d.holeId || 'S/N'),
+        Planificado: Number(d.plannedDepth) || 0,
+        Real: Number(d.actualDepth) || 0,
+      }));
+  }, [drillHoles]);
+
+  const hasAnalyticsData = lithologies.length > 0 || drillHoles.length > 0 || stations.length > 0;
 
   return (
     <div className="space-y-8">
@@ -86,10 +181,10 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <StatCard
           icon={FolderOpen}
-          label="Total proyectos"
+          label="Proyectos"
           value={loading ? '—' : projects.length}
           sub={loading ? 'Cargando...' : undefined}
           iconColor="text-primary"
@@ -97,18 +192,130 @@ export default function DashboardPage() {
         <StatCard
           icon={Layers}
           label="Estaciones"
-          value={stationCount ?? '—'}
-          sub={stationCount === null ? 'Cargando...' : undefined}
+          value={dataLoading ? '—' : stations.length}
+          sub={dataLoading ? 'Cargando...' : undefined}
           iconColor="text-blue-400"
         />
         <StatCard
           icon={Drill}
           label="Sondajes"
-          value={drillHoleCount ?? '—'}
-          sub={drillHoleCount === null ? 'Cargando...' : undefined}
+          value={dataLoading ? '—' : drillHoles.length}
+          sub={dataLoading ? 'Cargando...' : undefined}
           iconColor="text-purple-400"
         />
+        <StatCard
+          icon={FlaskConical}
+          label="Muestras"
+          value={dataLoading ? '—' : samples.length}
+          sub={dataLoading ? 'Cargando...' : undefined}
+          iconColor="text-amber-400"
+        />
       </div>
+
+      {/* Analytics section */}
+      {!dataLoading && hasAnalyticsData && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-base font-semibold">Analytics</h2>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Distribución de tipos de roca */}
+            {rockTypeData.length > 0 && (
+              <Card>
+                <CardHeader className="pb-2 pt-4 px-4">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Tipos de roca (litologías)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 pb-4">
+                  <div className="h-[220px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={rockTypeData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={80}
+                          paddingAngle={2}
+                          dataKey="value"
+                        >
+                          {rockTypeData.map((_, i) => (
+                            <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip content={<CustomPieTooltip />} />
+                        <Legend
+                          iconType="circle"
+                          iconSize={8}
+                          formatter={(value) => (
+                            <span className="text-xs text-muted-foreground">{value}</span>
+                          )}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Actividad por proyecto */}
+            {projectActivityData.some((p) => p.Estaciones > 0 || p.Sondajes > 0) && (
+              <Card>
+                <CardHeader className="pb-2 pt-4 px-4">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Actividad por proyecto
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 pb-4">
+                  <div className="h-[220px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={projectActivityData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis
+                          dataKey="name"
+                          tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                        />
+                        <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} />
+                        <Tooltip content={<CustomBarTooltip />} />
+                        <Bar dataKey="Estaciones" fill="#3b82f6" radius={[2, 2, 0, 0]} />
+                        <Bar dataKey="Sondajes" fill="#a855f7" radius={[2, 2, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Progreso de sondajes */}
+            {drillProgressData.length > 0 && (
+              <Card className="lg:col-span-2">
+                <CardHeader className="pb-2 pt-4 px-4">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Profundidad sondajes — planificada vs. real (m)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 pb-4">
+                  <div className="h-[200px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={drillProgressData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
+                        <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
+                        <Tooltip content={<CustomBarTooltip />} />
+                        <Bar dataKey="Planificado" fill="hsl(var(--muted-foreground))" opacity={0.4} radius={[2, 2, 0, 0]} />
+                        <Bar dataKey="Real" fill="#22c55e" radius={[2, 2, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Recent projects */}
       <div className="space-y-4">
@@ -122,7 +329,6 @@ export default function DashboardPage() {
           </Button>
         </div>
 
-        {/* Loading state */}
         {loading && (
           <div className="flex items-center gap-2 text-muted-foreground py-6">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -130,7 +336,6 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Empty state */}
         {!loading && projects.length === 0 && (
           <Card className="border-dashed">
             <CardContent className="flex flex-col items-center justify-center py-12 gap-4 text-center">
@@ -153,7 +358,6 @@ export default function DashboardPage() {
           </Card>
         )}
 
-        {/* Project cards */}
         {!loading && recentProjects.length > 0 && (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {recentProjects.map((project) => (
@@ -165,9 +369,7 @@ export default function DashboardPage() {
                         <FolderOpen className="h-4 w-4 text-primary" />
                       </div>
                       <div className="min-w-0">
-                        <CardTitle className="text-sm font-semibold truncate">
-                          {project.name}
-                        </CardTitle>
+                        <p className="text-sm font-semibold truncate">{project.name}</p>
                         <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground">
                           <MapPin className="h-3 w-3 shrink-0" />
                           <span className="truncate">{project.location}</span>
@@ -186,7 +388,6 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Show more hint when there are more than 3 projects */}
         {!loading && projects.length > 3 && (
           <p className="text-xs text-muted-foreground text-center">
             +{projects.length - 3} proyecto{projects.length - 3 !== 1 ? 's' : ''} más —{' '}
@@ -197,28 +398,54 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Android App Download */}
-      <Card className="border-primary/20 bg-primary/5">
-        <CardContent className="flex items-center justify-between gap-4 py-4 px-4">
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-primary/15 p-2.5 shrink-0">
-              <Smartphone className="h-5 w-5 text-primary" />
+      {/* Downloads section */}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="flex items-center justify-between gap-4 py-4 px-4">
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-primary/15 p-2.5 shrink-0">
+                <Smartphone className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="font-semibold text-sm">GeoAgent Android</p>
+                <p className="text-xs text-muted-foreground">GPS, cámara, modo sin conexión</p>
+              </div>
             </div>
-            <div>
-              <p className="font-semibold text-sm">GeoAgent para Android</p>
-              <p className="text-xs text-muted-foreground">
-                Recoge datos en campo con GPS, cámara y modo sin conexión
-              </p>
+            <Button size="sm" asChild className="shrink-0">
+              <a
+                href="https://github.com/pabloalvarez99/GeoAgent-App/releases/latest/download/app-debug.apk"
+                download="GeoAgent.apk"
+              >
+                <Download className="h-3.5 w-3.5 mr-1.5" />
+                APK
+              </a>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-blue-500/20 bg-blue-500/5">
+          <CardContent className="flex items-center justify-between gap-4 py-4 px-4">
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-blue-500/15 p-2.5 shrink-0">
+                <Monitor className="h-5 w-5 text-blue-400" />
+              </div>
+              <div>
+                <p className="font-semibold text-sm">GeoAgent Windows</p>
+                <p className="text-xs text-muted-foreground">App de escritorio con menú nativo</p>
+              </div>
             </div>
-          </div>
-          <Button size="sm" asChild className="shrink-0">
-            <a href="https://github.com/pabloalvarez99/GeoAgent-App/releases/latest/download/app-debug.apk" download="GeoAgent.apk">
-              <Download className="h-3.5 w-3.5 mr-1.5" />
-              Descargar APK
-            </a>
-          </Button>
-        </CardContent>
-      </Card>
+            <Button size="sm" variant="outline" asChild className="shrink-0 border-blue-500/30">
+              <a
+                href="https://github.com/pabloalvarez99/GeoAgent-App/releases/latest/download/GeoAgent-Setup.exe"
+                download="GeoAgent-Setup.exe"
+              >
+                <Download className="h-3.5 w-3.5 mr-1.5" />
+                .exe
+              </a>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

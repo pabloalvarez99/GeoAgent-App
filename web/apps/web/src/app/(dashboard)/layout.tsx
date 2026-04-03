@@ -6,23 +6,37 @@ import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/lib/firebase/auth';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
+import { CommandPalette } from '@/components/layout/command-palette';
+import { useKeyboardShortcuts } from '@/lib/hooks/use-keyboard-shortcuts';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false);
 
-  // Close mobile sidebar on route change
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
+  useEffect(() => { setMobileOpen(false); }, [pathname]);
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.replace('/login');
-    }
+    if (!loading && !user) router.replace('/login');
   }, [user, loading, router]);
+
+  // Global keyboard shortcuts — Ctrl+K, Ctrl+N, G+H (go home)
+  useKeyboardShortcuts([
+    {
+      key: 'k',
+      ctrl: true,
+      description: 'Abrir búsqueda rápida',
+      action: () => setCommandOpen((o) => !o),
+    },
+    {
+      key: 'n',
+      ctrl: true,
+      description: 'Nuevo proyecto',
+      action: () => router.push('/projects'),
+    },
+  ]);
 
   if (loading) {
     return (
@@ -39,7 +53,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      {/* Mobile overlay */}
       {mobileOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/60 md:hidden"
@@ -48,9 +61,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       )}
       <Sidebar mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} />
       <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
-        <Header onMenuClick={() => setMobileOpen(true)} />
+        <Header onMenuClick={() => setMobileOpen(true)} onCommandOpen={() => setCommandOpen(true)} />
         <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
       </div>
+      <CommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} />
     </div>
   );
 }

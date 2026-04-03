@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { ChevronRight, Menu } from 'lucide-react';
+import { ChevronRight, Menu, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const ROUTE_LABELS: Record<string, string> = {
@@ -12,6 +12,7 @@ const ROUTE_LABELS: Record<string, string> = {
   map: 'Mapa',
   photos: 'Fotos',
   export: 'Exportar',
+  import: 'Importar',
   settings: 'Configuración',
   new: 'Nuevo',
   lithology: 'Litología',
@@ -28,9 +29,10 @@ function getLabel(segment: string): string {
 interface HeaderProps {
   title?: string;
   onMenuClick?: () => void;
+  onCommandOpen?: () => void;
 }
 
-export function Header({ title, onMenuClick }: HeaderProps) {
+export function Header({ title, onMenuClick, onCommandOpen }: HeaderProps) {
   const pathname = usePathname();
   const segments = pathname.split('/').filter(Boolean);
 
@@ -56,11 +58,7 @@ export function Header({ title, onMenuClick }: HeaderProps) {
             return (
               <span key={i} className="flex items-center gap-1 min-w-0">
                 {i > 0 && <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
-                <span
-                  className={
-                    isLast ? 'text-foreground font-medium truncate' : 'truncate'
-                  }
-                >
+                <span className={isLast ? 'text-foreground font-medium truncate' : 'truncate'}>
                   {getLabel(seg)}
                 </span>
               </span>
@@ -74,6 +72,26 @@ export function Header({ title, onMenuClick }: HeaderProps) {
           {title}
         </div>
       )}
+
+      {/* Search / Command Palette button */}
+      <Button
+        variant="outline"
+        size="sm"
+        className="hidden sm:flex items-center gap-2 text-muted-foreground text-xs h-8 px-3"
+        onClick={onCommandOpen}
+      >
+        <Search className="h-3.5 w-3.5" />
+        Buscar...
+        <kbd className="ml-1 border rounded px-1 text-[10px]">⌃K</kbd>
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="sm:hidden h-8 w-8"
+        onClick={onCommandOpen}
+      >
+        <Search className="h-4 w-4" />
+      </Button>
     </header>
   );
 }

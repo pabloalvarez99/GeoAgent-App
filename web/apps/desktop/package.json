@@ -1,0 +1,64 @@
+{
+  "name": "geoagent-desktop",
+  "version": "1.0.0",
+  "description": "GeoAgent Desktop — app Windows para geología de campo",
+  "main": "dist-electron/main.js",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev:web\" \"wait-on http://localhost:3000 && electron .\"",
+    "dev:web": "cd ../web && npm run dev",
+    "build": "npm run build:web && npm run build:electron && npm run dist",
+    "build:web": "cd ../web && npm run build",
+    "build:electron": "tsc -p tsconfig.electron.json",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0",
+    "electron": "^34.0.0",
+    "electron-builder": "^25.1.8",
+    "typescript": "^5.7.0",
+    "wait-on": "^8.0.1"
+  },
+  "build": {
+    "appId": "com.geoagent.desktop",
+    "productName": "GeoAgent",
+    "copyright": "GeoAgent",
+    "directories": {
+      "output": "dist-build"
+    },
+    "files": [
+      "dist-electron/**/*",
+      "!../web/node_modules",
+      "!../web/.next"
+    ],
+    "extraResources": [
+      {
+        "from": "../web/out",
+        "to": "web-out",
+        "filter": ["**/*"]
+      }
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] }
+      ],
+      "icon": "resources/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "GeoAgent"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "pabloalvarez99",
+      "repo": "GeoAgent-App"
+    }
+  }
+}

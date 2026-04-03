@@ -11,6 +11,7 @@ import {
   Map,
   Camera,
   Download,
+  Upload,
   Loader2,
   Pencil,
   Trash2,
@@ -60,6 +61,7 @@ const subNavItems = [
   { href: 'map', label: 'Mapa', icon: Map },
   { href: 'photos', label: 'Fotos', icon: Camera },
   { href: 'export', label: 'Exportar', icon: Download },
+  { href: 'import', label: 'Importar', icon: Upload },
 ];
 
 export default function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {

@@ -266,6 +266,16 @@ export function subscribeToAllDrillHoles(userId: string, onData: (items: any[]) 
   return subscribeToCollection(q, onData);
 }
 
+export function subscribeToAllLithologies(userId: string, onData: (items: any[]) => void) {
+  const q = query(userCollection(userId, COLLECTIONS.LITHOLOGIES));
+  return subscribeToCollection(q, onData);
+}
+
+export function subscribeToAllSamples(userId: string, onData: (items: any[]) => void) {
+  const q = query(userCollection(userId, COLLECTIONS.SAMPLES));
+  return subscribeToCollection(q, onData);
+}
+
 // ── One-time reads for exports ──────────────────────────────────────────────
 async function getAll<T>(q: Query<DocumentData>): Promise<T[]> {
   const snap = await getDocs(q);
