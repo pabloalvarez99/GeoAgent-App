@@ -20,7 +20,7 @@ export interface ExcelExportData {
   intervals: GeoDrillInterval[];
 }
 
-export function downloadExcel(data: ExcelExportData) {
+export async function downloadExcel(data: ExcelExportData) {
   const wb = XLSX.utils.book_new();
 
   // Sheet 1: Project Info
@@ -97,10 +97,6 @@ export function downloadExcel(data: ExcelExportData) {
 
   const filename = `${data.project.name.replace(/\s+/g, '_')}_GeoAgent.xlsx`;
 
-  if (typeof window !== 'undefined' && (window as any).electronAPI?.isElectron) {
-    const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer;
-    await (window as any).electronAPI.saveFile(filename, buffer);
-  } else {
-    XLSX.writeFile(wb, filename);
-  }
+  const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer;
+  await saveFile(filename, buffer);
 }

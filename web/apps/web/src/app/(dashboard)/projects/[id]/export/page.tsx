@@ -180,7 +180,7 @@ export default function ExportPage({ params }: { params: Promise<{ id: string }>
         Promise.all(allDrillHoles.map((d: any) => getIntervalsOnce(user.uid, d.id))).then((r) => r.flat()),
       ]);
 
-      downloadExcel({
+      await downloadExcel({
         project: project as GeoProject,
         stations: allStations as any,
         lithologies: allLithologies as any,
