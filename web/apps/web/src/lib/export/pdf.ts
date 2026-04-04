@@ -791,5 +791,13 @@ export async function downloadPDF(data: PdfExportData) {
   }
 
   const slug = data.project.name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_\-]/g, '');
-  doc.save(`${slug}_GeoAgent_Informe.pdf`);
+  const filename = `${slug}_GeoAgent_Informe.pdf`;
+
+  // Use Electron native dialog if available, otherwise browser download
+  if (typeof window !== 'undefined' && (window as any).electronAPI?.isElectron) {
+    const pdfBuffer = doc.output('arraybuffer');
+    await (window as any).electronAPI.saveFile(filename, pdfBuffer);
+  } else {
+    doc.save(filename);
+  }
 }

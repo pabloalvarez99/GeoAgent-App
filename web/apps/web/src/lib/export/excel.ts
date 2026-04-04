@@ -94,6 +94,12 @@ export function downloadExcel(data: ExcelExportData) {
   ]);
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([intHeaders, ...intRows]), 'Intervalos');
 
-  // Download
-  XLSX.writeFile(wb, `${data.project.name.replace(/\s+/g, '_')}_GeoAgent.xlsx`);
+  const filename = `${data.project.name.replace(/\s+/g, '_')}_GeoAgent.xlsx`;
+
+  if (typeof window !== 'undefined' && (window as any).electronAPI?.isElectron) {
+    const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer;
+    await (window as any).electronAPI.saveFile(filename, buffer);
+  } else {
+    XLSX.writeFile(wb, filename);
+  }
 }

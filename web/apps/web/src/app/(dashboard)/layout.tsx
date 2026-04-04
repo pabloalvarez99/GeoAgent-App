@@ -22,7 +22,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!loading && !user) router.replace('/login');
   }, [user, loading, router]);
 
-  // Global keyboard shortcuts — Ctrl+K, Ctrl+N, G+H (go home)
+  // Global keyboard shortcuts
   useKeyboardShortcuts([
     {
       key: 'k',
@@ -35,6 +35,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       ctrl: true,
       description: 'Nuevo proyecto',
       action: () => router.push('/projects'),
+    },
+    {
+      key: 'e',
+      ctrl: true,
+      description: 'Exportar (proyecto activo)',
+      action: () => {
+        // Extract project ID from path like /projects/[id]/...
+        const match = pathname.match(/\/projects\/([^/]+)/);
+        if (match) router.push(`/projects/${match[1]}/export`);
+      },
     },
   ]);
 

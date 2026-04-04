@@ -16,6 +16,7 @@ import {
   AlertTriangle,
   Loader2,
   Map as MapIcon,
+  List,
 } from 'lucide-react';
 import { useStations } from '@/lib/hooks/use-stations';
 import { useDrillHoles } from '@/lib/hooks/use-drillholes';
@@ -279,6 +280,7 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
   const { drillHoles, loading: loadingDrillHoles } = useDrillHoles(projectId);
 
   const [selected, setSelected] = useState<SelectedFeature | null>(null);
+  const [showList, setShowList] = useState(false);
   const [mapTypeId, setMapTypeId] = useState<'roadmap' | 'satellite' | 'hybrid' | 'terrain'>(
     'roadmap',
   );
@@ -352,8 +354,22 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
           </Badge>
         </div>
 
+        {/* Split view toggle */}
+        <button
+          onClick={() => setShowList((v) => !v)}
+          className={`ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+            showList
+              ? 'bg-primary text-primary-foreground'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+          }`}
+          title="Vista dividida (mapa + lista)"
+        >
+          <List className="h-3.5 w-3.5" />
+          Lista
+        </button>
+
         {/* Map type switcher */}
-        <div className="ml-auto flex items-center gap-1">
+        <div className="flex items-center gap-1">
           {(
             [
               { id: 'roadmap', label: 'Mapa' },
@@ -388,6 +404,65 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
             </div>
           </div>
         )}
+
+        {/* ── List panel (split view) ── */}
+        <div
+          className={`shrink-0 border-r border-border bg-background overflow-hidden transition-all duration-200 flex flex-col
+            ${showList ? 'w-64' : 'w-0'}`}
+        >
+          {showList && (
+            <>
+              <div className="px-3 py-2 border-b border-border text-xs font-medium text-muted-foreground uppercase tracking-wider shrink-0">
+                {stations.length + drillHoles.length} elemento{stations.length + drillHoles.length !== 1 ? 's' : ''}
+              </div>
+              <div className="overflow-y-auto flex-1 py-1">
+                {/* Stations */}
+                {stations.length > 0 && (
+                  <>
+                    <p className="px-3 py-1 text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                      Estaciones ({stations.length})
+                    </p>
+                    {stations.map((st) => (
+                      <button
+                        key={st.id}
+                        onClick={() => setSelected({ kind: 'station', data: st })}
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-left text-xs hover:bg-accent transition-colors
+                          ${selected?.kind === 'station' && selected.data.id === st.id ? 'bg-accent' : ''}`}
+                      >
+                        <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0" />
+                        <span className="font-mono font-medium truncate">{st.code}</span>
+                        <span className="text-muted-foreground ml-auto shrink-0">{st.date?.slice(0, 10) ?? ''}</span>
+                      </button>
+                    ))}
+                  </>
+                )}
+                {/* Drill holes */}
+                {drillHoles.length > 0 && (
+                  <>
+                    <p className="px-3 py-1 mt-1 text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                      Sondajes ({drillHoles.length})
+                    </p>
+                    {drillHoles.map((dh) => (
+                      <button
+                        key={dh.id}
+                        onClick={() => setSelected({ kind: 'drillhole', data: dh })}
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-left text-xs hover:bg-accent transition-colors
+                          ${selected?.kind === 'drillhole' && selected.data.id === dh.id ? 'bg-accent' : ''}`}
+                      >
+                        <span className="h-2 w-2 rounded-full bg-amber-500 shrink-0" />
+                        <span className="font-mono font-medium truncate">{dh.holeId}</span>
+                        <span className="text-muted-foreground ml-auto shrink-0">{dh.plannedDepth}m</span>
+                      </button>
+                    ))}
+                  </>
+                )}
+                {stations.length === 0 && drillHoles.length === 0 && (
+                  <p className="px-3 py-4 text-xs text-muted-foreground text-center">Sin datos</p>
+                )}
+              </div>
+            </>
+          )}
+        </div>
 
         {/* Map area */}
         <div className="flex-1 min-w-0 relative">
