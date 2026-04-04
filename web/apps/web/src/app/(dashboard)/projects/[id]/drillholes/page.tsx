@@ -2,7 +2,7 @@
 
 import { use, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
   Plus,
@@ -17,6 +17,7 @@ import {
   Clock,
   XCircle,
   PauseCircle,
+  ArrowUpDown,
 } from 'lucide-react';
 import { useDrillHoles } from '@/lib/hooks/use-drillholes';
 import { useProject } from '@/lib/hooks/use-projects';
@@ -41,10 +42,19 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { DrillHoleForm } from '@/components/forms/drillhole-form';
 import type { DrillHoleFormData } from '@geoagent/geo-shared/validation';
 import type { GeoDrillHole } from '@geoagent/geo-shared/types';
 import { toast } from 'sonner';
+
+type SortKey = 'holeId' | 'depth_desc' | 'depth_asc' | 'status';
 
 const statusIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   'Completado': CheckCircle2,
@@ -63,19 +73,36 @@ const statusColors: Record<string, string> = {
 export default function DrillHolesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: projectId } = use(params);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { project } = useProject(projectId);
   const { drillHoles, loading, editDrillHole, removeDrillHole } = useDrillHoles(projectId);
 
-  const [search, setSearch] = useState('');
+  const search = searchParams.get('q') ?? '';
+  const sort = (searchParams.get('sort') as SortKey) ?? 'holeId';
+
   const [editTarget, setEditTarget] = useState<GeoDrillHole | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<GeoDrillHole | null>(null);
 
-  const filtered = drillHoles.filter(
-    (d) =>
-      d.holeId.toLowerCase().includes(search.toLowerCase()) ||
-      d.geologist.toLowerCase().includes(search.toLowerCase()) ||
-      d.type.toLowerCase().includes(search.toLowerCase()),
-  );
+  function updateParam(key: string, value: string) {
+    const p = new URLSearchParams(searchParams.toString());
+    if (value) p.set(key, value); else p.delete(key);
+    router.replace(`?${p.toString()}`, { scroll: false });
+  }
+
+  const filtered = drillHoles
+    .filter(
+      (d) =>
+        !search ||
+        d.holeId.toLowerCase().includes(search.toLowerCase()) ||
+        d.geologist.toLowerCase().includes(search.toLowerCase()) ||
+        d.type.toLowerCase().includes(search.toLowerCase()),
+    )
+    .sort((a, b) => {
+      if (sort === 'depth_desc') return (b.actualDepth ?? b.plannedDepth) - (a.actualDepth ?? a.plannedDepth);
+      if (sort === 'depth_asc') return (a.actualDepth ?? a.plannedDepth) - (b.actualDepth ?? b.plannedDepth);
+      if (sort === 'status') return a.status.localeCompare(b.status);
+      return a.holeId.localeCompare(b.holeId);
+    });
 
   async function handleEdit(data: DrillHoleFormData) {
     if (!editTarget) return;
@@ -122,15 +149,29 @@ export default function DrillHolesPage({ params }: { params: Promise<{ id: strin
         </Button>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar por ID, geólogo o tipo..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-        />
+      {/* Search + Sort */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por ID, geólogo o tipo..."
+            value={search}
+            onChange={(e) => updateParam('q', e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Select value={sort} onValueChange={(v) => updateParam('sort', v === 'holeId' ? '' : v)}>
+          <SelectTrigger className="w-48 shrink-0">
+            <ArrowUpDown className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="holeId">ID A→Z</SelectItem>
+            <SelectItem value="depth_desc">Profundidad: mayor</SelectItem>
+            <SelectItem value="depth_asc">Profundidad: menor</SelectItem>
+            <SelectItem value="status">Estado</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* List */}

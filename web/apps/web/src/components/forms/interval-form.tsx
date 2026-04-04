@@ -100,6 +100,9 @@ export function IntervalForm({ defaultValues, fromDepthMin = 0, onSubmit, onCanc
   const rockTypes = rockGroup ? ROCK_TYPES_BY_GROUP[rockGroup] ?? [] : [];
   const rqd = watch('rqd');
   const recovery = watch('recovery');
+  const fromDepth = watch('fromDepth');
+  const toDepth = watch('toDepth');
+  const depthInvalid = typeof fromDepth === 'number' && typeof toDepth === 'number' && !isNaN(fromDepth) && !isNaN(toDepth) && toDepth <= fromDepth;
 
   async function onFormSubmit(data: DrillIntervalFormData) {
     setSubmitting(true);
@@ -125,6 +128,11 @@ export function IntervalForm({ defaultValues, fromDepthMin = 0, onSubmit, onCanc
           {errors.toDepth && <p className="text-xs text-destructive">{errors.toDepth.message}</p>}
         </div>
       </div>
+      {depthInvalid && (
+        <p className="text-xs text-amber-500 bg-amber-500/10 rounded px-2 py-1">
+          ⚠ La profundidad &ldquo;hasta&rdquo; debe ser mayor que &ldquo;desde&rdquo; ({fromDepth} m).
+        </p>
+      )}
 
       {/* Rock */}
       <div className="grid grid-cols-2 gap-4">

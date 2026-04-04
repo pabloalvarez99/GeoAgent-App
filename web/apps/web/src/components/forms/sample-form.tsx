@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
+import { Loader2, MapPin } from 'lucide-react';
 import { useState } from 'react';
 
 interface SampleFormProps {
@@ -20,6 +20,8 @@ interface SampleFormProps {
 
 export function SampleForm({ defaultValues, onSubmit, onCancel }: SampleFormProps) {
   const [submitting, setSubmitting] = useState(false);
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const [gpsError, setGpsError] = useState('');
 
   const {
     register,
@@ -45,6 +47,27 @@ export function SampleForm({ defaultValues, onSubmit, onCancel }: SampleFormProp
       ...defaultValues,
     },
   });
+
+  async function captureGPS() {
+    if (!navigator.geolocation) {
+      setGpsError('GPS no disponible en este dispositivo.');
+      return;
+    }
+    setGpsLoading(true);
+    setGpsError('');
+    try {
+      const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+        navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 })
+      );
+      setValue('latitude', pos.coords.latitude);
+      setValue('longitude', pos.coords.longitude);
+      if (pos.coords.altitude != null) setValue('altitude', pos.coords.altitude);
+    } catch {
+      setGpsError('No se pudo obtener la ubicación. Verifica los permisos del navegador.');
+    } finally {
+      setGpsLoading(false);
+    }
+  }
 
   async function onFormSubmit(data: SampleFormData) {
     setSubmitting(true);
@@ -100,6 +123,35 @@ export function SampleForm({ defaultValues, onSubmit, onCancel }: SampleFormProp
       <div className="space-y-1.5">
         <Label>Análisis solicitados</Label>
         <Input placeholder="Au, Ag, Cu, ICP-MS..." {...register('analysisRequested')} />
+      </div>
+
+      {/* GPS Coordinates */}
+      <div className="space-y-2 rounded-md border border-border/50 p-3">
+        <div className="flex items-center justify-between">
+          <Label className="text-sm font-medium">Coordenadas GPS (opcional)</Label>
+          <Button type="button" variant="outline" size="sm" onClick={captureGPS} disabled={gpsLoading}>
+            {gpsLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <MapPin className="h-3.5 w-3.5 mr-1" />}
+            Capturar GPS
+          </Button>
+        </div>
+        {gpsError && <p className="text-xs text-destructive">{gpsError}</p>}
+        <div className="grid grid-cols-3 gap-2">
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Latitud</Label>
+            <Input type="number" step="0.000001" placeholder="–90 a 90" className="font-mono text-sm"
+              {...register('latitude', { valueAsNumber: true, setValueAs: (v) => v === '' ? null : Number(v) })} />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Longitud</Label>
+            <Input type="number" step="0.000001" placeholder="–180 a 180" className="font-mono text-sm"
+              {...register('longitude', { valueAsNumber: true, setValueAs: (v) => v === '' ? null : Number(v) })} />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Altitud (m)</Label>
+            <Input type="number" step="1" placeholder="msnm" className="font-mono text-sm"
+              {...register('altitude', { valueAsNumber: true, setValueAs: (v) => v === '' ? null : Number(v) })} />
+          </div>
+        </div>
       </div>
 
       <div className="space-y-1.5">

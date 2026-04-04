@@ -2,7 +2,7 @@
 
 import { use, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
   Plus,
@@ -14,6 +14,7 @@ import {
   MapPin,
   Calendar,
   User,
+  ArrowUpDown,
 } from 'lucide-react';
 import { useStations } from '@/lib/hooks/use-stations';
 import { useProject } from '@/lib/hooks/use-projects';
@@ -21,6 +22,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -42,23 +50,42 @@ import type { StationFormData } from '@geoagent/geo-shared/validation';
 import type { GeoStation } from '@geoagent/geo-shared/types';
 import { toast } from 'sonner';
 
+type SortKey = 'code' | 'date_desc' | 'date_asc' | 'geologist';
+
 export default function StationsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: projectId } = use(params);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { project } = useProject(projectId);
   const { stations, loading, addStation, editStation, removeStation } = useStations(projectId);
 
-  const [search, setSearch] = useState('');
+  const search = searchParams.get('q') ?? '';
+  const sort = (searchParams.get('sort') as SortKey) ?? 'code';
+
   const [editTarget, setEditTarget] = useState<GeoStation | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<GeoStation | null>(null);
   const [editOpen, setEditOpen] = useState(false);
 
-  const filtered = stations.filter(
-    (s) =>
-      s.code.toLowerCase().includes(search.toLowerCase()) ||
-      s.geologist.toLowerCase().includes(search.toLowerCase()) ||
-      s.description.toLowerCase().includes(search.toLowerCase()),
-  );
+  function updateParam(key: string, value: string) {
+    const p = new URLSearchParams(searchParams.toString());
+    if (value) p.set(key, value); else p.delete(key);
+    router.replace(`?${p.toString()}`, { scroll: false });
+  }
+
+  const filtered = stations
+    .filter(
+      (s) =>
+        !search ||
+        s.code.toLowerCase().includes(search.toLowerCase()) ||
+        s.geologist.toLowerCase().includes(search.toLowerCase()) ||
+        s.description.toLowerCase().includes(search.toLowerCase()),
+    )
+    .sort((a, b) => {
+      if (sort === 'date_desc') return b.date.localeCompare(a.date);
+      if (sort === 'date_asc') return a.date.localeCompare(b.date);
+      if (sort === 'geologist') return a.geologist.localeCompare(b.geologist);
+      return a.code.localeCompare(b.code);
+    });
 
   async function handleEdit(data: StationFormData) {
     if (!editTarget) return;
@@ -108,15 +135,29 @@ export default function StationsPage({ params }: { params: Promise<{ id: string 
         </Button>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar por código, geólogo o descripción..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-        />
+      {/* Search + Sort */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por código, geólogo o descripción..."
+            value={search}
+            onChange={(e) => updateParam('q', e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Select value={sort} onValueChange={(v) => updateParam('sort', v === 'code' ? '' : v)}>
+          <SelectTrigger className="w-44 shrink-0">
+            <ArrowUpDown className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="code">Código A→Z</SelectItem>
+            <SelectItem value="date_desc">Fecha: más reciente</SelectItem>
+            <SelectItem value="date_asc">Fecha: más antigua</SelectItem>
+            <SelectItem value="geologist">Geólogo A→Z</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* List */}

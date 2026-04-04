@@ -40,6 +40,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { IntervalForm } from '@/components/forms/interval-form';
+import { StratigraphicColumn } from '@/components/drillhole/stratigraphic-column';
 import type { DrillIntervalFormData } from '@geoagent/geo-shared/validation';
 import type { GeoDrillInterval } from '@geoagent/geo-shared/types';
 import { toast } from 'sonner';
@@ -167,6 +168,18 @@ export default function DrillHoleDetailPage({
           </CardContent>
         </Card>
       </div>
+
+      {/* Stratigraphic Column */}
+      {intervals.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2 pt-4 px-4">
+            <CardTitle className="text-sm">Columna estratigráfica</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            <StratigraphicColumn intervals={intervals} totalDepth={drillHole.actualDepth ?? drillHole.plannedDepth} />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Intervals */}
       <div className="space-y-3">
