@@ -11,7 +11,16 @@ export async function saveFile(
   filename: string,
   data: Blob | ArrayBuffer | Uint8Array,
 ): Promise<void> {
-  const buffer = data instanceof Blob ? await data.arrayBuffer() : data;
+  // Normalize everything to ArrayBuffer — avoids Uint8Array<ArrayBufferLike>
+  // vs BlobPart type incompatibility in strict TypeScript.
+  let buffer: ArrayBuffer;
+  if (data instanceof Blob) {
+    buffer = await data.arrayBuffer();
+  } else if (data instanceof Uint8Array) {
+    buffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;
+  } else {
+    buffer = data;
+  }
 
   if (isElectron()) {
     const api = (window as any).electronAPI;
@@ -20,7 +29,7 @@ export async function saveFile(
   }
 
   // Browser fallback: download link
-  const blob = data instanceof Blob ? data : new Blob([buffer]);
+  const blob = new Blob([buffer]);
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
