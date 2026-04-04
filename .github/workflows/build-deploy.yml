@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  # ── Job 1: Build Android APK + publish to GitHub Releases ───────────────────
+  # ── Job 1: Build Android APK + create GitHub Release ────────────────────────
   build-apk:
     runs-on: ubuntu-latest
     permissions:
@@ -78,9 +78,11 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: prj_904BfKPW4v7CEwtpo9Qw3zdUj5BC
 
-  # ── Job 3: Build Electron .exe + publish to GitHub Releases ─────────────────
+  # ── Job 3: Build Electron .exe + upload to existing GitHub Release ───────────
+  # Must run after build-apk so the 'latest' release already exists.
   build-electron:
     runs-on: windows-latest
+    needs: build-apk
     permissions:
       contents: write
 
@@ -91,14 +93,18 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install web dependencies
+      - name: Install web workspace dependencies
         run: cd web && npm install
 
       - name: Build Next.js static export (for Electron)
-        run: cd web/apps/web && npm install && npm run build
+        run: cd web/apps/web && npm run build
         env:
           NEXT_EXPORT: '1'
           NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
           NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
           NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
 
@@ -114,9 +120,15 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload .exe to GitHub Releases
-        run: |
-          EXE=$(ls web/apps/desktop/dist-build/*.exe | head -1)
-          gh release upload latest "$EXE#GeoAgent-Setup.exe" --clobber
         shell: bash
+        run: |
+          EXE=$(find web/apps/desktop/dist-build -name "*.exe" | head -1)
+          if [ -z "$EXE" ]; then
+            echo "ERROR: No .exe found in dist-build"
+            ls -la web/apps/desktop/dist-build/ || echo "dist-build does not exist"
+            exit 1
+          fi
+          echo "Uploading: $EXE"
+          gh release upload latest "$EXE#GeoAgent-Setup.exe" --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

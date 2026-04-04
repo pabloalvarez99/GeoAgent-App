@@ -409,6 +409,14 @@ export default function DashboardPage() {
               <div>
                 <p className="font-semibold text-sm">GeoAgent Android</p>
                 <p className="text-xs text-muted-foreground">GPS, cámara, modo sin conexión</p>
+                <a
+                  href="https://github.com/pabloalvarez99/GeoAgent-App/releases/latest"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-primary/60 hover:text-primary transition-colors"
+                >
+                  Ver todas las versiones →
+                </a>
               </div>
             </div>
             <Button size="sm" asChild className="shrink-0">
@@ -432,6 +440,14 @@ export default function DashboardPage() {
               <div>
                 <p className="font-semibold text-sm">GeoAgent Windows</p>
                 <p className="text-xs text-muted-foreground">App de escritorio con menú nativo</p>
+                <a
+                  href="https://github.com/pabloalvarez99/GeoAgent-App/releases/latest"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-blue-400/60 hover:text-blue-400 transition-colors"
+                >
+                  Ver todas las versiones →
+                </a>
               </div>
             </div>
             <Button size="sm" variant="outline" asChild className="shrink-0 border-blue-500/30">
