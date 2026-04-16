@@ -133,3 +133,23 @@ Offline-first with Firebase cloud sync (Firestore + Auth + Storage).
 - Legacy `supabase/` directory exists with migration SQL (not used by app)
 
 ve actualizando bitacora.md despues de cada prompt y cambios significativos
+
+---
+
+## Obsidian Mind Vault (PKM)
+
+Vault instalado en `C:\Users\Admin\Documents\obsidian-mind`. Cerebro externo del proyecto — conocimiento durable que persiste entre sesiones y máquinas.
+
+| Qué guardar | Dónde en el vault |
+|---|---|
+| Patrones y gotchas del codebase | `brain/Patterns.md`, `brain/Gotchas.md` |
+| Decisiones arquitectónicas | `brain/Key Decisions.md` |
+| Features activas en desarrollo | `work/active/` |
+| Contexto de stack y arquitectura | `reference/GeoAgent Architecture.md` |
+| Objetivos del producto | `brain/North Star.md` |
+
+### Reglas
+- Conocimiento durable → vault `brain/`, no en memoria efímera de sesión
+- Al terminar sesión significativa, actualizar `brain/Gotchas.md` con trampas reales encontradas
+- Las decisiones irreversibles van a `brain/Key Decisions.md` con fecha y justificación
+- APPEND siempre — los archivos `brain/` son compartidos entre proyectos

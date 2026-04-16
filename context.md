@@ -1,7 +1,29 @@
 # GeoAgent-App — Contexto de Herramientas y Entorno
 
 > **Para el agente que retome esta sesión:** Este archivo documenta todo lo disponible en este equipo para trabajar con Claude Code. Actualizar cuando se instale algo nuevo.
-> Última actualización: 2026-04-03
+> Última actualización: 2026-04-15
+
+## Estado Actual del Proyecto (2026-04-15)
+
+**Qué funciona:**
+- ✅ App Android completa (NO tocar `app/`)
+- ✅ Web platform completa en Vercel: `https://web-taupe-three-27.vercel.app`
+  - Auth (Firebase), Projects, Stations, Drillholes, Map, Photos, Export (PDF/Excel/GeoJSON/CSV)
+- ✅ Sincronización Android ↔ Web funcionando (fix `updated_at` → `updatedAt` aplicado)
+
+**En progreso / Pendiente:**
+- ⏳ Fase 8: Electron Desktop (web/apps/desktop/) — wrapper .exe
+- ⏳ Fase 9: Analytics (recharts), Settings page, Import CSV/Excel
+- ⏳ Fase 10: CI/CD GitHub Actions, PWA manifest
+
+**Gotchas activos más importantes:**
+1. **NO usar pnpm** — el monorepo web/ usa npm workspaces. pnpm + Node 22 + Vercel = crash fatal (ERR_INVALID_THIS)
+2. **NO usar `orderBy('updatedAt')` en Firestore** — excluye silenciosamente docs de Android. Ver `lib/firebase/firestore.ts`
+3. **AdvancedMarker requiere `mapId`** — sin él, los marcadores del mapa no renderizan
+
+**Próximos pasos sugeridos:**
+1. Implementar Electron wrapper (Fase 8) — ver bitacora.md §8 para especificación completa
+2. Agregar Google Maps API key en variables de entorno Vercel para habilitar el mapa en producción
 
 ---
 

@@ -641,4 +641,55 @@ Firestore excluye silenciosamente documentos que no tienen el campo por el que s
 
 ---
 
-*Última actualización: 2026-04-03 — Fases 1-7 completadas + fixes sync Android↔Web. Pendiente: Electron, analytics.*
+---
+
+## 2026-04-15 — Integración completa de plataformas Google
+
+**Servicios agregados:**
+- ✅ Firebase Analytics (Android + Web)
+- ✅ Firebase Crashlytics (Android) + plugin Gradle
+- ✅ Firebase Performance Monitoring (Android + Web)
+- ✅ Firebase Cloud Messaging / FCM (Android + Web service worker)
+- ✅ Firebase App Check (Android: Play Integrity en release, Debug en debug / Web: reCAPTCHA v3)
+- ✅ Google Search Console (meta tag de verificación en layout.tsx)
+- ✅ Firebase App Distribution (CI job `distribute-beta` con grupo "geologists")
+- ✅ APIs habilitadas: `firebaseappcheck.googleapis.com`, `fcm.googleapis.com`
+- ✅ Grupo App Distribution creado: `geologists`
+- ✅ `.firebaserc` creado
+
+**Archivos modificados:** `libs.versions.toml`, `build.gradle.kts` (root + app), `GeoAgentApp.kt`, `AndroidManifest.xml`, `client.ts`, `layout.tsx`, `.env.local.example`, `build-deploy.yml`
+**Archivos creados:** `.firebaserc`, `GeoAgentMessagingService.kt`, `firebase-messaging-sw.js`, `messaging.ts`
+
+**Secretos pendientes de agregar en GitHub repo (Settings > Secrets):**
+- `FIREBASE_ANDROID_APP_ID` = `1:609077404870:android:6d1ec2fd44f6728e86e3c7`
+- `FIREBASE_TOKEN` = resultado de correr `! firebase login:ci` en terminal
+
+**Variables pendientes de obtener y agregar en `.env.local` + Vercel:**
+- `NEXT_PUBLIC_FIREBASE_VAPID_KEY` — Firebase Console > Project Settings > Cloud Messaging > Web Push certificates
+- `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` — Google Search Console > verificación HTML tag
+- `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` — console.recaptcha.google.com > sitio v3
+
+---
+
+## 2026-04-15 — Second Brain / Obsidian PKM Setup
+
+**Qué se hizo:**
+- Configurado sistema Second Brain con vault Obsidian en `C:\Users\Admin\Documents\obsidian-mind`
+- Creado `reference/GeoAgent Architecture.md` con stack completo, rutas clave, env vars, feature status
+- APPEND en `brain/Gotchas.md` — 6 trampas específicas de GeoAgent (Firestore mismatch, pnpm bug, AdvancedMarker, etc.)
+- APPEND en `brain/Key Decisions.md` — 6 decisiones arquitectónicas (Client Components, npm workspaces, no next-forge, etc.)
+- APPEND en `brain/North Star.md` — objetivos del producto GeoAgent
+- Actualizado `CLAUDE.md` con sección Obsidian PKM y reglas de uso
+- Actualizado `context.md` como punto de entrada actualizado para próxima sesión
+
+**Por qué:**
+- Configurar PKM persistente para que cualquier sesión futura (cualquier PC) tenga acceso al conocimiento durable del proyecto sin necesidad de re-leer el codebase desde cero.
+
+**Estado resultante:**
+- Vault Obsidian sincronizado con estado actual del proyecto (Fases 1-7 completas, Fases 8-10 pendientes)
+- CLAUDE.md tiene instrucciones de cómo usar el vault
+- bitacora.md y context.md actualizados
+
+---
+
+*Última actualización: 2026-04-15 — Fases 1-7 completadas + fixes sync Android↔Web. Configurado Obsidian PKM. Pendiente: Electron, analytics.*

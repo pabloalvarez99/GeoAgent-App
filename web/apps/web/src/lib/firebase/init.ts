@@ -9,4 +9,5 @@ export const firebaseConfig = {
     process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'geoagent-app.firebasestorage.app',
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '609077404870',
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || 'geoagent-placeholder-app-id',
+  measurementId: 'G-Z17FY8SKQM',
 };

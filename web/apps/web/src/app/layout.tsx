@@ -27,6 +27,9 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'es_CL',
   },
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
+  },
 };
 
 export const viewport: Viewport = {
