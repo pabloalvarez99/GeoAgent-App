@@ -721,4 +721,37 @@ Firestore excluye silenciosamente documentos que no tienen el campo por el que s
 
 ---
 
-*Última actualización: 2026-04-15 — Exportaciones PDF y Excel profesionales completas. Integración Google Platforms completa. Todas las fases completadas.*
+## 2026-04-15 — Exportaciones GeoJSON/CSV profesionales + mejoras UX
+
+**GeoJSON mejorado (`geojson.ts`):**
+- Incluye litologías, datos estructurales, muestras como propiedades del feature de estación
+- Incluye log de intervalos como propiedades del feature de sondaje
+- BBox calculado automáticamente
+- `marker-color`/`marker-symbol` para visualización en QGIS/GitHub/Mapbox
+- CRS declarado explícitamente (WGS84)
+- Compatible con Electron via `saveFile`
+
+**CSV mejorado (`csv.ts`):**
+- Bundle ZIP con JSZip: collar + survey + lith (renombrado de "assay" que es incorrecto)
+- Survey incluye 2 entradas por sondaje (collar + total depth) para compatibilidad con Leapfrog
+- Lith CSV incluye todos los campos del log (RQD, recovery, mineralogía, alteración, etc.)
+- README.txt en el ZIP con instrucciones de uso
+- Compatible con Electron via `saveFile`
+- Instalada dependencia: `jszip ^3.10.1`
+
+**Import (`import/page.tsx`):**
+- Paralelizado en batches de 20 (antes sequential, ahora ~20x más rápido para imports grandes)
+
+**Página de proyecto (`projects/[id]/page.tsx`):**
+- "Descripción" movida fuera del grid de stats (no era una stat)
+- Nueva stat: "Total perforado" (suma de actualDepth de todos los sondajes)
+- Descripción mostrada como párrafo con borde lateral verde
+
+**Mapa (`map/page.tsx`):**
+- Botón "Abrir en Google Maps" en panel de estaciones (enlace directo a coordenadas)
+- Botón "Abrir en Google Maps" en panel de sondajes
+- Importado icono `ExternalLink` de lucide-react
+
+---
+
+*Última actualización: 2026-04-15 — Todas las exportaciones profesionales completadas. UX mejorada en mapa y página de proyecto.*

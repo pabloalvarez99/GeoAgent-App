@@ -1,82 +1,165 @@
-import type { GeoDrillHole } from '@geoagent/geo-shared/types';
+import { saveFile } from '@/lib/electron';
+import type { GeoDrillHole, GeoDrillInterval } from '@geoagent/geo-shared/types';
 
-function toCsv(rows: string[][]): string {
-  return rows.map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+// ── CSV serialisation ─────────────────────────────────────────────────────────
+
+function toCsv(rows: (string | number | null | undefined)[][]): string {
+  return rows
+    .map((row) =>
+      row.map((cell) => {
+        const s = cell == null ? '' : String(cell);
+        // Quote if contains comma, quote, newline
+        return s.search(/[",\n\r]/) !== -1 ? `"${s.replace(/"/g, '""')}"` : s;
+      }).join(','),
+    )
+    .join('\r\n');
 }
 
-function triggerDownload(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
+function fv(v: any) { return v != null && v !== '' ? v : ''; }
 
-// Collar CSV — one row per drill hole (Acme/industry standard format)
+// ── Collar CSV ────────────────────────────────────────────────────────────────
+//
+// Standard: one row per drill hole.
+// Columns use mining-software naming (Leapfrog, Surpac, Micromine compatible).
+// Coordinates stored as LATITUDE/LONGITUDE (WGS84) — no projected conversion.
+// Field geologists: load into QGIS, reproject to local UTM if needed.
+
 export function exportCollarCsv(drillHoles: GeoDrillHole[]): string {
-  const header = ['BHID', 'X', 'Y', 'Z', 'LENGTH', 'AZIMUTH', 'DIP', 'TYPE', 'STATUS', 'START_DATE', 'END_DATE'];
+  const header = [
+    'BHID', 'LATITUDE', 'LONGITUDE', 'ELEVATION',
+    'EOH',       // End-Of-Hole depth (actual or planned)
+    'AZIMUTH', 'DIP',
+    'DRILL_TYPE', 'STATUS',
+    'GEOLOGIST',
+    'START_DATE', 'END_DATE',
+    'NOTES',
+  ];
   const rows = drillHoles.map((d) => [
     d.holeId,
-    String(d.longitude ?? ''),
-    String(d.latitude ?? ''),
-    String(d.altitude ?? ''),
-    String(d.actualDepth ?? d.plannedDepth ?? ''),
-    String(d.azimuth ?? ''),
-    String(d.inclination ?? ''),
-    d.type ?? '',
-    d.status ?? '',
-    d.startDate ?? '',
-    d.endDate ?? '',
+    fv(d.latitude),
+    fv(d.longitude),
+    fv(d.altitude),
+    fv(d.actualDepth ?? d.plannedDepth),
+    fv(d.azimuth),
+    fv(d.inclination),
+    fv(d.type),
+    fv(d.status),
+    fv(d.geologist),
+    fv(d.startDate),
+    fv(d.endDate),
+    fv(d.notes),
   ]);
   return toCsv([header, ...rows]);
 }
 
-// Survey CSV — azimuth/inclination at depth (simplified: just collar survey)
+// ── Survey CSV ────────────────────────────────────────────────────────────────
+//
+// Standard: azimuth + dip readings at depth intervals.
+// For straight holes: provide collar (0m) and total-depth readings so
+// software like Leapfrog doesn't complain about single-entry survey files.
+
 export function exportSurveyCsv(drillHoles: GeoDrillHole[]): string {
   const header = ['BHID', 'AT', 'AZ', 'DIP'];
-  const rows = drillHoles.map((d) => [d.holeId, '0', String(d.azimuth ?? ''), String(d.inclination ?? '')]);
+  const rows: (string | number)[][] = [];
+  for (const d of drillHoles) {
+    const az  = fv(d.azimuth)    || 0;
+    const dip = fv(d.inclination) || -90;
+    const eoh = d.actualDepth ?? d.plannedDepth ?? 0;
+    // Collar reading (depth 0)
+    rows.push([d.holeId, 0, az, dip]);
+    // End-of-hole reading (required by most logging software)
+    if (eoh > 0) {
+      rows.push([d.holeId, eoh, az, dip]);
+    }
+  }
   return toCsv([header, ...rows]);
 }
 
-// Assay CSV — drill intervals (lithology data)
-export function exportAssayCsv(
-  intervals: Array<{
-    drillHoleId: string;
-    holeId: string;
-    fromDepth: number;
-    toDepth: number;
-    rockType: string;
-    rockGroup: string;
-    rqd?: number | null;
-    recovery?: number | null;
-    mineralizationPercent?: number | null;
-  }>,
+// ── Lithology CSV ─────────────────────────────────────────────────────────────
+//
+// Standard lith log. Named "lith" not "assay" — assay is chemical analysis.
+// Compatible with Leapfrog Geo's "Lithology" table import.
+
+export function exportLithCsv(
+  intervals: Array<GeoDrillInterval & { holeId: string }>,
 ): string {
-  const header = ['BHID', 'FROM', 'TO', 'ROCK_GROUP', 'ROCK_TYPE', 'RQD', 'RECOVERY', 'MINERAL_PCT'];
-  const rows = intervals.map((i) => [
-    i.holeId,
-    String(i.fromDepth),
-    String(i.toDepth),
-    i.rockGroup,
-    i.rockType,
-    String(i.rqd ?? ''),
-    String(i.recovery ?? ''),
-    String(i.mineralizationPercent ?? ''),
-  ]);
+  const header = [
+    'BHID', 'FROM', 'TO', 'LENGTH',
+    'ROCK_GROUP', 'ROCK_TYPE',
+    'COLOR', 'TEXTURE', 'GRAIN_SIZE',
+    'MINERALOGY',
+    'ALTERATION', 'ALTER_INTENSITY',
+    'MIN_PCT',
+    'RQD_PCT', 'RECOVERY_PCT',
+    'STRUCTURE', 'WEATHERING',
+    'NOTES',
+  ];
+  const sorted = [...intervals].sort((a, b) => {
+    if (a.holeId < b.holeId) return -1;
+    if (a.holeId > b.holeId) return 1;
+    return a.fromDepth - b.fromDepth;
+  });
+  const rows = sorted.map((i) => {
+    const len = i.toDepth != null ? +(i.toDepth - i.fromDepth).toFixed(2) : '';
+    return [
+      i.holeId,
+      i.fromDepth,
+      fv(i.toDepth),
+      len,
+      fv(i.rockGroup),
+      fv(i.rockType),
+      fv(i.color),
+      fv(i.texture),
+      fv(i.grainSize),
+      fv(i.mineralogy),
+      fv(i.alteration),
+      fv(i.alterationIntensity),
+      fv(i.mineralizationPercent),
+      fv(i.rqd),
+      fv(i.recovery),
+      fv(i.structure),
+      fv(i.weathering),
+      fv(i.notes),
+    ];
+  });
   return toCsv([header, ...rows]);
 }
 
-export function downloadCsvBundle(
+// ── Download bundle (ZIP) ────────────────────────────────────────────────────
+//
+// Packages collar + survey + lith into a single .zip.
+// Uses JSZip — loaded dynamically to keep initial bundle size small.
+
+export async function downloadCsvBundle(
   drillHoles: GeoDrillHole[],
-  allIntervals: Array<any>,
+  allIntervals: Array<GeoDrillInterval & { holeId: string }>,
   projectSlug: string,
 ) {
-  const collarBlob = new Blob([exportCollarCsv(drillHoles)], { type: 'text/csv' });
-  const surveyBlob = new Blob([exportSurveyCsv(drillHoles)], { type: 'text/csv' });
-  const assayBlob = new Blob([exportAssayCsv(allIntervals)], { type: 'text/csv' });
+  const collarCsv  = exportCollarCsv(drillHoles);
+  const surveyCsv  = exportSurveyCsv(drillHoles);
+  const lithCsv    = exportLithCsv(allIntervals);
 
-  triggerDownload(collarBlob, `${projectSlug}_collar.csv`);
-  setTimeout(() => triggerDownload(surveyBlob, `${projectSlug}_survey.csv`), 100);
-  setTimeout(() => triggerDownload(assayBlob, `${projectSlug}_assay.csv`), 200);
+  const { default: JSZip } = await import('jszip');
+  const zip = new JSZip();
+  zip.file(`${projectSlug}_collar.csv`,  collarCsv);
+  zip.file(`${projectSlug}_survey.csv`,  surveyCsv);
+  zip.file(`${projectSlug}_lith.csv`,    lithCsv);
+
+  // README inside the zip
+  zip.file('README.txt', [
+    `GeoAgent — Exportación de sondajes`,
+    `Proyecto: ${projectSlug}`,
+    `Generado: ${new Date().toISOString()}`,
+    ``,
+    `Archivos:`,
+    `  ${projectSlug}_collar.csv   — Cabecera de sondajes (lat/lon WGS84)`,
+    `  ${projectSlug}_survey.csv   — Levantamiento direccional`,
+    `  ${projectSlug}_lith.csv     — Log litológico por intervalos`,
+    ``,
+    `Compatibilidad: Leapfrog Geo, Surpac, Micromine, QGIS`,
+    `CRS: WGS84 (EPSG:4326) — reprojectar a UTM local antes de modelar.`,
+  ].join('\n'));
+
+  const zipBuffer = await zip.generateAsync({ type: 'arraybuffer' });
+  await saveFile(`${projectSlug}_sondajes.zip`, zipBuffer);
 }

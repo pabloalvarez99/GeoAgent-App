@@ -208,11 +208,25 @@ export default function ExportPage({ params }: { params: Promise<{ id: string }>
         getStationsOnce(user.uid, id),
         getDrillHolesOnce(user.uid, id),
       ]);
-      downloadGeoJSON({
+
+      // Fetch all sub-data for rich GeoJSON properties
+      const [allLithologies, allStructural, allSamples, allIntervals] = await Promise.all([
+        Promise.all((allStations as any[]).map((s) => getLithologiesOnce(user.uid, s.id))).then((r) => r.flat()),
+        Promise.all((allStations as any[]).map((s) => getStructuralOnce(user.uid, s.id))).then((r) => r.flat()),
+        Promise.all((allStations as any[]).map((s) => getSamplesOnce(user.uid, s.id))).then((r) => r.flat()),
+        Promise.all((allDrillHoles as any[]).map((d) => getIntervalsOnce(user.uid, d.id))).then((r) => r.flat()),
+      ]);
+
+      await downloadGeoJSON({
         projectName: project.name,
+        projectDescription: (project as any).description,
         stations: allStations as any,
         drillHoles: allDrillHoles as any,
-      }, project.name.replace(/\s+/g, '_'));
+        lithologies: allLithologies as any,
+        structural: allStructural as any,
+        samples: allSamples as any,
+        intervals: allIntervals as any,
+      }, project.name.replace(/[^a-zA-Z0-9_\-]/g, '_').replace(/\s+/g, '_'));
       setGeojsonStatus('done');
       toast.success('GeoJSON exportado correctamente');
       setTimeout(() => setGeojsonStatus('idle'), 3000);
@@ -230,18 +244,25 @@ export default function ExportPage({ params }: { params: Promise<{ id: string }>
     try {
       const allDrillHoles = await getDrillHolesOnce(user.uid, id);
       const allIntervals = await Promise.all(
-        allDrillHoles.map((d: any) => getIntervalsOnce(user.uid, d.id)),
+        (allDrillHoles as any[]).map((d) => getIntervalsOnce(user.uid, d.id)),
       ).then((r) => r.flat());
 
-      // Enrich intervals with holeId for CSV
-      const enriched = allIntervals.map((i: any) => {
-        const hole = (allDrillHoles as any[]).find((d: any) => d.id === i.drillHoleId);
-        return { ...i, holeId: hole?.holeId ?? i.drillHoleId };
-      });
+      // Enrich intervals with readable holeId for CSV
+      const drillHoleMap: Record<string, string> = Object.fromEntries(
+        (allDrillHoles as any[]).map((d: any) => [d.id, d.holeId]),
+      );
+      const enriched = (allIntervals as any[]).map((i: any) => ({
+        ...i,
+        holeId: drillHoleMap[i.drillHoleId] ?? i.drillHoleId,
+      }));
 
-      downloadCsvBundle(allDrillHoles as any, enriched, project.name.replace(/\s+/g, '_'));
+      await downloadCsvBundle(
+        allDrillHoles as any,
+        enriched as any,
+        project.name.replace(/[^a-zA-Z0-9_\-]/g, '_').replace(/\s+/g, '_'),
+      );
       setCsvStatus('done');
-      toast.success('CSVs exportados correctamente');
+      toast.success('ZIP descargado con collar, survey y lith');
       setTimeout(() => setCsvStatus('idle'), 3000);
     } catch (e) {
       console.error(e);
@@ -273,7 +294,7 @@ export default function ExportPage({ params }: { params: Promise<{ id: string }>
     {
       icon: Map,
       title: 'GeoJSON',
-      description: 'FeatureCollection con estaciones y sondajes como puntos georreferenciados',
+      description: 'FeatureCollection con litologías, estructurales, muestras e intervalos como propiedades. Compatible con QGIS, Mapbox y GitHub.',
       formats: ['.geojson'],
       status: geojsonStatus,
       onExport: handleGeoJSON,
@@ -281,9 +302,9 @@ export default function ExportPage({ params }: { params: Promise<{ id: string }>
     },
     {
       icon: FileSpreadsheet,
-      title: 'CSV Minería',
-      description: 'Archivos CSV en formato estándar de la industria: collar, survey y assay para software de geoestadística',
-      formats: ['_collar.csv', '_survey.csv', '_assay.csv'],
+      title: 'CSV Minería (ZIP)',
+      description: 'Bundle estándar para Leapfrog Geo, Surpac y Micromine. Incluye collar, survey y log litológico.',
+      formats: ['collar.csv', 'survey.csv', 'lith.csv'],
       status: csvStatus,
       onExport: handleCSV,
       accent: 'bg-amber-500/20',

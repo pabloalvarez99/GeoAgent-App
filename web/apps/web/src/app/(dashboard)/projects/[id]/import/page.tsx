@@ -143,14 +143,19 @@ export default function ImportPage({ params }: { params: Promise<{ id: string }>
     setStatus('importing');
     setImportedCount(0);
     let count = 0;
+    const BATCH = 20; // parallel writes per round
     try {
-      // Batch in groups of 50 to avoid overwhelming Firestore
       const items = parseResult.valid;
-      for (let i = 0; i < items.length; i++) {
-        const item = { ...items[i], projectId };
-        if (tab === 'stations') await createStation(user.uid, item);
-        else await createDrillHole(user.uid, item);
-        count++;
+      for (let i = 0; i < items.length; i += BATCH) {
+        const chunk = items.slice(i, i + BATCH);
+        await Promise.all(
+          chunk.map(async (item) => {
+            const record = { ...item, projectId };
+            if (tab === 'stations') await createStation(user.uid, record);
+            else await createDrillHole(user.uid, record);
+          }),
+        );
+        count += chunk.length;
         setImportedCount(count);
       }
       setStatus('done');

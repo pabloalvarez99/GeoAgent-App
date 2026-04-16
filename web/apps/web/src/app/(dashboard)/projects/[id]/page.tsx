@@ -148,33 +148,47 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         </div>
       </div>
 
+      {/* Description */}
+      {project.description && (
+        <p className="text-sm text-muted-foreground leading-relaxed border-l-2 border-primary/30 pl-3">
+          {project.description}
+        </p>
+      )}
+
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          { label: 'Estaciones', value: stations.length, color: 'text-blue-400' },
-          { label: 'Sondajes', value: drillHoles.length, color: 'text-purple-400' },
-          {
-            label: 'Prof. máx.',
-            value:
-              drillHoles.length > 0
-                ? `${Math.max(...drillHoles.map((d) => d.actualDepth ?? d.plannedDepth))} m`
-                : '—',
-            color: 'text-orange-400',
-          },
-          { label: 'Descripción', value: project.description, color: 'text-muted-foreground', small: true },
-        ].map(({ label, value, color, small }) => (
-          <Card key={label}>
-            <CardHeader className="pb-1 pt-4 px-4">
-              <p className="text-xs text-muted-foreground">{label}</p>
-            </CardHeader>
-            <CardContent className="px-4 pb-4">
-              <p className={`font-semibold ${color} ${small ? 'text-xs line-clamp-2' : 'text-2xl'}`}>
-                {value}
-              </p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {(() => {
+        const totalDrilled = drillHoles.reduce((sum, d) => sum + (d.actualDepth ?? 0), 0);
+        const maxDepth = drillHoles.length > 0
+          ? Math.max(...drillHoles.map((d) => d.actualDepth ?? d.plannedDepth))
+          : null;
+        return (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { label: 'Estaciones', value: stations.length, color: 'text-blue-400' },
+              { label: 'Sondajes', value: drillHoles.length, color: 'text-purple-400' },
+              {
+                label: 'Prof. máxima',
+                value: maxDepth != null ? `${maxDepth} m` : '—',
+                color: 'text-orange-400',
+              },
+              {
+                label: 'Total perforado',
+                value: totalDrilled > 0 ? `${totalDrilled} m` : '—',
+                color: 'text-green-400',
+              },
+            ].map(({ label, value, color }) => (
+              <Card key={label}>
+                <CardHeader className="pb-1 pt-4 px-4">
+                  <p className="text-xs text-muted-foreground">{label}</p>
+                </CardHeader>
+                <CardContent className="px-4 pb-4">
+                  <p className={`text-2xl font-semibold ${color}`}>{value}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Analytics — shown only when there is data */}
       {(drillHoles.length > 0 || stations.length > 0) && (

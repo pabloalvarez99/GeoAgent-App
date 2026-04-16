@@ -17,6 +17,7 @@ import {
   Loader2,
   Map as MapIcon,
   List,
+  ExternalLink,
 } from 'lucide-react';
 import { useStations } from '@/lib/hooks/use-stations';
 import { useDrillHoles } from '@/lib/hooks/use-drillholes';
@@ -106,6 +107,15 @@ function StationPanel({ station, onClose }: { station: GeoStation; onClose: () =
               <CoordChip label="Altitud" value={`${station.altitude} m`} />
             )}
           </div>
+          <a
+            href={`https://www.google.com/maps/search/?api=1&query=${station.latitude},${station.longitude}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-xs text-primary hover:underline mt-1"
+          >
+            <ExternalLink className="h-3 w-3" />
+            Abrir en Google Maps
+          </a>
         </div>
       </div>
     </div>
@@ -196,6 +206,15 @@ function DrillHolePanel({ dh, onClose }: { dh: GeoDrillHole; onClose: () => void
             <CoordChip label="Latitud" value={formatCoord(dh.latitude)} />
             <CoordChip label="Longitud" value={formatCoord(dh.longitude)} />
           </div>
+          <a
+            href={`https://www.google.com/maps/search/?api=1&query=${dh.latitude},${dh.longitude}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-xs text-primary hover:underline mt-1"
+          >
+            <ExternalLink className="h-3 w-3" />
+            Abrir en Google Maps
+          </a>
         </div>
       </div>
     </div>
