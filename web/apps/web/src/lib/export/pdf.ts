@@ -22,6 +22,14 @@ export interface PdfExportData {
   photos: Array<GeoPhoto & { downloadUrl?: string }>;
 }
 
+// ── TOC entry ────────────────────────────────────────────────────────────────
+
+interface TocEntry {
+  title: string;
+  page: number;
+  indent: boolean;
+}
+
 // ── Page constants (A4, mm) ──────────────────────────────────────────────────
 
 const PW = 210;
@@ -47,6 +55,31 @@ const MUTED:   RGB = [100, 116, 139];
 const LIGHT:   RGB = [248, 250, 252];
 const BORDER:  RGB = [226, 232, 240];
 const WHITE:   RGB = [255, 255, 255];
+
+// ── Rock type → color map (geological conventions) ───────────────────────────
+
+function rockTypeColor(rockType: string | null | undefined): RGB {
+  const rt = (rockType ?? '').toLowerCase();
+  if (rt.includes('granit')) return [255, 182, 193];
+  if (rt.includes('tonalita') || rt.includes('tonalite')) return [255, 160, 160];
+  if (rt.includes('diorita') || rt.includes('diorite')) return [192, 192, 192];
+  if (rt.includes('gabro') || rt.includes('gabbro')) return [128, 128, 128];
+  if (rt.includes('andesita') || rt.includes('andesite')) return [189, 183, 107];
+  if (rt.includes('riolita') || rt.includes('rhyolite')) return [255, 200, 150];
+  if (rt.includes('basalto') || rt.includes('basalt')) return [100, 100, 100];
+  if (rt.includes('pórfido') || rt.includes('porphyry')) return [210, 140, 180];
+  if (rt.includes('brecha') || rt.includes('breccia')) return [188, 143, 143];
+  if (rt.includes('toba') || rt.includes('tuff')) return [220, 200, 100];
+  if (rt.includes('arenisca') || rt.includes('sandstone')) return [210, 180, 140];
+  if (rt.includes('caliza') || rt.includes('limestone')) return [135, 206, 235];
+  if (rt.includes('lutita') || rt.includes('shale')) return [119, 136, 153];
+  if (rt.includes('cuarcita') || rt.includes('quartzite')) return [240, 240, 200];
+  if (rt.includes('esquisto') || rt.includes('schist')) return [180, 160, 200];
+  if (rt.includes('gneis') || rt.includes('gneiss')) return [200, 180, 160];
+  if (rt.includes('mármol') || rt.includes('marble')) return [245, 245, 240];
+  if (rt.includes('cuarzo') || rt.includes('quartz')) return [240, 230, 210];
+  return [34, 197, 94]; // default green
+}
 
 // ── Image helper: fetch URL → canvas resize → base64 ─────────────────────────
 
@@ -83,6 +116,10 @@ function setFill(doc: any, c: RGB) { doc.setFillColor(c[0], c[1], c[2]); }
 function setDraw(doc: any, c: RGB) { doc.setDrawColor(c[0], c[1], c[2]); }
 function setTxt(doc: any, c: RGB)  { doc.setTextColor(c[0], c[1], c[2]); }
 
+function currentPage(doc: any): number {
+  return (doc.internal as any).getCurrentPageInfo().pageNumber;
+}
+
 function runningHeader(doc: any, projectName: string) {
   setFill(doc, G_DARK);
   doc.rect(0, 0, PW, 9, 'F');
@@ -99,7 +136,6 @@ function runningHeader(doc: any, projectName: string) {
 
 function pageFooter(doc: any, pageNum: number, total: number) {
   const fY = PH - 7;
-  setFill(doc, LIGHT);
   setDraw(doc, BORDER);
   doc.setLineWidth(0.3);
   doc.line(ML, fY - 1, PW - MR, fY - 1);
@@ -171,7 +207,6 @@ function infoBox(
   let cy = y + pad + 3.5;
   rows.forEach((row, i) => {
     if (row.span) {
-      // Full-width row
       doc.setFontSize(7.5);
       doc.setFont('helvetica', 'bold');
       setTxt(doc, MUTED);
@@ -222,15 +257,11 @@ const fd = (v: string | null | undefined) => {
 // ── Cover page ────────────────────────────────────────────────────────────────
 
 function addCoverPage(doc: any, data: PdfExportData) {
-  // Top dark green band
   setFill(doc, G_DARK);
   doc.rect(0, 0, PW, 46, 'F');
-
-  // Thin accent line inside band
   setFill(doc, G_MID);
   doc.rect(0, 42, PW, 4, 'F');
 
-  // Brand
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
   setTxt(doc, WHITE);
@@ -246,7 +277,6 @@ function addCoverPage(doc: any, data: PdfExportData) {
   setTxt(doc, WHITE);
   doc.text('INFORME GEOLÓGICO DE CAMPO', PW / 2, 37, { align: 'center' });
 
-  // Project title
   let y = 60;
   doc.setFontSize(20);
   doc.setFont('helvetica', 'bold');
@@ -255,20 +285,17 @@ function addCoverPage(doc: any, data: PdfExportData) {
   doc.text(titleLines, ML, y);
   y += titleLines.length * 9 + 3;
 
-  // Location
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   setTxt(doc, MUTED);
   doc.text(`Ubicación: ${data.project.location}`, ML, y);
   y += 8;
 
-  // Divider
   setDraw(doc, BORDER);
   doc.setLineWidth(0.4);
   doc.line(ML, y, PW - MR, y);
   y += 7;
 
-  // Description
   if (data.project.description) {
     setFill(doc, LIGHT);
     const descLines = doc.splitTextToSize(data.project.description, CW - 10);
@@ -283,7 +310,6 @@ function addCoverPage(doc: any, data: PdfExportData) {
     y += dh + 8;
   }
 
-  // Stats grid (3 columns × 2 rows)
   const statItems = [
     { label: 'Estaciones de Campo', value: data.stations.length,    color: BLUE   },
     { label: 'Sondajes',            value: data.drillHoles.length,   color: PURPLE },
@@ -322,7 +348,6 @@ function addCoverPage(doc: any, data: PdfExportData) {
 
   y += Math.ceil(statItems.length / cols) * (bH + 4) + 6;
 
-  // Photos count (if any)
   if (data.photos.length > 0) {
     setFill(doc, LIGHT);
     setDraw(doc, BORDER);
@@ -342,7 +367,6 @@ function addCoverPage(doc: any, data: PdfExportData) {
     y += 20;
   }
 
-  // Generation date line
   const genY = PH - 26;
   setDraw(doc, BORDER);
   doc.setLineWidth(0.3);
@@ -356,7 +380,6 @@ function addCoverPage(doc: any, data: PdfExportData) {
   doc.text(`Generado el ${dateStr}`, ML, genY + 5);
   doc.text('GeoAgent © Sistema de Geología de Campo', PW - MR, genY + 5, { align: 'right' });
 
-  // Bottom band
   setFill(doc, G_DARK);
   doc.rect(0, PH - 14, PW, 14, 'F');
   doc.setFontSize(7.5);
@@ -365,7 +388,62 @@ function addCoverPage(doc: any, data: PdfExportData) {
   doc.text('DOCUMENTO TÉCNICO — USO PROFESIONAL', PW / 2, PH - 6.5, { align: 'center' });
 }
 
-// ── Summary section (Page 2) ──────────────────────────────────────────────────
+// ── Table of Contents ─────────────────────────────────────────────────────────
+
+function renderTOC(doc: any, entries: TocEntry[], projectName: string) {
+  let y = MT;
+
+  setFill(doc, G_DARK);
+  doc.rect(ML, y, CW, 8, 'F');
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  setTxt(doc, WHITE);
+  doc.text('TABLA DE CONTENIDOS', ML + 4, y + 5.5);
+  setTxt(doc, SLATE);
+  y += 14;
+
+  entries.forEach((entry, i) => {
+    const ix = entry.indent ? ML + 8 : ML;
+    const pageStr = String(entry.page);
+    const maxTitleW = CW - 18 - (entry.indent ? 8 : 0);
+
+    // Alternating row background
+    if (i % 2 === 0) {
+      setFill(doc, LIGHT);
+      doc.rect(ML, y - 3.5, CW, 7, 'F');
+    }
+
+    // Accent bar for section titles
+    if (!entry.indent) {
+      setFill(doc, G_MID);
+      doc.rect(ML, y - 3.5, 3, 7, 'F');
+    }
+
+    doc.setFontSize(entry.indent ? 8 : 8.5);
+    doc.setFont('helvetica', entry.indent ? 'normal' : 'bold');
+    setTxt(doc, entry.indent ? MUTED : SLATE);
+    doc.text(entry.title, ix + (entry.indent ? 0 : 4), y);
+
+    // Dots
+    const titleW = doc.getTextWidth(entry.title);
+    const dotsStartX = ix + (entry.indent ? 0 : 4) + titleW + 2;
+    const dotsEndX = PW - MR - 12;
+    doc.setFontSize(7);
+    setTxt(doc, BORDER);
+    const dotStr = '.'.repeat(Math.max(0, Math.floor((dotsEndX - dotsStartX) / 1.7)));
+    doc.text(dotStr, dotsStartX, y);
+
+    // Page number
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    setTxt(doc, G_DARK);
+    doc.text(pageStr, PW - MR, y, { align: 'right' });
+
+    y += 7;
+  });
+}
+
+// ── Summary section ───────────────────────────────────────────────────────────
 
 function addSummarySection(doc: any, autoTable: any, data: PdfExportData, projectName: string): number {
   let y = MT;
@@ -373,7 +451,6 @@ function addSummarySection(doc: any, autoTable: any, data: PdfExportData, projec
   y = sectionTitle(doc, y, '1', 'Resumen del Proyecto', projectName);
   y += 2;
 
-  // Project info table
   autoTable(doc, {
     startY: y,
     body: [
@@ -395,7 +472,6 @@ function addSummarySection(doc: any, autoTable: any, data: PdfExportData, projec
   });
   y = (doc as any).lastAutoTable.finalY + 8;
 
-  // Totals table
   y = guard(doc, y, 28, projectName);
   doc.setFontSize(8.5);
   doc.setFont('helvetica', 'bold');
@@ -426,6 +502,185 @@ function addSummarySection(doc: any, autoTable: any, data: PdfExportData, projec
   return (doc as any).lastAutoTable.finalY + 10;
 }
 
+// ── Stratigraphic column ──────────────────────────────────────────────────────
+
+function addStratigraphicColumn(
+  doc: any,
+  y: number,
+  dh: GeoDrillHole,
+  intervals: GeoDrillInterval[],
+  projectName: string,
+): number {
+  if (intervals.length === 0) return y;
+
+  const totalDepth = dh.actualDepth ?? dh.plannedDepth ?? 0;
+  if (totalDepth <= 0) return y;
+
+  const COL_MAX_H = 120;  // max visual height in mm
+  const COL_W     = 20;   // column bar width
+  const RULER_W   = 14;   // depth ruler width on left
+  const LABEL_W   = CW - RULER_W - COL_W - 6; // label area width on right
+  const COL_X     = ML + RULER_W + 2;
+  const LABEL_X   = COL_X + COL_W + 3;
+  const scale     = COL_MAX_H / totalDepth;     // mm per meter
+
+  // How much space do we actually need?
+  const needed = COL_MAX_H + 24;
+  y = guard(doc, y, needed, projectName);
+
+  // Section label
+  y = subsectionTitle(doc, y, '▸  Columna Estratigráfica', intervals.length, PURPLE);
+  y += 2;
+
+  const colTopY = y;
+
+  // Background rect for the column
+  setFill(doc, [245, 245, 245]);
+  setDraw(doc, BORDER);
+  doc.setLineWidth(0.2);
+  doc.rect(COL_X, colTopY, COL_W, COL_MAX_H, 'FD');
+
+  // Draw depth ticks on ruler (5 ticks)
+  const TICKS = 5;
+  doc.setFontSize(6);
+  doc.setFont('helvetica', 'normal');
+  setTxt(doc, MUTED);
+  for (let t = 0; t <= TICKS; t++) {
+    const depthM = (totalDepth / TICKS) * t;
+    const ty = colTopY + (depthM / totalDepth) * COL_MAX_H;
+    setDraw(doc, MUTED);
+    doc.setLineWidth(0.2);
+    doc.line(COL_X - 2, ty, COL_X, ty);
+    doc.text(`${Math.round(depthM)}m`, COL_X - 3, ty + 1.5, { align: 'right' });
+  }
+
+  // Draw interval bars
+  const labelPositions: Array<{ y: number; label: string; color: RGB }> = [];
+
+  intervals.forEach((iv) => {
+    const barY  = colTopY + iv.fromDepth * scale;
+    const barH  = Math.max(0.5, ((iv.toDepth ?? iv.fromDepth + 1) - iv.fromDepth) * scale);
+    const color = rockTypeColor(iv.rockType);
+
+    setFill(doc, color);
+    doc.rect(COL_X, barY, COL_W, barH, 'F');
+
+    // Border between intervals
+    setDraw(doc, BORDER);
+    doc.setLineWidth(0.15);
+    doc.line(COL_X, barY + barH, COL_X + COL_W, barY + barH);
+
+    // Collect label if bar is tall enough (>=3mm)
+    if (barH >= 3) {
+      labelPositions.push({
+        y: barY + barH / 2,
+        label: `${iv.fromDepth}–${iv.toDepth}m  ${iv.rockType ?? ''}`.trim(),
+        color,
+      });
+    }
+  });
+
+  // Column border on top
+  setDraw(doc, BORDER);
+  doc.setLineWidth(0.2);
+  doc.rect(COL_X, colTopY, COL_W, COL_MAX_H, 'D');
+
+  // Labels on the right side
+  let lastLabelY = -99;
+  labelPositions.forEach(({ y: ly, label, color }) => {
+    // Avoid overlapping labels
+    if (ly - lastLabelY < 4.5) return;
+    lastLabelY = ly;
+
+    setDraw(doc, color);
+    doc.setLineWidth(0.3);
+    doc.line(COL_X + COL_W, ly, LABEL_X, ly);
+
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica', 'normal');
+    setTxt(doc, SLATE);
+    const truncLabel = label.length > 35 ? label.slice(0, 33) + '…' : label;
+    doc.text(truncLabel, LABEL_X, ly + 1.5);
+  });
+
+  setTxt(doc, SLATE);
+  return y + COL_MAX_H + 6;
+}
+
+// ── Photo grid helper ────────────────────────────────────────────────────────
+
+async function addPhotoGrid(
+  doc: any,
+  y: number,
+  photos: Array<GeoPhoto & { downloadUrl?: string }>,
+  sectionTitle: string,
+  projectName: string,
+): Promise<number> {
+  const photoW = 86;
+  const photoH = 62;
+  const gap    = 4;
+  const capH   = 9;
+  const rowH   = photoH + capH + 4;
+
+  y = guard(doc, y, 14, projectName);
+  // subsectionTitle reuse
+  const label = `${sectionTitle}   (${photos.length} foto${photos.length !== 1 ? 's' : ''})`;
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'bold');
+  setTxt(doc, [139, 92, 246] as RGB);
+  doc.text(label, ML, y);
+  setDraw(doc, [139, 92, 246] as RGB);
+  doc.setLineWidth(0.4);
+  doc.line(ML, y + 1.2, ML + doc.getTextWidth(label), y + 1.2);
+  setTxt(doc, SLATE);
+  y += 8;
+
+  for (let pi = 0; pi < photos.length; pi += 2) {
+    y = guard(doc, y, rowH + 4, projectName);
+
+    for (let side = 0; side < 2; side++) {
+      const photo = photos[pi + side];
+      if (!photo) break;
+      const px = ML + side * (photoW + gap);
+
+      if (photo.downloadUrl) {
+        const imgData = await fetchPhoto(photo.downloadUrl);
+        if (imgData) {
+          doc.addImage(imgData.data, imgData.format, px, y, photoW, photoH);
+          setDraw(doc, BORDER);
+          doc.setLineWidth(0.3);
+          doc.rect(px, y, photoW, photoH);
+        } else {
+          setFill(doc, LIGHT);
+          setDraw(doc, BORDER);
+          doc.setLineWidth(0.3);
+          doc.roundedRect(px, y, photoW, photoH, 2, 2, 'FD');
+          doc.setFontSize(7.5);
+          doc.setFont('helvetica', 'italic');
+          setTxt(doc, MUTED);
+          doc.text('Imagen no disponible', px + photoW / 2, y + photoH / 2, { align: 'center' });
+        }
+      }
+
+      // Caption
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'normal');
+      setTxt(doc, MUTED);
+      const cap = photo.description || photo.fileName || '';
+      const capLines = doc.splitTextToSize(cap, photoW);
+      doc.text(capLines[0] ?? '', px, y + photoH + 5);
+      const dateCap = fd(photo.takenAt);
+      if (dateCap !== '—') {
+        doc.text(dateCap, px + photoW, y + photoH + 5, { align: 'right' });
+      }
+    }
+
+    y += rowH;
+  }
+
+  return y;
+}
+
 // ── Station section ───────────────────────────────────────────────────────────
 
 async function addStationSection(
@@ -438,14 +693,15 @@ async function addStationSection(
   samples: GeoSample[],
   photos: Array<GeoPhoto & { downloadUrl?: string }>,
   projectName: string,
+  tocEntries: TocEntry[],
 ): Promise<number> {
   let y = sectionTitle(doc, startY, '2', 'Estaciones de Campo', projectName);
+  tocEntries.push({ title: '2.  Estaciones de Campo', page: currentPage(doc), indent: false });
   y += 2;
 
   for (let si = 0; si < stations.length; si++) {
     const st = stations[si];
 
-    // ── Station header bar ──────────────────────────────────
     y = guard(doc, y, 40, projectName);
 
     setFill(doc, SLATE);
@@ -459,9 +715,12 @@ async function addStationSection(
     setTxt(doc, G_LIGHT);
     doc.text(`${fd(st.date)}  ·  ${st.geologist}`, PW - MR - 4, y + 5.5, { align: 'right' });
     setTxt(doc, SLATE);
+
+    // TOC sub-entry for each station
+    tocEntries.push({ title: `2.${si + 1}  ${st.code} — ${st.geologist}`, page: currentPage(doc), indent: true });
+
     y += 10;
 
-    // Info box
     const infoRows: Array<{ label: string; value: string; span?: boolean }> = [
       { label: 'Latitud',    value: fc(st.latitude) },
       { label: 'Longitud',   value: fc(st.longitude) },
@@ -470,6 +729,9 @@ async function addStationSection(
     ];
     if (st.description) {
       infoRows.push({ label: 'Descripción', value: st.description, span: true });
+    }
+    if ((st as any).notes) {
+      infoRows.push({ label: 'Notas', value: (st as any).notes, span: true });
     }
     y = infoBox(doc, y, infoRows);
 
@@ -487,12 +749,12 @@ async function addStationSection(
         body: stLitho.map((l) => [
           f(l.rockGroup), f(l.rockType), f(l.color), f(l.texture),
           f(l.grainSize), f(l.alteration), fp(l.mineralizationPercent),
-          f(l.notes).slice(0, 35),
+          f(l.notes),
         ]),
-        styles: { fontSize: 7.5, cellPadding: 2 },
+        styles: { fontSize: 7.5, cellPadding: 2, overflow: 'linebreak' },
         headStyles: { fillColor: G_DARK as any, textColor: WHITE as any },
         alternateRowStyles: { fillColor: LIGHT as any },
-        columnStyles: { 7: { cellWidth: 30 } },
+        columnStyles: { 7: { cellWidth: 38 } },
         didDrawPage: () => runningHeader(doc, projectName),
         margin: { top: MT, left: ML, right: MR, bottom: MB },
       });
@@ -513,11 +775,12 @@ async function addStationSection(
         body: stStruct.map((s) => [
           f(s.type), f(s.strike, '°'), f(s.dip, '°'), f(s.dipDirection),
           f(s.movement), f(s.thickness), f(s.filling), f(s.roughness),
-          f(s.notes).slice(0, 30),
+          f(s.notes),
         ]),
-        styles: { fontSize: 7.5, cellPadding: 2 },
+        styles: { fontSize: 7.5, cellPadding: 2, overflow: 'linebreak' },
         headStyles: { fillColor: PURPLE as any, textColor: WHITE as any },
         alternateRowStyles: { fillColor: LIGHT as any },
+        columnStyles: { 8: { cellWidth: 36 } },
         didDrawPage: () => runningHeader(doc, projectName),
         margin: { top: MT, left: ML, right: MR, bottom: MB },
       });
@@ -534,78 +797,32 @@ async function addStationSection(
     } else {
       autoTable(doc, {
         startY: y,
-        head: [['Código', 'Tipo', 'Peso (g)', 'Long. (m)', 'Descripción', 'Estado', 'Destino', 'Análisis']],
+        head: [['Código', 'Tipo', 'Peso (g)', 'Long. (m)', 'Descripción', 'Estado', 'Destino', 'Análisis Solicitado']],
         body: stSamples.map((s) => [
           f(s.code), f(s.type), f(s.weight), f(s.length),
-          f(s.description).slice(0, 35), f(s.status),
-          f(s.destination).slice(0, 20), f(s.analysisRequested).slice(0, 20),
+          f(s.description), f(s.status),
+          f(s.destination), f(s.analysisRequested),
         ]),
-        styles: { fontSize: 7.5, cellPadding: 2 },
+        styles: { fontSize: 7.5, cellPadding: 2, overflow: 'linebreak' },
         headStyles: { fillColor: AMBER as any, textColor: WHITE as any },
         alternateRowStyles: { fillColor: LIGHT as any },
+        columnStyles: {
+          4: { cellWidth: 35 },
+          7: { cellWidth: 28 },
+        },
         didDrawPage: () => runningHeader(doc, projectName),
         margin: { top: MT, left: ML, right: MR, bottom: MB },
       });
       y = (doc as any).lastAutoTable.finalY + 5;
     }
 
-    // ── Fotografías ────────────────────────────────────────
-    const stPhotos = photos.filter(
-      (p) => p.stationId === st.id || (!p.stationId && !p.drillHoleId && p.projectId),
-    ).filter((p) => p.downloadUrl);
+    // ── Fotografías de la estación ─────────────────────────
+    const stPhotos = photos
+      .filter((p) => p.stationId === st.id || (!p.stationId && !p.drillHoleId && p.projectId))
+      .filter((p) => p.downloadUrl);
 
     if (stPhotos.length > 0) {
-      y = guard(doc, y, 14, projectName);
-      y = subsectionTitle(doc, y, '▸  Fotografías', stPhotos.length, [139, 92, 246] as RGB);
-      y += 2;
-
-      const photoW = 86;
-      const photoH = 62;
-      const gap = 4;
-      const capH = 9;
-      const rowH = photoH + capH + 4;
-
-      for (let pi = 0; pi < stPhotos.length; pi += 2) {
-        y = guard(doc, y, rowH + 4, projectName);
-
-        for (let side = 0; side < 2; side++) {
-          const photo = stPhotos[pi + side];
-          if (!photo) break;
-          const px = ML + side * (photoW + gap);
-
-          if (photo.downloadUrl) {
-            const imgData = await fetchPhoto(photo.downloadUrl);
-            if (imgData) {
-              doc.addImage(imgData.data, imgData.format, px, y, photoW, photoH);
-              setDraw(doc, BORDER);
-              doc.setLineWidth(0.3);
-              doc.rect(px, y, photoW, photoH);
-            } else {
-              setFill(doc, LIGHT);
-              setDraw(doc, BORDER);
-              doc.setLineWidth(0.3);
-              doc.roundedRect(px, y, photoW, photoH, 2, 2, 'FD');
-              doc.setFontSize(7.5);
-              doc.setFont('helvetica', 'italic');
-              setTxt(doc, MUTED);
-              doc.text('Imagen no disponible', px + photoW / 2, y + photoH / 2, { align: 'center' });
-            }
-          }
-
-          // Caption
-          doc.setFontSize(7);
-          doc.setFont('helvetica', 'normal');
-          setTxt(doc, MUTED);
-          const cap = (photo.description || photo.fileName || '').slice(0, 42);
-          doc.text(cap, px, y + photoH + 5);
-          const dateCap = fd(photo.takenAt);
-          if (dateCap !== '—') {
-            doc.text(dateCap, px + photoW, y + photoH + 5, { align: 'right' });
-          }
-        }
-
-        y += rowH;
-      }
+      y = await addPhotoGrid(doc, y, stPhotos, '▸  Fotografías', projectName);
     }
 
     // Separator between stations
@@ -621,22 +838,24 @@ async function addStationSection(
 
 // ── Drillhole section ─────────────────────────────────────────────────────────
 
-function addDrillholeSection(
+async function addDrillholeSection(
   doc: any,
   autoTable: any,
   startY: number,
   drillHoles: GeoDrillHole[],
   intervals: GeoDrillInterval[],
+  photos: Array<GeoPhoto & { downloadUrl?: string }>,
   projectName: string,
-): number {
+  tocEntries: TocEntry[],
+): Promise<number> {
   let y = guard(doc, startY, 20, projectName);
   y = sectionTitle(doc, y, '3', 'Sondajes', projectName);
+  tocEntries.push({ title: '3.  Sondajes', page: currentPage(doc), indent: false });
   y += 2;
 
   for (let di = 0; di < drillHoles.length; di++) {
     const dh = drillHoles[di];
 
-    // ── Drillhole header bar ──────────────────────────────
     y = guard(doc, y, 50, projectName);
 
     setFill(doc, PURPLE);
@@ -650,9 +869,11 @@ function addDrillholeSection(
     setTxt(doc, [200, 180, 255] as RGB);
     doc.text(`${f(dh.type)}  ·  ${dh.geologist}  ·  ${dh.status}`, PW - MR - 4, y + 5.5, { align: 'right' });
     setTxt(doc, SLATE);
+
+    tocEntries.push({ title: `3.${di + 1}  ${dh.holeId} — ${dh.geologist}`, page: currentPage(doc), indent: true });
+
     y += 10;
 
-    // Info box
     const dhRows: Array<{ label: string; value: string; span?: boolean }> = [
       { label: 'Latitud',      value: fc(dh.latitude) },
       { label: 'Longitud',     value: fc(dh.longitude) },
@@ -691,11 +912,14 @@ function addDrillholeSection(
       y += barH + 6;
     }
 
-    // ── Intervalos table ──────────────────────────────────
+    // ── Columna Estratigráfica ──────────────────────────────
     const dhIntervals = intervals
       .filter((i) => i.drillHoleId === dh.id)
       .sort((a, b) => a.fromDepth - b.fromDepth);
 
+    y = addStratigraphicColumn(doc, y, dh, dhIntervals, projectName);
+
+    // ── Intervalos table ──────────────────────────────────
     y = guard(doc, y, 14, projectName);
     y = subsectionTitle(doc, y, '▸  Log de Intervalos', dhIntervals.length, AMBER);
 
@@ -715,23 +939,32 @@ function addDrillholeSection(
           f(iv.alteration), f(iv.alterationIntensity),
           fp(iv.mineralizationPercent),
           fp(iv.rqd), fp(iv.recovery),
-          f(iv.notes).slice(0, 25),
+          f(iv.notes),
         ]),
-        styles: { fontSize: 7, cellPadding: 1.8 },
+        styles: { fontSize: 7, cellPadding: 1.8, overflow: 'linebreak' },
         headStyles: { fillColor: AMBER as any, textColor: WHITE as any, fontSize: 6.5 },
         alternateRowStyles: { fillColor: LIGHT as any },
         columnStyles: {
-          0: { cellWidth: 10, halign: 'center' },
-          1: { cellWidth: 10, halign: 'center' },
-          2: { cellWidth: 9,  halign: 'center' },
+          0:  { cellWidth: 10, halign: 'center' },
+          1:  { cellWidth: 10, halign: 'center' },
+          2:  { cellWidth: 9,  halign: 'center' },
           11: { halign: 'center' },
           12: { halign: 'center' },
-          13: { cellWidth: 25 },
+          13: { cellWidth: 30 },
         },
         didDrawPage: () => runningHeader(doc, projectName),
         margin: { top: MT, left: ML, right: MR, bottom: MB },
       });
       y = (doc as any).lastAutoTable.finalY + 5;
+    }
+
+    // ── Fotografías del sondaje ───────────────────────────
+    const dhPhotos = photos
+      .filter((p) => (p as any).drillHoleId === dh.id)
+      .filter((p) => p.downloadUrl);
+
+    if (dhPhotos.length > 0) {
+      y = await addPhotoGrid(doc, y, dhPhotos, '▸  Fotografías del Sondaje', projectName);
     }
 
     // Separator
@@ -754,46 +987,69 @@ export async function downloadPDF(data: PdfExportData) {
   ]);
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const tocEntries: TocEntry[] = [];
 
-  // Page 1: Cover
+  // ── Page 1: Cover ───────────────────────────────────────
   addCoverPage(doc, data);
 
-  // Page 2: Summary
+  // ── Page 2: TOC placeholder (filled at the end) ─────────
   doc.addPage();
   runningHeader(doc, data.project.name);
+  const tocPageNum = currentPage(doc); // = 2
+
+  // ── Page 3: Summary ─────────────────────────────────────
+  doc.addPage();
+  runningHeader(doc, data.project.name);
+  tocEntries.push({ title: '1.  Resumen del Proyecto', page: currentPage(doc), indent: false });
   let y = addSummarySection(doc, autoTable, data, data.project.name);
 
-  // Pages 3+: Stations
+  // ── Stations ─────────────────────────────────────────────
   if (data.stations.length > 0) {
     y = guard(doc, y, 30, data.project.name);
     y = await addStationSection(
       doc, autoTable, y,
       data.stations, data.lithologies, data.structural,
       data.samples, data.photos,
-      data.project.name,
+      data.project.name, tocEntries,
     );
   }
 
-  // Drillholes
+  // ── Drillholes ────────────────────────────────────────────
   if (data.drillHoles.length > 0) {
-    y = addDrillholeSection(
+    y = await addDrillholeSection(
       doc, autoTable, y,
       data.drillHoles, data.intervals,
-      data.project.name,
+      data.photos,
+      data.project.name, tocEntries,
     );
   }
 
-  // Apply footers to all pages except cover (page 1)
+  // ── Apply footers to all pages except cover and TOC ──────
   const totalPages = (doc.internal as any).getNumberOfPages();
-  for (let i = 2; i <= totalPages; i++) {
+  const contentPages = totalPages - 2; // exclude cover (1) and TOC (2)
+  for (let i = 3; i <= totalPages; i++) {
     doc.setPage(i);
-    pageFooter(doc, i - 1, totalPages - 1);
+    pageFooter(doc, i - 2, contentPages);
   }
 
+  // ── Render TOC on page 2 ─────────────────────────────────
+  doc.setPage(tocPageNum);
+  renderTOC(doc, tocEntries, data.project.name);
+  pageFooter(doc, 0, contentPages); // TOC gets "Página 0" which is blank — actually skip footer for TOC
+  // Overwrite footer area with clean line only
+  setFill(doc, WHITE);
+  doc.rect(0, PH - 10, PW, 10, 'F');
+  setDraw(doc, BORDER);
+  doc.setLineWidth(0.3);
+  doc.line(ML, PH - 8, PW - MR, PH - 8);
+  doc.setFontSize(7);
+  setTxt(doc, MUTED);
+  doc.text('Tabla de Contenidos — GeoAgent', ML, PH - 4);
+
+  // ── Save ─────────────────────────────────────────────────
   const slug = data.project.name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_\-]/g, '');
   const filename = `${slug}_GeoAgent_Informe.pdf`;
 
-  // Use Electron native dialog if available, otherwise browser download
   if (typeof window !== 'undefined' && (window as any).electronAPI?.isElectron) {
     const pdfBuffer = doc.output('arraybuffer');
     await (window as any).electronAPI.saveFile(filename, pdfBuffer);

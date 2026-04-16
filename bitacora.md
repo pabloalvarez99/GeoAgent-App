@@ -692,4 +692,33 @@ Firestore excluye silenciosamente documentos que no tienen el campo por el que s
 
 ---
 
-*Última actualización: 2026-04-15 — Fases 1-7 completadas + fixes sync Android↔Web. Configurado Obsidian PKM. Pendiente: Electron, analytics.*
+---
+
+## 2026-04-15 — Reportes de exportación profesionales
+
+**Qué se hizo:**
+- Reescrito `web/apps/web/src/lib/export/excel.ts` con `xlsx-js-style`:
+  - Hoja **Resumen** con estadísticas del proyecto (primera hoja)
+  - Encabezados con fondo verde oscuro + texto blanco negrita
+  - Filas alternas (blanco / gris claro)
+  - Autofilter + freeze de primera fila en todas las hojas
+  - Anchos de columna automáticos por contenido
+  - Código de estación (legible) en lugar de UUID en Litologías, Estructural y Muestras
+  - ID del sondaje (legible) en lugar de UUID en Intervalos
+  - Intervalos ordenados por sondaje y profundidad
+  - Headers de color diferenciado por tipo (verde, púrpura, ámbar)
+
+- Mejorado `web/apps/web/src/lib/export/pdf.ts`:
+  - **Tabla de Contenidos** en página 2 (con numeración de página por sección y subsección)
+  - **Columna Estratigráfica** visual por sondaje (barras de colores por tipo de roca, escala de profundidad, etiquetas)
+  - **Fotografías de sondajes** (nueva sección, igual que fotos de estaciones)
+  - Eliminados todos los `.slice()` de truncamiento en notas, descripciones, análisis, destino
+  - `overflow: 'linebreak'` en tablas para texto largo
+  - Footer ajustado para excluir portada y TOC del numerado de páginas
+
+**Dependencia agregada:** `xlsx-js-style ^1.2.0` (ya en package.json)
+**TypeScript:** 0 errores
+
+---
+
+*Última actualización: 2026-04-15 — Exportaciones PDF y Excel profesionales completas. Integración Google Platforms completa. Todas las fases completadas.*
