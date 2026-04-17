@@ -5,7 +5,11 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
+import com.google.firebase.functions.FirebaseFunctions
+import com.google.firebase.functions.ktx.functions
+import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.FirebaseStorage
+import java.net.URL
 import com.geoagent.app.data.remote.dto.RemoteDrillHole
 import com.geoagent.app.data.remote.dto.RemoteDrillInterval
 import com.geoagent.app.data.remote.dto.RemoteLithology
@@ -23,6 +27,7 @@ class RemoteDataSource @Inject constructor(
     private val firestore: FirebaseFirestore,
     private val storage: FirebaseStorage,
     private val auth: FirebaseAuth,
+    private val functions: FirebaseFunctions,
 ) {
     companion object {
         private const val TAG = "RemoteDataSource"
@@ -190,4 +195,25 @@ class RemoteDataSource @Inject constructor(
     suspend fun fetchAllDrillHolesRaw(sinceMs: Long = 0L): List<Pair<String, Map<String, Any>>> = fetchAllSince("drill_holes", sinceMs)
     suspend fun fetchAllDrillIntervalsRaw(sinceMs: Long = 0L): List<Pair<String, Map<String, Any>>> = fetchAllSince("drill_intervals", sinceMs)
     suspend fun fetchAllPhotosRaw(sinceMs: Long = 0L): List<Pair<String, Map<String, Any>>> = fetchAllSince("photos", sinceMs)
+
+    /**
+     * Calls the Cloud Function to generate a snapshot and downloads the gzip bytes.
+     * Returns null if the function call or download fails — caller falls back to normal fetchAll.
+     */
+    suspend fun downloadSnapshot(): ByteArray? {
+        return try {
+            Log.d(TAG, "Requesting snapshot from Cloud Function...")
+            val result = functions
+                .getHttpsCallable("generateSnapshot")
+                .call()
+                .await()
+            val data = result.getData() as? Map<*, *> ?: return null
+            val url = data["snapshotUrl"] as? String ?: return null
+            Log.d(TAG, "Downloading snapshot from Storage...")
+            URL(url).readBytes()
+        } catch (e: Exception) {
+            Log.w(TAG, "Snapshot download failed, will use normal sync: ${e.message}")
+            null
+        }
+    }
 }

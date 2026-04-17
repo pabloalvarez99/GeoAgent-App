@@ -86,6 +86,23 @@ class SyncWorker @AssistedInject constructor(
         val syncStartMs = System.currentTimeMillis()
         val lastSyncMs = preferencesHelper.lastSyncTimestamp
 
+        // ---- Snapshot bootstrap (first sync only) ----
+        if (lastSyncMs == 0L) {
+            Log.d(TAG, "First sync: attempting snapshot download...")
+            val snapshotBytes = remoteDataSource.downloadSnapshot()
+            if (snapshotBytes != null) {
+                val snapshotPayload = parseSnapshot(snapshotBytes)
+                if (snapshotPayload != null) {
+                    Log.d(TAG, "Applying snapshot (generatedAt=${java.util.Date(snapshotPayload.generatedAt)})")
+                    applySnapshot(snapshotPayload)
+                    // After applying snapshot, advance lastSyncMs so pull only fetches what changed after snapshot
+                    preferencesHelper.lastSyncTimestamp = snapshotPayload.generatedAt
+                }
+            } else {
+                Log.d(TAG, "Snapshot unavailable, proceeding with full pull")
+            }
+        }
+
         try {
             // Phase 1: Pull remote data into local DB (inserts new records from other devices)
             try {
@@ -580,6 +597,207 @@ class SyncWorker @AssistedInject constructor(
     }
 
     // ---- Photo sync ----
+
+    // ---- Snapshot deserialization ----
+
+    private data class SnapshotPayload(
+        val generatedAt: Long,
+        val data: Map<String, List<Map<String, Any?>>>,
+    )
+
+    @Suppress("UNCHECKED_CAST")
+    private fun parseSnapshot(bytes: ByteArray): SnapshotPayload? {
+        return try {
+            val json = java.util.zip.GZIPInputStream(bytes.inputStream()).bufferedReader().readText()
+            val obj = org.json.JSONObject(json)
+            val generatedAt = obj.getLong("generatedAt")
+            val dataObj = obj.getJSONObject("data")
+            val data = mutableMapOf<String, List<Map<String, Any?>>>()
+            for (col in dataObj.keys()) {
+                val arr = dataObj.getJSONArray(col)
+                val list = mutableListOf<Map<String, Any?>>()
+                for (i in 0 until arr.length()) {
+                    val item = arr.getJSONObject(i)
+                    val map = mutableMapOf<String, Any?>()
+                    for (key in item.keys()) map[key] = item.get(key)
+                    list.add(map)
+                }
+                data[col] = list
+            }
+            SnapshotPayload(generatedAt, data)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to parse snapshot: ${e.message}", e)
+            null
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private suspend fun applySnapshot(payload: SnapshotPayload) {
+        val now = System.currentTimeMillis()
+
+        // Projects
+        payload.data["projects"]?.forEach { item ->
+            val id = item["id"] as? String ?: return@forEach
+            if (projectDao.getByRemoteId(id) != null) return@forEach
+            projectDao.insert(ProjectEntity(
+                name = item["name"] as? String ?: "",
+                description = item["description"] as? String ?: "",
+                location = item["location"] as? String ?: "",
+                createdAt = now,
+                updatedAt = now,
+                syncStatus = SYNC_STATUS_SYNCED,
+                remoteId = id,
+            ))
+        }
+
+        // Stations
+        payload.data["stations"]?.forEach { item ->
+            val id = item["id"] as? String ?: return@forEach
+            if (stationDao.getByRemoteId(id) != null) return@forEach
+            val projectRemoteId = item["projectId"] as? String ?: return@forEach
+            val localProjectId = projectDao.getByRemoteId(projectRemoteId)?.id ?: return@forEach
+            stationDao.insert(StationEntity(
+                projectId = localProjectId,
+                code = item["code"] as? String ?: "",
+                latitude = (item["latitude"] as? Number)?.toDouble() ?: 0.0,
+                longitude = (item["longitude"] as? Number)?.toDouble() ?: 0.0,
+                altitude = (item["altitude"] as? Number)?.toDouble(),
+                date = parseIsoDate(item["date"] as? String),
+                geologist = item["geologist"] as? String ?: "",
+                description = item["description"] as? String ?: "",
+                weatherConditions = item["weatherConditions"] as? String,
+                createdAt = now, updatedAt = now, syncStatus = SYNC_STATUS_SYNCED, remoteId = id,
+            ))
+        }
+
+        // Drill holes
+        payload.data["drill_holes"]?.forEach { item ->
+            val id = item["id"] as? String ?: return@forEach
+            if (drillHoleDao.getByRemoteId(id) != null) return@forEach
+            val projectRemoteId = item["projectId"] as? String ?: return@forEach
+            val localProjectId = projectDao.getByRemoteId(projectRemoteId)?.id ?: return@forEach
+            drillHoleDao.insert(DrillHoleEntity(
+                projectId = localProjectId,
+                holeId = item["holeId"] as? String ?: "",
+                type = item["type"] as? String ?: "",
+                latitude = (item["latitude"] as? Number)?.toDouble() ?: 0.0,
+                longitude = (item["longitude"] as? Number)?.toDouble() ?: 0.0,
+                altitude = (item["altitude"] as? Number)?.toDouble(),
+                azimuth = (item["azimuth"] as? Number)?.toDouble() ?: 0.0,
+                inclination = (item["inclination"] as? Number)?.toDouble() ?: 0.0,
+                plannedDepth = (item["plannedDepth"] as? Number)?.toDouble() ?: 0.0,
+                actualDepth = (item["actualDepth"] as? Number)?.toDouble(),
+                startDate = parseIsoDate(item["startDate"] as? String).takeIf { it > 0 },
+                endDate = parseIsoDate(item["endDate"] as? String).takeIf { it > 0 },
+                status = item["status"] as? String ?: "En Progreso",
+                geologist = item["geologist"] as? String ?: "",
+                notes = item["notes"] as? String,
+                createdAt = now, updatedAt = now, syncStatus = SYNC_STATUS_SYNCED, remoteId = id,
+            ))
+        }
+
+        // Lithologies
+        payload.data["lithologies"]?.forEach { item ->
+            val id = item["id"] as? String ?: return@forEach
+            if (lithologyDao.getByRemoteId(id) != null) return@forEach
+            val stationRemoteId = item["stationId"] as? String ?: return@forEach
+            val localStationId = stationDao.getByRemoteId(stationRemoteId)?.id ?: return@forEach
+            lithologyDao.insert(LithologyEntity(
+                stationId = localStationId,
+                rockType = item["rockType"] as? String ?: "",
+                rockGroup = item["rockGroup"] as? String ?: "",
+                color = item["color"] as? String ?: "",
+                texture = item["texture"] as? String ?: "",
+                grainSize = item["grainSize"] as? String ?: "",
+                mineralogy = item["mineralogy"] as? String ?: "",
+                alteration = item["alteration"] as? String,
+                alterationIntensity = item["alterationIntensity"] as? String,
+                mineralization = item["mineralization"] as? String,
+                mineralizationPercent = (item["mineralizationPercent"] as? Number)?.toDouble(),
+                structure = item["structure"] as? String,
+                weathering = item["weathering"] as? String,
+                notes = item["notes"] as? String,
+                createdAt = now, updatedAt = now, syncStatus = SYNC_STATUS_SYNCED, remoteId = id,
+            ))
+        }
+
+        // Structural data
+        payload.data["structural_data"]?.forEach { item ->
+            val id = item["id"] as? String ?: return@forEach
+            if (structuralDao.getByRemoteId(id) != null) return@forEach
+            val stationRemoteId = item["stationId"] as? String ?: return@forEach
+            val localStationId = stationDao.getByRemoteId(stationRemoteId)?.id ?: return@forEach
+            structuralDao.insert(StructuralEntity(
+                stationId = localStationId,
+                type = item["type"] as? String ?: "",
+                strike = (item["strike"] as? Number)?.toDouble() ?: 0.0,
+                dip = (item["dip"] as? Number)?.toDouble() ?: 0.0,
+                dipDirection = item["dipDirection"] as? String ?: "",
+                movement = item["movement"] as? String,
+                thickness = (item["thickness"] as? Number)?.toDouble(),
+                filling = item["filling"] as? String,
+                roughness = item["roughness"] as? String,
+                continuity = item["continuity"] as? String,
+                notes = item["notes"] as? String,
+                createdAt = now, updatedAt = now, syncStatus = SYNC_STATUS_SYNCED, remoteId = id,
+            ))
+        }
+
+        // Samples
+        payload.data["samples"]?.forEach { item ->
+            val id = item["id"] as? String ?: return@forEach
+            if (sampleDao.getByRemoteId(id) != null) return@forEach
+            val stationRemoteId = item["stationId"] as? String ?: return@forEach
+            val localStationId = stationDao.getByRemoteId(stationRemoteId)?.id ?: return@forEach
+            sampleDao.insert(SampleEntity(
+                stationId = localStationId,
+                code = item["code"] as? String ?: "",
+                type = item["type"] as? String ?: "",
+                weight = (item["weight"] as? Number)?.toDouble(),
+                length = (item["length"] as? Number)?.toDouble(),
+                description = item["description"] as? String ?: "",
+                latitude = (item["latitude"] as? Number)?.toDouble(),
+                longitude = (item["longitude"] as? Number)?.toDouble(),
+                altitude = (item["altitude"] as? Number)?.toDouble(),
+                destination = item["destination"] as? String,
+                analysisRequested = item["analysisRequested"] as? String,
+                status = item["status"] as? String ?: "Recolectada",
+                notes = item["notes"] as? String,
+                createdAt = now, updatedAt = now, syncStatus = SYNC_STATUS_SYNCED, remoteId = id,
+            ))
+        }
+
+        // Drill intervals
+        payload.data["drill_intervals"]?.forEach { item ->
+            val id = item["id"] as? String ?: return@forEach
+            if (drillIntervalDao.getByRemoteId(id) != null) return@forEach
+            val dhRemoteId = item["drillHoleId"] as? String ?: return@forEach
+            val localDrillHoleId = drillHoleDao.getByRemoteId(dhRemoteId)?.id ?: return@forEach
+            drillIntervalDao.insert(DrillIntervalEntity(
+                drillHoleId = localDrillHoleId,
+                fromDepth = (item["fromDepth"] as? Number)?.toDouble() ?: 0.0,
+                toDepth = (item["toDepth"] as? Number)?.toDouble() ?: 0.0,
+                rockType = item["rockType"] as? String ?: "",
+                rockGroup = item["rockGroup"] as? String ?: "",
+                color = item["color"] as? String ?: "",
+                texture = item["texture"] as? String ?: "",
+                grainSize = item["grainSize"] as? String ?: "",
+                mineralogy = item["mineralogy"] as? String ?: "",
+                alteration = item["alteration"] as? String,
+                alterationIntensity = item["alterationIntensity"] as? String,
+                mineralization = item["mineralization"] as? String,
+                mineralizationPercent = (item["mineralizationPercent"] as? Number)?.toDouble(),
+                rqd = (item["rqd"] as? Number)?.toDouble(),
+                recovery = (item["recovery"] as? Number)?.toDouble(),
+                structure = item["structure"] as? String,
+                weathering = item["weathering"] as? String,
+                notes = item["notes"] as? String,
+                createdAt = now, updatedAt = now, syncStatus = SYNC_STATUS_SYNCED, remoteId = id,
+            ))
+        }
+
+        Log.d(TAG, "Snapshot applied successfully.")
+    }
 
     private suspend fun syncPhoto(photo: PhotoEntity) {
         // Resolve parent remote IDs
