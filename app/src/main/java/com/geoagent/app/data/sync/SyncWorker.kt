@@ -82,10 +82,14 @@ class SyncWorker @AssistedInject constructor(
             )
         }
 
+        // Capture BEFORE sync starts — records updated during sync won't be missed
+        val syncStartMs = System.currentTimeMillis()
+        val lastSyncMs = preferencesHelper.lastSyncTimestamp
+
         try {
             // Phase 1: Pull remote data into local DB (inserts new records from other devices)
             try {
-                pullFromRemote()
+                pullFromRemote(lastSyncMs)
             } catch (e: Exception) {
                 Log.w(TAG, "Pull phase failed, continuing with push: ${e.message}", e)
             }
@@ -277,13 +281,13 @@ class SyncWorker @AssistedInject constructor(
                 workDataOf("error" to "Fallaron los $errorCount elementos. Verifica tu conexion y permisos en Firebase.")
             )
             errorCount > 0 -> {
-                preferencesHelper.lastSyncTimestamp = System.currentTimeMillis()
+                preferencesHelper.lastSyncTimestamp = syncStartMs
                 Result.success(
                     workDataOf("warning" to "Sincronizados $syncedCount, fallaron $errorCount elementos.")
                 )
             }
             else -> {
-                preferencesHelper.lastSyncTimestamp = System.currentTimeMillis()
+                preferencesHelper.lastSyncTimestamp = syncStartMs
                 Result.success()
             }
         }
@@ -297,8 +301,8 @@ class SyncWorker @AssistedInject constructor(
      * AND the remote updatedAt is newer than the local updated_at, it overwrites the local row.
      * This enables multi-device use and ensures web edits are visible on Android.
      */
-    private suspend fun pullFromRemote() {
-        Log.d(TAG, "Pull phase: fetching remote data...")
+    private suspend fun pullFromRemote(sinceMs: Long) {
+        Log.d(TAG, "Pull phase: fetching remote data since ${if (sinceMs == 0L) "beginning" else java.util.Date(sinceMs)}...")
         val now = System.currentTimeMillis()
 
         val remoteProjectToLocal = mutableMapOf<String, Long>()
@@ -306,7 +310,7 @@ class SyncWorker @AssistedInject constructor(
         val remoteDrillHoleToLocal = mutableMapOf<String, Long>()
 
         // 1. Pull projects
-        remoteDataSource.fetchAllProjectsRaw().forEach { (id, rawData) ->
+        remoteDataSource.fetchAllProjectsRaw(sinceMs).forEach { (id, rawData) ->
             val rp = runCatching { RemoteProject.fromFirestoreMap(id, rawData) }.getOrNull() ?: return@forEach
             val remoteUpdatedAt = remoteDataSource.extractUpdatedAt(rawData)
             val existing = projectDao.getByRemoteId(id)
@@ -333,7 +337,7 @@ class SyncWorker @AssistedInject constructor(
         }
 
         // 2. Pull stations
-        remoteDataSource.fetchAllStationsRaw().forEach { (id, rawData) ->
+        remoteDataSource.fetchAllStationsRaw(sinceMs).forEach { (id, rawData) ->
             val rs = runCatching { RemoteStation.fromFirestoreMap(id, rawData) }.getOrNull() ?: return@forEach
             val localProjectId = remoteProjectToLocal[rs.projectId] ?: return@forEach
             val remoteUpdatedAt = remoteDataSource.extractUpdatedAt(rawData)
@@ -370,7 +374,7 @@ class SyncWorker @AssistedInject constructor(
         }
 
         // 3. Pull lithologies
-        remoteDataSource.fetchAllLithologiesRaw().forEach { (id, rawData) ->
+        remoteDataSource.fetchAllLithologiesRaw(sinceMs).forEach { (id, rawData) ->
             val rl = runCatching { RemoteLithology.fromFirestoreMap(id, rawData) }.getOrNull() ?: return@forEach
             val localStationId = remoteStationToLocal[rl.stationId] ?: return@forEach
             val remoteUpdatedAt = remoteDataSource.extractUpdatedAt(rawData)
@@ -397,7 +401,7 @@ class SyncWorker @AssistedInject constructor(
         }
 
         // 4. Pull structural data
-        remoteDataSource.fetchAllStructuralDataRaw().forEach { (id, rawData) ->
+        remoteDataSource.fetchAllStructuralDataRaw(sinceMs).forEach { (id, rawData) ->
             val rs = runCatching { RemoteStructural.fromFirestoreMap(id, rawData) }.getOrNull() ?: return@forEach
             val localStationId = remoteStationToLocal[rs.stationId] ?: return@forEach
             val remoteUpdatedAt = remoteDataSource.extractUpdatedAt(rawData)
@@ -421,7 +425,7 @@ class SyncWorker @AssistedInject constructor(
         }
 
         // 5. Pull samples
-        remoteDataSource.fetchAllSamplesRaw().forEach { (id, rawData) ->
+        remoteDataSource.fetchAllSamplesRaw(sinceMs).forEach { (id, rawData) ->
             val rs = runCatching { RemoteSample.fromFirestoreMap(id, rawData) }.getOrNull() ?: return@forEach
             val localStationId = remoteStationToLocal[rs.stationId] ?: return@forEach
             val remoteUpdatedAt = remoteDataSource.extractUpdatedAt(rawData)
@@ -446,7 +450,7 @@ class SyncWorker @AssistedInject constructor(
         }
 
         // 6. Pull drill holes
-        remoteDataSource.fetchAllDrillHolesRaw().forEach { (id, rawData) ->
+        remoteDataSource.fetchAllDrillHolesRaw(sinceMs).forEach { (id, rawData) ->
             val rh = runCatching { RemoteDrillHole.fromFirestoreMap(id, rawData) }.getOrNull() ?: return@forEach
             val localProjectId = remoteProjectToLocal[rh.projectId] ?: return@forEach
             val remoteUpdatedAt = remoteDataSource.extractUpdatedAt(rawData)
@@ -480,7 +484,7 @@ class SyncWorker @AssistedInject constructor(
         }
 
         // 7. Pull drill intervals
-        remoteDataSource.fetchAllDrillIntervalsRaw().forEach { (id, rawData) ->
+        remoteDataSource.fetchAllDrillIntervalsRaw(sinceMs).forEach { (id, rawData) ->
             val ri = runCatching { RemoteDrillInterval.fromFirestoreMap(id, rawData) }.getOrNull() ?: return@forEach
             val localDrillHoleId = remoteDrillHoleToLocal[ri.drillHoleId] ?: return@forEach
             val remoteUpdatedAt = remoteDataSource.extractUpdatedAt(rawData)
@@ -509,7 +513,7 @@ class SyncWorker @AssistedInject constructor(
         }
 
         // 8. Pull photo metadata — insert-only (photos are immutable after upload)
-        remoteDataSource.fetchAllPhotosRaw().forEach { (remoteId, rawData) ->
+        remoteDataSource.fetchAllPhotosRaw(sinceMs).forEach { (remoteId, rawData) ->
             if (photoDao.getByRemoteId(remoteId) == null) {
                 val rp = runCatching {
                     RemotePhoto.fromFirestoreMap(remoteId, rawData)

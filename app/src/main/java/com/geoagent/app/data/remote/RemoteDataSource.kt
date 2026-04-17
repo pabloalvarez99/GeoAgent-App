@@ -112,8 +112,21 @@ class RemoteDataSource @Inject constructor(
 
     // ---- Fetch all (pull/download from Firestore) ----
 
-    private suspend fun fetchAll(collection: String): List<Pair<String, Map<String, Any>>> {
-        val snapshot = col(collection).get().await()
+    /**
+     * Fetches documents updated after [sinceMs] epoch millis.
+     * Pass sinceMs = 0L to fetch all documents (first sync).
+     */
+    private suspend fun fetchAllSince(
+        collection: String,
+        sinceMs: Long,
+    ): List<Pair<String, Map<String, Any>>> {
+        val query = if (sinceMs > 0L) {
+            val since = com.google.firebase.Timestamp(java.util.Date(sinceMs))
+            col(collection).whereGreaterThan("updatedAt", since)
+        } else {
+            col(collection)
+        }
+        val snapshot = query.get().await()
         return snapshot.documents.mapNotNull { doc ->
             val data = doc.data ?: return@mapNotNull null
             doc.id to data
@@ -121,42 +134,42 @@ class RemoteDataSource @Inject constructor(
     }
 
     suspend fun fetchAllProjects(): List<RemoteProject> =
-        fetchAll("projects").mapNotNull { (id, data) ->
+        fetchAllProjectsRaw().mapNotNull { (id, data) ->
             runCatching { RemoteProject.fromFirestoreMap(id, data) }.getOrNull()
         }
 
     suspend fun fetchAllStations(): List<RemoteStation> =
-        fetchAll("stations").mapNotNull { (id, data) ->
+        fetchAllStationsRaw().mapNotNull { (id, data) ->
             runCatching { RemoteStation.fromFirestoreMap(id, data) }.getOrNull()
         }
 
     suspend fun fetchAllLithologies(): List<RemoteLithology> =
-        fetchAll("lithologies").mapNotNull { (id, data) ->
+        fetchAllLithologiesRaw().mapNotNull { (id, data) ->
             runCatching { RemoteLithology.fromFirestoreMap(id, data) }.getOrNull()
         }
 
     suspend fun fetchAllStructuralData(): List<RemoteStructural> =
-        fetchAll("structural_data").mapNotNull { (id, data) ->
+        fetchAllStructuralDataRaw().mapNotNull { (id, data) ->
             runCatching { RemoteStructural.fromFirestoreMap(id, data) }.getOrNull()
         }
 
     suspend fun fetchAllSamples(): List<RemoteSample> =
-        fetchAll("samples").mapNotNull { (id, data) ->
+        fetchAllSamplesRaw().mapNotNull { (id, data) ->
             runCatching { RemoteSample.fromFirestoreMap(id, data) }.getOrNull()
         }
 
     suspend fun fetchAllDrillHoles(): List<RemoteDrillHole> =
-        fetchAll("drill_holes").mapNotNull { (id, data) ->
+        fetchAllDrillHolesRaw().mapNotNull { (id, data) ->
             runCatching { RemoteDrillHole.fromFirestoreMap(id, data) }.getOrNull()
         }
 
     suspend fun fetchAllDrillIntervals(): List<RemoteDrillInterval> =
-        fetchAll("drill_intervals").mapNotNull { (id, data) ->
+        fetchAllDrillIntervalsRaw().mapNotNull { (id, data) ->
             runCatching { RemoteDrillInterval.fromFirestoreMap(id, data) }.getOrNull()
         }
 
     suspend fun fetchAllPhotos(): List<RemotePhoto> =
-        fetchAll("photos").mapNotNull { (id, data) ->
+        fetchAllPhotosRaw().mapNotNull { (id, data) ->
             runCatching { RemotePhoto.fromFirestoreMap(id, data) }.getOrNull()
         }
 
@@ -169,12 +182,12 @@ class RemoteDataSource @Inject constructor(
         return ts.toDate().time
     }
 
-    suspend fun fetchAllProjectsRaw(): List<Pair<String, Map<String, Any>>> = fetchAll("projects")
-    suspend fun fetchAllStationsRaw(): List<Pair<String, Map<String, Any>>> = fetchAll("stations")
-    suspend fun fetchAllLithologiesRaw(): List<Pair<String, Map<String, Any>>> = fetchAll("lithologies")
-    suspend fun fetchAllStructuralDataRaw(): List<Pair<String, Map<String, Any>>> = fetchAll("structural_data")
-    suspend fun fetchAllSamplesRaw(): List<Pair<String, Map<String, Any>>> = fetchAll("samples")
-    suspend fun fetchAllDrillHolesRaw(): List<Pair<String, Map<String, Any>>> = fetchAll("drill_holes")
-    suspend fun fetchAllDrillIntervalsRaw(): List<Pair<String, Map<String, Any>>> = fetchAll("drill_intervals")
-    suspend fun fetchAllPhotosRaw(): List<Pair<String, Map<String, Any>>> = fetchAll("photos")
+    suspend fun fetchAllProjectsRaw(sinceMs: Long = 0L): List<Pair<String, Map<String, Any>>> = fetchAllSince("projects", sinceMs)
+    suspend fun fetchAllStationsRaw(sinceMs: Long = 0L): List<Pair<String, Map<String, Any>>> = fetchAllSince("stations", sinceMs)
+    suspend fun fetchAllLithologiesRaw(sinceMs: Long = 0L): List<Pair<String, Map<String, Any>>> = fetchAllSince("lithologies", sinceMs)
+    suspend fun fetchAllStructuralDataRaw(sinceMs: Long = 0L): List<Pair<String, Map<String, Any>>> = fetchAllSince("structural_data", sinceMs)
+    suspend fun fetchAllSamplesRaw(sinceMs: Long = 0L): List<Pair<String, Map<String, Any>>> = fetchAllSince("samples", sinceMs)
+    suspend fun fetchAllDrillHolesRaw(sinceMs: Long = 0L): List<Pair<String, Map<String, Any>>> = fetchAllSince("drill_holes", sinceMs)
+    suspend fun fetchAllDrillIntervalsRaw(sinceMs: Long = 0L): List<Pair<String, Map<String, Any>>> = fetchAllSince("drill_intervals", sinceMs)
+    suspend fun fetchAllPhotosRaw(sinceMs: Long = 0L): List<Pair<String, Map<String, Any>>> = fetchAllSince("photos", sinceMs)
 }
