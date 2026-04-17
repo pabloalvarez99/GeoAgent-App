@@ -41,4 +41,12 @@ interface ProjectDao {
 
     @Query("SELECT * FROM projects WHERE remote_id = :remoteId LIMIT 1")
     suspend fun getByRemoteId(remoteId: String): ProjectEntity?
+
+    @Query("""
+        UPDATE projects
+        SET name = :name, description = :description, location = :location,
+            updated_at = :updatedAt, sync_status = 'SYNCED'
+        WHERE id = :id
+    """)
+    suspend fun updateFromRemote(id: Long, name: String, description: String, location: String, updatedAt: Long)
 }

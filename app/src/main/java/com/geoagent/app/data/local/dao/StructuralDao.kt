@@ -38,4 +38,18 @@ interface StructuralDao {
 
     @Query("SELECT * FROM structural_data WHERE remote_id = :remoteId LIMIT 1")
     suspend fun getByRemoteId(remoteId: String): StructuralEntity?
+
+    @Query("""
+        UPDATE structural_data
+        SET type = :type, strike = :strike, dip = :dip, dip_direction = :dipDirection,
+            movement = :movement, thickness = :thickness, filling = :filling,
+            roughness = :roughness, continuity = :continuity, notes = :notes,
+            updated_at = :updatedAt, sync_status = 'SYNCED'
+        WHERE id = :id
+    """)
+    suspend fun updateFromRemote(
+        id: Long, type: String, strike: Double, dip: Double, dipDirection: String,
+        movement: String?, thickness: Double?, filling: String?, roughness: String?,
+        continuity: String?, notes: String?, updatedAt: Long
+    )
 }

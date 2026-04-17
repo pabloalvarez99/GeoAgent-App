@@ -50,4 +50,19 @@ interface SampleDao {
 
     @Query("SELECT * FROM samples WHERE remote_id = :remoteId LIMIT 1")
     suspend fun getByRemoteId(remoteId: String): SampleEntity?
+
+    @Query("""
+        UPDATE samples
+        SET code = :code, type = :type, weight = :weight, length = :length,
+            description = :description, latitude = :latitude, longitude = :longitude,
+            altitude = :altitude, destination = :destination, analysis_requested = :analysisRequested,
+            status = :status, notes = :notes, updated_at = :updatedAt, sync_status = 'SYNCED'
+        WHERE id = :id
+    """)
+    suspend fun updateFromRemote(
+        id: Long, code: String, type: String, weight: Double?, length: Double?,
+        description: String, latitude: Double?, longitude: Double?, altitude: Double?,
+        destination: String?, analysisRequested: String?, status: String, notes: String?,
+        updatedAt: Long
+    )
 }

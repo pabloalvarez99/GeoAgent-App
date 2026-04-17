@@ -159,4 +159,22 @@ class RemoteDataSource @Inject constructor(
         fetchAll("photos").mapNotNull { (id, data) ->
             runCatching { RemotePhoto.fromFirestoreMap(id, data) }.getOrNull()
         }
+
+    /**
+     * Reads the Firestore server timestamp 'updatedAt' from a raw document map.
+     * Returns epoch millis, or 0 if the field is absent.
+     */
+    fun extractUpdatedAt(data: Map<String, Any>): Long {
+        val ts = data["updatedAt"] as? com.google.firebase.Timestamp ?: return 0L
+        return ts.toDate().time
+    }
+
+    suspend fun fetchAllProjectsRaw(): List<Pair<String, Map<String, Any>>> = fetchAll("projects")
+    suspend fun fetchAllStationsRaw(): List<Pair<String, Map<String, Any>>> = fetchAll("stations")
+    suspend fun fetchAllLithologiesRaw(): List<Pair<String, Map<String, Any>>> = fetchAll("lithologies")
+    suspend fun fetchAllStructuralDataRaw(): List<Pair<String, Map<String, Any>>> = fetchAll("structural_data")
+    suspend fun fetchAllSamplesRaw(): List<Pair<String, Map<String, Any>>> = fetchAll("samples")
+    suspend fun fetchAllDrillHolesRaw(): List<Pair<String, Map<String, Any>>> = fetchAll("drill_holes")
+    suspend fun fetchAllDrillIntervalsRaw(): List<Pair<String, Map<String, Any>>> = fetchAll("drill_intervals")
+    suspend fun fetchAllPhotosRaw(): List<Pair<String, Map<String, Any>>> = fetchAll("photos")
 }

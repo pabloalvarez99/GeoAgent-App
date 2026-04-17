@@ -47,4 +47,16 @@ interface StationDao {
 
     @Query("SELECT * FROM stations WHERE remote_id = :remoteId LIMIT 1")
     suspend fun getByRemoteId(remoteId: String): StationEntity?
+
+    @Query("""
+        UPDATE stations
+        SET code = :code, latitude = :latitude, longitude = :longitude, altitude = :altitude,
+            date = :date, geologist = :geologist, description = :description,
+            weather_conditions = :weatherConditions, updated_at = :updatedAt, sync_status = 'SYNCED'
+        WHERE id = :id
+    """)
+    suspend fun updateFromRemote(
+        id: Long, code: String, latitude: Double, longitude: Double, altitude: Double?,
+        date: Long, geologist: String, description: String, weatherConditions: String?, updatedAt: Long
+    )
 }

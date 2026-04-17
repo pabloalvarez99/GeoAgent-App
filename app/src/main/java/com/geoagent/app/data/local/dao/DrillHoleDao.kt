@@ -47,4 +47,20 @@ interface DrillHoleDao {
 
     @Query("SELECT * FROM drill_holes WHERE remote_id = :remoteId LIMIT 1")
     suspend fun getByRemoteId(remoteId: String): DrillHoleEntity?
+
+    @Query("""
+        UPDATE drill_holes
+        SET hole_id = :holeId, type = :type, latitude = :latitude, longitude = :longitude,
+            altitude = :altitude, azimuth = :azimuth, inclination = :inclination,
+            planned_depth = :plannedDepth, actual_depth = :actualDepth,
+            start_date = :startDate, end_date = :endDate, status = :status,
+            geologist = :geologist, notes = :notes, updated_at = :updatedAt, sync_status = 'SYNCED'
+        WHERE id = :id
+    """)
+    suspend fun updateFromRemote(
+        id: Long, holeId: String, type: String, latitude: Double, longitude: Double,
+        altitude: Double?, azimuth: Double, inclination: Double, plannedDepth: Double,
+        actualDepth: Double?, startDate: Long?, endDate: Long?, status: String,
+        geologist: String, notes: String?, updatedAt: Long
+    )
 }

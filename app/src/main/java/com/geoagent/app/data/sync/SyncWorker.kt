@@ -284,26 +284,27 @@ class SyncWorker @AssistedInject constructor(
         }
     }
 
-    // ---- Pull phase: fetch remote → insert new local records ----
+    // ---- Pull phase: fetch remote → insert new or update stale local records ----
 
     /**
      * Downloads all remote documents and inserts any that don't yet exist locally.
-     * Records already present (by remoteId) are skipped regardless of sync status,
-     * preserving any unsaved local changes. This enables multi-device use.
+     * If a record already exists AND its local syncStatus is SYNCED (no pending local edits)
+     * AND the remote updatedAt is newer than the local updated_at, it overwrites the local row.
+     * This enables multi-device use and ensures web edits are visible on Android.
      */
     private suspend fun pullFromRemote() {
         Log.d(TAG, "Pull phase: fetching remote data...")
         val now = System.currentTimeMillis()
 
-        // remoteId → localId maps built during pull, reused by push phase
         val remoteProjectToLocal = mutableMapOf<String, Long>()
         val remoteStationToLocal = mutableMapOf<String, Long>()
         val remoteDrillHoleToLocal = mutableMapOf<String, Long>()
 
         // 1. Pull projects
-        remoteDataSource.fetchAllProjects().forEach { rp ->
-            val remoteId = rp.id ?: return@forEach
-            val existing = projectDao.getByRemoteId(remoteId)
+        remoteDataSource.fetchAllProjectsRaw().forEach { (id, rawData) ->
+            val rp = runCatching { RemoteProject.fromFirestoreMap(id, rawData) }.getOrNull() ?: return@forEach
+            val remoteUpdatedAt = remoteDataSource.extractUpdatedAt(rawData)
+            val existing = projectDao.getByRemoteId(id)
             val localId = if (existing == null) {
                 Log.d(TAG, "Pull: inserting new project '${rp.name}'")
                 projectDao.insert(ProjectEntity(
@@ -313,20 +314,25 @@ class SyncWorker @AssistedInject constructor(
                     createdAt = now,
                     updatedAt = now,
                     syncStatus = SYNC_STATUS_SYNCED,
-                    remoteId = remoteId,
+                    remoteId = id,
                 ))
             } else {
+                if (existing.syncStatus == SYNC_STATUS_SYNCED && remoteUpdatedAt > existing.updatedAt) {
+                    Log.d(TAG, "Pull: updating project '${rp.name}' (remote newer)")
+                    projectDao.updateFromRemote(existing.id, rp.name, rp.description, rp.location, now)
+                }
                 existing.id
             }
-            remoteProjectToLocal[remoteId] = localId
-            projectIdMap[localId] = remoteId
+            remoteProjectToLocal[id] = localId
+            projectIdMap[localId] = id
         }
 
         // 2. Pull stations
-        remoteDataSource.fetchAllStations().forEach { rs ->
-            val remoteId = rs.id ?: return@forEach
+        remoteDataSource.fetchAllStationsRaw().forEach { (id, rawData) ->
+            val rs = runCatching { RemoteStation.fromFirestoreMap(id, rawData) }.getOrNull() ?: return@forEach
             val localProjectId = remoteProjectToLocal[rs.projectId] ?: return@forEach
-            val existing = stationDao.getByRemoteId(remoteId)
+            val remoteUpdatedAt = remoteDataSource.extractUpdatedAt(rawData)
+            val existing = stationDao.getByRemoteId(id)
             val localId = if (existing == null) {
                 Log.d(TAG, "Pull: inserting new station '${rs.code}'")
                 stationDao.insert(StationEntity(
@@ -342,167 +348,162 @@ class SyncWorker @AssistedInject constructor(
                     createdAt = now,
                     updatedAt = now,
                     syncStatus = SYNC_STATUS_SYNCED,
-                    remoteId = remoteId,
+                    remoteId = id,
                 ))
             } else {
+                if (existing.syncStatus == SYNC_STATUS_SYNCED && remoteUpdatedAt > existing.updatedAt) {
+                    Log.d(TAG, "Pull: updating station '${rs.code}' (remote newer)")
+                    stationDao.updateFromRemote(
+                        existing.id, rs.code, rs.latitude, rs.longitude, rs.altitude,
+                        parseIsoDate(rs.date), rs.geologist, rs.description, rs.weatherConditions, now
+                    )
+                }
                 existing.id
             }
-            remoteStationToLocal[remoteId] = localId
-            stationIdMap[localId] = remoteId
+            remoteStationToLocal[id] = localId
+            stationIdMap[localId] = id
         }
 
         // 3. Pull lithologies
-        remoteDataSource.fetchAllLithologies().forEach { rl ->
-            val remoteId = rl.id ?: return@forEach
+        remoteDataSource.fetchAllLithologiesRaw().forEach { (id, rawData) ->
+            val rl = runCatching { RemoteLithology.fromFirestoreMap(id, rawData) }.getOrNull() ?: return@forEach
             val localStationId = remoteStationToLocal[rl.stationId] ?: return@forEach
-            if (lithologyDao.getByRemoteId(remoteId) == null) {
+            val remoteUpdatedAt = remoteDataSource.extractUpdatedAt(rawData)
+            val existing = lithologyDao.getByRemoteId(id)
+            if (existing == null) {
                 Log.d(TAG, "Pull: inserting new lithology '${rl.rockType}'")
                 lithologyDao.insert(LithologyEntity(
-                    stationId = localStationId,
-                    rockType = rl.rockType,
-                    rockGroup = rl.rockGroup,
-                    color = rl.color,
-                    texture = rl.texture,
-                    grainSize = rl.grainSize,
-                    mineralogy = rl.mineralogy,
-                    alteration = rl.alteration,
-                    alterationIntensity = rl.alterationIntensity,
-                    mineralization = rl.mineralization,
-                    mineralizationPercent = rl.mineralizationPercent,
-                    structure = rl.structure,
-                    weathering = rl.weathering,
-                    notes = rl.notes,
-                    createdAt = now,
-                    updatedAt = now,
-                    syncStatus = SYNC_STATUS_SYNCED,
-                    remoteId = remoteId,
+                    stationId = localStationId, rockType = rl.rockType, rockGroup = rl.rockGroup,
+                    color = rl.color, texture = rl.texture, grainSize = rl.grainSize,
+                    mineralogy = rl.mineralogy, alteration = rl.alteration,
+                    alterationIntensity = rl.alterationIntensity, mineralization = rl.mineralization,
+                    mineralizationPercent = rl.mineralizationPercent, structure = rl.structure,
+                    weathering = rl.weathering, notes = rl.notes,
+                    createdAt = now, updatedAt = now, syncStatus = SYNC_STATUS_SYNCED, remoteId = id,
                 ))
+            } else if (existing.syncStatus == SYNC_STATUS_SYNCED && remoteUpdatedAt > existing.updatedAt) {
+                Log.d(TAG, "Pull: updating lithology '${rl.rockType}' (remote newer)")
+                lithologyDao.updateFromRemote(
+                    existing.id, rl.rockType, rl.rockGroup, rl.color, rl.texture, rl.grainSize,
+                    rl.mineralogy, rl.alteration, rl.alterationIntensity, rl.mineralization,
+                    rl.mineralizationPercent, rl.structure, rl.weathering, rl.notes, now
+                )
             }
         }
 
         // 4. Pull structural data
-        remoteDataSource.fetchAllStructuralData().forEach { rs ->
-            val remoteId = rs.id ?: return@forEach
+        remoteDataSource.fetchAllStructuralDataRaw().forEach { (id, rawData) ->
+            val rs = runCatching { RemoteStructural.fromFirestoreMap(id, rawData) }.getOrNull() ?: return@forEach
             val localStationId = remoteStationToLocal[rs.stationId] ?: return@forEach
-            if (structuralDao.getByRemoteId(remoteId) == null) {
+            val remoteUpdatedAt = remoteDataSource.extractUpdatedAt(rawData)
+            val existing = structuralDao.getByRemoteId(id)
+            if (existing == null) {
                 Log.d(TAG, "Pull: inserting new structural '${rs.type}'")
                 structuralDao.insert(StructuralEntity(
-                    stationId = localStationId,
-                    type = rs.type,
-                    strike = rs.strike,
-                    dip = rs.dip,
-                    dipDirection = rs.dipDirection,
-                    movement = rs.movement,
-                    thickness = rs.thickness,
-                    filling = rs.filling,
-                    roughness = rs.roughness,
-                    continuity = rs.continuity,
-                    notes = rs.notes,
-                    createdAt = now,
-                    updatedAt = now,
-                    syncStatus = SYNC_STATUS_SYNCED,
-                    remoteId = remoteId,
+                    stationId = localStationId, type = rs.type, strike = rs.strike, dip = rs.dip,
+                    dipDirection = rs.dipDirection, movement = rs.movement, thickness = rs.thickness,
+                    filling = rs.filling, roughness = rs.roughness, continuity = rs.continuity,
+                    notes = rs.notes, createdAt = now, updatedAt = now,
+                    syncStatus = SYNC_STATUS_SYNCED, remoteId = id,
                 ))
+            } else if (existing.syncStatus == SYNC_STATUS_SYNCED && remoteUpdatedAt > existing.updatedAt) {
+                Log.d(TAG, "Pull: updating structural '${rs.type}' (remote newer)")
+                structuralDao.updateFromRemote(
+                    existing.id, rs.type, rs.strike, rs.dip, rs.dipDirection, rs.movement,
+                    rs.thickness, rs.filling, rs.roughness, rs.continuity, rs.notes, now
+                )
             }
         }
 
         // 5. Pull samples
-        remoteDataSource.fetchAllSamples().forEach { rs ->
-            val remoteId = rs.id ?: return@forEach
+        remoteDataSource.fetchAllSamplesRaw().forEach { (id, rawData) ->
+            val rs = runCatching { RemoteSample.fromFirestoreMap(id, rawData) }.getOrNull() ?: return@forEach
             val localStationId = remoteStationToLocal[rs.stationId] ?: return@forEach
-            if (sampleDao.getByRemoteId(remoteId) == null) {
+            val remoteUpdatedAt = remoteDataSource.extractUpdatedAt(rawData)
+            val existing = sampleDao.getByRemoteId(id)
+            if (existing == null) {
                 Log.d(TAG, "Pull: inserting new sample '${rs.code}'")
                 sampleDao.insert(SampleEntity(
-                    stationId = localStationId,
-                    code = rs.code,
-                    type = rs.type,
-                    weight = rs.weight,
-                    length = rs.length,
-                    description = rs.description,
-                    latitude = rs.latitude,
-                    longitude = rs.longitude,
-                    altitude = rs.altitude,
-                    destination = rs.destination,
-                    analysisRequested = rs.analysisRequested,
-                    status = rs.status,
-                    notes = rs.notes,
-                    createdAt = now,
-                    updatedAt = now,
-                    syncStatus = SYNC_STATUS_SYNCED,
-                    remoteId = remoteId,
+                    stationId = localStationId, code = rs.code, type = rs.type, weight = rs.weight,
+                    length = rs.length, description = rs.description, latitude = rs.latitude,
+                    longitude = rs.longitude, altitude = rs.altitude, destination = rs.destination,
+                    analysisRequested = rs.analysisRequested, status = rs.status, notes = rs.notes,
+                    createdAt = now, updatedAt = now, syncStatus = SYNC_STATUS_SYNCED, remoteId = id,
                 ))
+            } else if (existing.syncStatus == SYNC_STATUS_SYNCED && remoteUpdatedAt > existing.updatedAt) {
+                Log.d(TAG, "Pull: updating sample '${rs.code}' (remote newer)")
+                sampleDao.updateFromRemote(
+                    existing.id, rs.code, rs.type, rs.weight, rs.length, rs.description,
+                    rs.latitude, rs.longitude, rs.altitude, rs.destination,
+                    rs.analysisRequested, rs.status, rs.notes, now
+                )
             }
         }
 
         // 6. Pull drill holes
-        remoteDataSource.fetchAllDrillHoles().forEach { rh ->
-            val remoteId = rh.id ?: return@forEach
+        remoteDataSource.fetchAllDrillHolesRaw().forEach { (id, rawData) ->
+            val rh = runCatching { RemoteDrillHole.fromFirestoreMap(id, rawData) }.getOrNull() ?: return@forEach
             val localProjectId = remoteProjectToLocal[rh.projectId] ?: return@forEach
-            val existing = drillHoleDao.getByRemoteId(remoteId)
+            val remoteUpdatedAt = remoteDataSource.extractUpdatedAt(rawData)
+            val existing = drillHoleDao.getByRemoteId(id)
             val localId = if (existing == null) {
                 Log.d(TAG, "Pull: inserting new drill hole '${rh.holeId}'")
                 drillHoleDao.insert(DrillHoleEntity(
-                    projectId = localProjectId,
-                    holeId = rh.holeId,
-                    type = rh.type,
-                    latitude = rh.latitude,
-                    longitude = rh.longitude,
-                    altitude = rh.altitude,
-                    azimuth = rh.azimuth,
-                    inclination = rh.inclination,
-                    plannedDepth = rh.plannedDepth,
-                    actualDepth = rh.actualDepth,
+                    projectId = localProjectId, holeId = rh.holeId, type = rh.type,
+                    latitude = rh.latitude, longitude = rh.longitude, altitude = rh.altitude,
+                    azimuth = rh.azimuth, inclination = rh.inclination,
+                    plannedDepth = rh.plannedDepth, actualDepth = rh.actualDepth,
                     startDate = rh.startDate?.let { parseIsoDate(it) },
                     endDate = rh.endDate?.let { parseIsoDate(it) },
-                    status = rh.status,
-                    geologist = rh.geologist,
-                    notes = rh.notes,
-                    createdAt = now,
-                    updatedAt = now,
-                    syncStatus = SYNC_STATUS_SYNCED,
-                    remoteId = remoteId,
+                    status = rh.status, geologist = rh.geologist, notes = rh.notes,
+                    createdAt = now, updatedAt = now, syncStatus = SYNC_STATUS_SYNCED, remoteId = id,
                 ))
             } else {
+                if (existing.syncStatus == SYNC_STATUS_SYNCED && remoteUpdatedAt > existing.updatedAt) {
+                    Log.d(TAG, "Pull: updating drill hole '${rh.holeId}' (remote newer)")
+                    drillHoleDao.updateFromRemote(
+                        existing.id, rh.holeId, rh.type, rh.latitude, rh.longitude, rh.altitude,
+                        rh.azimuth, rh.inclination, rh.plannedDepth, rh.actualDepth,
+                        rh.startDate?.let { parseIsoDate(it) }, rh.endDate?.let { parseIsoDate(it) },
+                        rh.status, rh.geologist, rh.notes, now
+                    )
+                }
                 existing.id
             }
-            remoteDrillHoleToLocal[remoteId] = localId
-            drillHoleIdMap[localId] = remoteId
+            remoteDrillHoleToLocal[id] = localId
+            drillHoleIdMap[localId] = id
         }
 
         // 7. Pull drill intervals
-        remoteDataSource.fetchAllDrillIntervals().forEach { ri ->
-            val remoteId = ri.id ?: return@forEach
+        remoteDataSource.fetchAllDrillIntervalsRaw().forEach { (id, rawData) ->
+            val ri = runCatching { RemoteDrillInterval.fromFirestoreMap(id, rawData) }.getOrNull() ?: return@forEach
             val localDrillHoleId = remoteDrillHoleToLocal[ri.drillHoleId] ?: return@forEach
-            if (drillIntervalDao.getByRemoteId(remoteId) == null) {
+            val remoteUpdatedAt = remoteDataSource.extractUpdatedAt(rawData)
+            val existing = drillIntervalDao.getByRemoteId(id)
+            if (existing == null) {
                 Log.d(TAG, "Pull: inserting new interval ${ri.fromDepth}-${ri.toDepth}")
                 drillIntervalDao.insert(DrillIntervalEntity(
-                    drillHoleId = localDrillHoleId,
-                    fromDepth = ri.fromDepth,
-                    toDepth = ri.toDepth,
-                    rockType = ri.rockType,
-                    rockGroup = ri.rockGroup,
-                    color = ri.color,
-                    texture = ri.texture,
-                    grainSize = ri.grainSize,
-                    mineralogy = ri.mineralogy,
-                    alteration = ri.alteration,
-                    alterationIntensity = ri.alterationIntensity,
-                    mineralization = ri.mineralization,
-                    mineralizationPercent = ri.mineralizationPercent,
-                    rqd = ri.rqd,
-                    recovery = ri.recovery,
-                    structure = ri.structure,
-                    weathering = ri.weathering,
-                    notes = ri.notes,
-                    createdAt = now,
-                    updatedAt = now,
-                    syncStatus = SYNC_STATUS_SYNCED,
-                    remoteId = remoteId,
+                    drillHoleId = localDrillHoleId, fromDepth = ri.fromDepth, toDepth = ri.toDepth,
+                    rockType = ri.rockType, rockGroup = ri.rockGroup, color = ri.color,
+                    texture = ri.texture, grainSize = ri.grainSize, mineralogy = ri.mineralogy,
+                    alteration = ri.alteration, alterationIntensity = ri.alterationIntensity,
+                    mineralization = ri.mineralization, mineralizationPercent = ri.mineralizationPercent,
+                    rqd = ri.rqd, recovery = ri.recovery, structure = ri.structure,
+                    weathering = ri.weathering, notes = ri.notes,
+                    createdAt = now, updatedAt = now, syncStatus = SYNC_STATUS_SYNCED, remoteId = id,
                 ))
+            } else if (existing.syncStatus == SYNC_STATUS_SYNCED && remoteUpdatedAt > existing.updatedAt) {
+                Log.d(TAG, "Pull: updating interval ${ri.fromDepth}-${ri.toDepth} (remote newer)")
+                drillIntervalDao.updateFromRemote(
+                    existing.id, ri.fromDepth, ri.toDepth, ri.rockType, ri.rockGroup,
+                    ri.color, ri.texture, ri.grainSize, ri.mineralogy, ri.alteration,
+                    ri.alterationIntensity, ri.mineralization, ri.mineralizationPercent,
+                    ri.rqd, ri.recovery, ri.structure, ri.weathering, ri.notes, now
+                )
             }
         }
 
-        // 8. Pull photo metadata (remote_url serves as display source for non-local photos)
+        // 8. Pull photo metadata (keep existing logic — photos are immutable after upload)
         remoteDataSource.fetchAllPhotos().forEach { rp ->
             val remoteId = rp.id ?: return@forEach
             if (photoDao.getByRemoteId(remoteId) == null) {
@@ -515,7 +516,7 @@ class SyncWorker @AssistedInject constructor(
                     projectId = localProjectId,
                     stationId = localStationId,
                     drillHoleId = localDrillHoleId,
-                    filePath = "",  // No local file for photos pulled from remote
+                    filePath = "",
                     fileName = rp.fileName,
                     description = rp.description,
                     latitude = rp.latitude,

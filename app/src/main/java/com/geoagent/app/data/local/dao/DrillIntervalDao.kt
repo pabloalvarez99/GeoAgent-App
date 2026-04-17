@@ -38,4 +38,23 @@ interface DrillIntervalDao {
 
     @Query("SELECT * FROM drill_intervals WHERE remote_id = :remoteId LIMIT 1")
     suspend fun getByRemoteId(remoteId: String): DrillIntervalEntity?
+
+    @Query("""
+        UPDATE drill_intervals
+        SET from_depth = :fromDepth, to_depth = :toDepth, rock_type = :rockType,
+            rock_group = :rockGroup, color = :color, texture = :texture,
+            grain_size = :grainSize, mineralogy = :mineralogy, alteration = :alteration,
+            alteration_intensity = :alterationIntensity, mineralization = :mineralization,
+            mineralization_percent = :mineralizationPercent, rqd = :rqd, recovery = :recovery,
+            structure = :structure, weathering = :weathering, notes = :notes,
+            updated_at = :updatedAt, sync_status = 'SYNCED'
+        WHERE id = :id
+    """)
+    suspend fun updateFromRemote(
+        id: Long, fromDepth: Double, toDepth: Double, rockType: String, rockGroup: String,
+        color: String, texture: String, grainSize: String, mineralogy: String,
+        alteration: String?, alterationIntensity: String?, mineralization: String?,
+        mineralizationPercent: Double?, rqd: Double?, recovery: Double?,
+        structure: String?, weathering: String?, notes: String?, updatedAt: Long
+    )
 }

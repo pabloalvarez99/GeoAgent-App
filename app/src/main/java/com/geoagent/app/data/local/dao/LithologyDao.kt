@@ -38,4 +38,20 @@ interface LithologyDao {
 
     @Query("SELECT * FROM lithologies WHERE remote_id = :remoteId LIMIT 1")
     suspend fun getByRemoteId(remoteId: String): LithologyEntity?
+
+    @Query("""
+        UPDATE lithologies
+        SET rock_type = :rockType, rock_group = :rockGroup, color = :color, texture = :texture,
+            grain_size = :grainSize, mineralogy = :mineralogy, alteration = :alteration,
+            alteration_intensity = :alterationIntensity, mineralization = :mineralization,
+            mineralization_percent = :mineralizationPercent, structure = :structure,
+            weathering = :weathering, notes = :notes, updated_at = :updatedAt, sync_status = 'SYNCED'
+        WHERE id = :id
+    """)
+    suspend fun updateFromRemote(
+        id: Long, rockType: String, rockGroup: String, color: String, texture: String,
+        grainSize: String, mineralogy: String, alteration: String?, alterationIntensity: String?,
+        mineralization: String?, mineralizationPercent: Double?, structure: String?,
+        weathering: String?, notes: String?, updatedAt: Long
+    )
 }
