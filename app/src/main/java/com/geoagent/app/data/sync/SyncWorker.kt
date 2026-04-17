@@ -65,6 +65,11 @@ class SyncWorker @AssistedInject constructor(
     private val drillHoleIdMap = mutableMapOf<Long, String>()
 
     override suspend fun doWork(): Result {
+        // Clear ID maps in case this instance is reused across retries
+        projectIdMap.clear()
+        stationIdMap.clear()
+        drillHoleIdMap.clear()
+
         Log.d(TAG, "Starting sync...")
         var syncedCount = 0
         var errorCount = 0
@@ -312,7 +317,7 @@ class SyncWorker @AssistedInject constructor(
                     description = rp.description,
                     location = rp.location,
                     createdAt = now,
-                    updatedAt = now,
+                    updatedAt = if (remoteUpdatedAt > 0L) remoteUpdatedAt else now,
                     syncStatus = SYNC_STATUS_SYNCED,
                     remoteId = id,
                 ))
@@ -346,7 +351,7 @@ class SyncWorker @AssistedInject constructor(
                     description = rs.description,
                     weatherConditions = rs.weatherConditions,
                     createdAt = now,
-                    updatedAt = now,
+                    updatedAt = if (remoteUpdatedAt > 0L) remoteUpdatedAt else now,
                     syncStatus = SYNC_STATUS_SYNCED,
                     remoteId = id,
                 ))
@@ -379,7 +384,7 @@ class SyncWorker @AssistedInject constructor(
                     alterationIntensity = rl.alterationIntensity, mineralization = rl.mineralization,
                     mineralizationPercent = rl.mineralizationPercent, structure = rl.structure,
                     weathering = rl.weathering, notes = rl.notes,
-                    createdAt = now, updatedAt = now, syncStatus = SYNC_STATUS_SYNCED, remoteId = id,
+                    createdAt = now, updatedAt = if (remoteUpdatedAt > 0L) remoteUpdatedAt else now, syncStatus = SYNC_STATUS_SYNCED, remoteId = id,
                 ))
             } else if (existing.syncStatus == SYNC_STATUS_SYNCED && remoteUpdatedAt > existing.updatedAt) {
                 Log.d(TAG, "Pull: updating lithology '${rl.rockType}' (remote newer)")
@@ -403,7 +408,7 @@ class SyncWorker @AssistedInject constructor(
                     stationId = localStationId, type = rs.type, strike = rs.strike, dip = rs.dip,
                     dipDirection = rs.dipDirection, movement = rs.movement, thickness = rs.thickness,
                     filling = rs.filling, roughness = rs.roughness, continuity = rs.continuity,
-                    notes = rs.notes, createdAt = now, updatedAt = now,
+                    notes = rs.notes, createdAt = now, updatedAt = if (remoteUpdatedAt > 0L) remoteUpdatedAt else now,
                     syncStatus = SYNC_STATUS_SYNCED, remoteId = id,
                 ))
             } else if (existing.syncStatus == SYNC_STATUS_SYNCED && remoteUpdatedAt > existing.updatedAt) {
@@ -428,7 +433,7 @@ class SyncWorker @AssistedInject constructor(
                     length = rs.length, description = rs.description, latitude = rs.latitude,
                     longitude = rs.longitude, altitude = rs.altitude, destination = rs.destination,
                     analysisRequested = rs.analysisRequested, status = rs.status, notes = rs.notes,
-                    createdAt = now, updatedAt = now, syncStatus = SYNC_STATUS_SYNCED, remoteId = id,
+                    createdAt = now, updatedAt = if (remoteUpdatedAt > 0L) remoteUpdatedAt else now, syncStatus = SYNC_STATUS_SYNCED, remoteId = id,
                 ))
             } else if (existing.syncStatus == SYNC_STATUS_SYNCED && remoteUpdatedAt > existing.updatedAt) {
                 Log.d(TAG, "Pull: updating sample '${rs.code}' (remote newer)")
@@ -456,7 +461,7 @@ class SyncWorker @AssistedInject constructor(
                     startDate = rh.startDate?.let { parseIsoDate(it) },
                     endDate = rh.endDate?.let { parseIsoDate(it) },
                     status = rh.status, geologist = rh.geologist, notes = rh.notes,
-                    createdAt = now, updatedAt = now, syncStatus = SYNC_STATUS_SYNCED, remoteId = id,
+                    createdAt = now, updatedAt = if (remoteUpdatedAt > 0L) remoteUpdatedAt else now, syncStatus = SYNC_STATUS_SYNCED, remoteId = id,
                 ))
             } else {
                 if (existing.syncStatus == SYNC_STATUS_SYNCED && remoteUpdatedAt > existing.updatedAt) {
@@ -490,7 +495,7 @@ class SyncWorker @AssistedInject constructor(
                     mineralization = ri.mineralization, mineralizationPercent = ri.mineralizationPercent,
                     rqd = ri.rqd, recovery = ri.recovery, structure = ri.structure,
                     weathering = ri.weathering, notes = ri.notes,
-                    createdAt = now, updatedAt = now, syncStatus = SYNC_STATUS_SYNCED, remoteId = id,
+                    createdAt = now, updatedAt = if (remoteUpdatedAt > 0L) remoteUpdatedAt else now, syncStatus = SYNC_STATUS_SYNCED, remoteId = id,
                 ))
             } else if (existing.syncStatus == SYNC_STATUS_SYNCED && remoteUpdatedAt > existing.updatedAt) {
                 Log.d(TAG, "Pull: updating interval ${ri.fromDepth}-${ri.toDepth} (remote newer)")
@@ -503,10 +508,12 @@ class SyncWorker @AssistedInject constructor(
             }
         }
 
-        // 8. Pull photo metadata (keep existing logic — photos are immutable after upload)
-        remoteDataSource.fetchAllPhotos().forEach { rp ->
-            val remoteId = rp.id ?: return@forEach
+        // 8. Pull photo metadata — insert-only (photos are immutable after upload)
+        remoteDataSource.fetchAllPhotosRaw().forEach { (remoteId, rawData) ->
             if (photoDao.getByRemoteId(remoteId) == null) {
+                val rp = runCatching {
+                    RemotePhoto.fromFirestoreMap(remoteId, rawData)
+                }.getOrNull() ?: return@forEach
                 val localProjectId = rp.projectId?.let { remoteProjectToLocal[it] }
                 val localStationId = rp.stationId?.let { remoteStationToLocal[it] }
                 val localDrillHoleId = rp.drillHoleId?.let { remoteDrillHoleToLocal[it] }
