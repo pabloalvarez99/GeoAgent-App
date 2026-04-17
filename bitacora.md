@@ -755,3 +755,56 @@ Firestore excluye silenciosamente documentos que no tienen el campo por el que s
 ---
 
 *Última actualización: 2026-04-15 — Todas las exportaciones profesionales completadas. UX mejorada en mapa y página de proyecto.*
+
+---
+
+## 2026-04-17 — Sync Optimization Task 3: Cloud Storage Snapshot
+
+**Problema resuelto:** En el primer sync (instalación nueva o reinstalación), el `SyncWorker` hacía N lecturas individuales a Firestore (una por documento en 8 colecciones), lo cual es costoso y lento para usuarios con muchos datos.
+
+**Solución implementada:**
+1. **Cloud Function `generateSnapshot`** (`functions/src/index.ts`): función callable que:
+   - Lee todas las colecciones del usuario via Admin SDK (sin límite de lectura por reglas)
+   - Serializa a JSON, comprime con gzip
+   - Sube a `snapshots/{userId}/snapshot.json.gz` en Firebase Storage
+   - Retorna URL firmada válida por 1 hora
+   - Región: `us-central1`, timeout: 120s, memoria: 512MB
+
+2. **Android (`SyncWorker.kt`)**: al detectar `lastSyncTimestamp == 0L`:
+   - Llama `remoteDataSource.downloadSnapshot()` vía función callable
+   - Si exitoso: parsea el gzip JSON, inserta todos los registros en Room
+   - Avanza `lastSyncTimestamp = snapshotPayload.generatedAt`
+   - El pull posterior solo busca documentos `updatedAt > snapshotTimestamp`
+   - Si falla (función no desplegada, sin red): fallback al pull completo normal
+
+3. **`RemoteDataSource.kt`**: agrega `FirebaseFunctions` como dependencia inyectada + método `downloadSnapshot()`
+
+4. **`FirebaseModule.kt`**: agrega `provideFirebaseFunctions()` como proveedor Hilt
+
+5. **`storage.rules`**: agrega regla para `snapshots/{userId}/snapshot.json.gz` (read: usuario autenticado = owner, write: false — solo Admin SDK)
+
+6. **`app/build.gradle.kts`**: agrega `com.google.firebase:firebase-functions-ktx` (sin versión — viene del BOM)
+
+7. **`functions/package.json` + `tsconfig.json` + `.gitignore`**: proyecto TypeScript Cloud Functions (Node 20)
+
+**Build Android:** BUILD SUCCESSFUL ✅
+
+**Para deploy de la función:**
+```bash
+cd functions && npm install
+firebase deploy --only functions
+```
+La función `generateSnapshot` aparece en Firebase Console > Functions.
+
+**Archivos modificados:**
+- `functions/src/index.ts` (nuevo)
+- `functions/package.json` (nuevo)
+- `functions/tsconfig.json` (nuevo)
+- `functions/.gitignore` (nuevo)
+- `storage.rules`
+- `app/build.gradle.kts`
+- `app/src/main/java/com/geoagent/app/data/remote/RemoteDataSource.kt`
+- `app/src/main/java/com/geoagent/app/data/sync/SyncWorker.kt`
+- `app/src/main/java/com/geoagent/app/di/FirebaseModule.kt`
+
+**Commits:** `0e5ab69` (feat) + `29f4748` (chore: gitignore node_modules)
