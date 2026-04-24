@@ -271,6 +271,11 @@ export function subscribeToAllLithologies(userId: string, onData: (items: any[])
   return subscribeToCollection(q, onData);
 }
 
+export function subscribeToAllStructuralData(userId: string, onData: (items: any[]) => void) {
+  const q = query(userCollection(userId, COLLECTIONS.STRUCTURAL_DATA));
+  return subscribeToCollection(q, onData);
+}
+
 export function subscribeToAllSamples(userId: string, onData: (items: any[]) => void) {
   const q = query(userCollection(userId, COLLECTIONS.SAMPLES));
   return subscribeToCollection(q, onData);
@@ -280,6 +285,28 @@ export function subscribeToAllSamples(userId: string, onData: (items: any[]) => 
 async function getAll<T>(q: Query<DocumentData>): Promise<T[]> {
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...d.data() })) as T[];
+}
+
+/**
+ * Fetches documents from `collection` where `field` is in `ids`.
+ * Firestore 'in' queries are limited to 10 values, so we batch and
+ * run all chunks in parallel — significantly faster than N individual queries.
+ */
+async function getBatch<T>(
+  userId: string,
+  col: string,
+  field: string,
+  ids: string[],
+): Promise<T[]> {
+  if (ids.length === 0) return [];
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += 10) chunks.push(ids.slice(i, i + 10));
+  const results = await Promise.all(
+    chunks.map((chunk) =>
+      getAll<T>(query(userCollection(userId, col), where(field, 'in', chunk))),
+    ),
+  );
+  return results.flat();
 }
 
 export async function getStationsOnce(userId: string, projectId: string) {
@@ -326,4 +353,26 @@ export async function getPhotosOnce(userId: string, projectId: string) {
   return getAll(
     query(userCollection(userId, COLLECTIONS.PHOTOS), where('projectId', '==', projectId)),
   );
+}
+
+// ── Bulk project-level reads (batched whereIn — much faster than N individual queries) ──
+
+/** Fetch all lithologies for a list of station IDs (used in exports). */
+export async function getLithologiesForStations(userId: string, stationIds: string[]) {
+  return getBatch(userId, COLLECTIONS.LITHOLOGIES, 'stationId', stationIds);
+}
+
+/** Fetch all structural data for a list of station IDs (used in exports). */
+export async function getStructuralForStations(userId: string, stationIds: string[]) {
+  return getBatch(userId, COLLECTIONS.STRUCTURAL_DATA, 'stationId', stationIds);
+}
+
+/** Fetch all samples for a list of station IDs (used in exports). */
+export async function getSamplesForStations(userId: string, stationIds: string[]) {
+  return getBatch(userId, COLLECTIONS.SAMPLES, 'stationId', stationIds);
+}
+
+/** Fetch all drill intervals for a list of drill hole IDs (used in exports). */
+export async function getIntervalsForDrillHoles(userId: string, drillHoleIds: string[]) {
+  return getBatch(userId, COLLECTIONS.DRILL_INTERVALS, 'drillHoleId', drillHoleIds);
 }

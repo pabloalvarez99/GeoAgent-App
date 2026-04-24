@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/lib/firebase/auth';
@@ -22,8 +22,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!loading && !user) router.replace('/login');
   }, [user, loading, router]);
 
-  // Global keyboard shortcuts
-  useKeyboardShortcuts([
+  // Global keyboard shortcuts — memoized so the event listener isn't re-registered on every render
+  const shortcuts = useMemo(() => [
     {
       key: 'k',
       ctrl: true,
@@ -41,12 +41,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       ctrl: true,
       description: 'Exportar (proyecto activo)',
       action: () => {
-        // Extract project ID from path like /projects/[id]/...
         const match = pathname.match(/\/projects\/([^/]+)/);
         if (match) router.push(`/projects/${match[1]}/export`);
       },
     },
-  ]);
+  ], [pathname, router]);
+
+  useKeyboardShortcuts(shortcuts);
 
   if (loading) {
     return (

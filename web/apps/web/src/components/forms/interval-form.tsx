@@ -50,7 +50,7 @@ function GeoSelect({
   return (
     <div className="space-y-1.5">
       <Label>{label}{required && ' *'}</Label>
-      <Select onValueChange={onChange} value={value ?? undefined}>
+      <Select onValueChange={onChange} value={value || undefined}>
         <SelectTrigger>
           <SelectValue placeholder={placeholder ?? `Seleccionar ${label.toLowerCase()}`} />
         </SelectTrigger>

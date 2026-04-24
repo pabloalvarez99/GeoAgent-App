@@ -5,11 +5,19 @@ import {
   ipcMain,
   dialog,
   shell,
+  protocol,
+  net,
   type MenuItemConstructorOptions,
 } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import * as path from 'path';
 import * as fs from 'fs';
+
+// Must be called before app.whenReady() — registers app:// as a standard, secure origin
+// so Firebase Auth / fetch / localStorage work identically to a real https:// page.
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'app', privileges: { secure: true, standard: true, supportFetchAPI: true } },
+]);
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 const WEB_URL = isDev ? 'http://localhost:3000' : null;
@@ -38,9 +46,9 @@ function createWindow() {
     mainWindow.loadURL(WEB_URL);
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   } else {
-    // Production: load static Next.js export
-    const indexPath = path.join(process.resourcesPath, 'web-out', 'index.html');
-    mainWindow.loadFile(indexPath);
+    // Production: serve static Next.js export via custom app:// protocol
+    // so that SPA client-side routing and Firebase Auth work correctly.
+    mainWindow.loadURL('app://./index.html');
   }
 
   mainWindow.once('ready-to-show', () => {
@@ -219,6 +227,25 @@ function setupAutoUpdater() {
 
 // ── App lifecycle ────────────────────────────────────────────────────────────
 app.whenReady().then(() => {
+  // Serve the static Next.js export from resources/web-out via app://
+  // Resolution order for a request like app://./projects:
+  //   1. web-out/projects           (exact file — e.g. app://./favicon.ico)
+  //   2. web-out/projects/index.html (trailingSlash route folder — e.g. app://./projects/)
+  //   3. web-out/index.html          (fallback for client-side deep links)
+  const webOutDir = path.join(process.resourcesPath, 'web-out');
+  protocol.handle('app', (request) => {
+    const { pathname } = new URL(request.url);
+    // Strip leading slash and resolve safely (no path traversal)
+    const relative = pathname.replace(/^\//, '').split('/').filter(s => s !== '..').join('/');
+    const candidates = [
+      path.join(webOutDir, relative),
+      path.join(webOutDir, relative, 'index.html'),
+      path.join(webOutDir, 'index.html'),
+    ];
+    const filePath = candidates.find(p => fs.existsSync(p) && fs.statSync(p).isFile());
+    return net.fetch('file://' + (filePath ?? candidates[candidates.length - 1]));
+  });
+
   buildMenu();
   createWindow();
   setupAutoUpdater();

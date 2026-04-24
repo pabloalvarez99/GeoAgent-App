@@ -44,7 +44,9 @@ class RemoteDataSource @Inject constructor(
     private suspend fun upsert(collection: String, id: String?, data: Map<String, Any?>): String {
         val docRef = if (id != null) col(collection).document(id) else col(collection).document()
         val cleanData = HashMap<String, Any>()
-        data.forEach { (k, v) -> if (v != null) cleanData[k] = v }
+        // Explicitly delete nullable fields that are now null so stale values don't persist in
+        // Firestore when a user clears an optional field (e.g. weatherConditions, notes).
+        data.forEach { (k, v) -> cleanData[k] = v ?: FieldValue.delete() }
         cleanData["updatedAt"] = FieldValue.serverTimestamp()  // camelCase matches web
         docRef.set(cleanData, SetOptions.merge()).await()
         return docRef.id

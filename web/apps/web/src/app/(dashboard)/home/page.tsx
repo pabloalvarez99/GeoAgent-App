@@ -39,6 +39,7 @@ import {
   subscribeToAllDrillHoles,
   subscribeToAllLithologies,
   subscribeToAllSamples,
+  subscribeToAllStructuralData,
 } from '@/lib/firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -113,18 +114,20 @@ export default function DashboardPage() {
   const [drillHoles, setDrillHoles] = useState<any[]>([]);
   const [lithologies, setLithologies] = useState<any[]>([]);
   const [samples, setSamples] = useState<any[]>([]);
+  const [structuralData, setStructuralData] = useState<any[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
     let resolved = 0;
-    const check = () => { resolved++; if (resolved >= 4) setDataLoading(false); };
+    const check = () => { resolved++; if (resolved >= 5) setDataLoading(false); };
 
     const u1 = subscribeToAllStations(user.uid, (d) => { setStations(d); check(); });
     const u2 = subscribeToAllDrillHoles(user.uid, (d) => { setDrillHoles(d); check(); });
     const u3 = subscribeToAllLithologies(user.uid, (d) => { setLithologies(d); check(); });
     const u4 = subscribeToAllSamples(user.uid, (d) => { setSamples(d); check(); });
-    return () => { u1(); u2(); u3(); u4(); };
+    const u5 = subscribeToAllStructuralData(user.uid, (d) => { setStructuralData(d); check(); });
+    return () => { u1(); u2(); u3(); u4(); u5(); };
   }, [user]);
 
   const displayName =
@@ -168,7 +171,32 @@ export default function DashboardPage() {
       }));
   }, [drillHoles]);
 
-  const hasAnalyticsData = lithologies.length > 0 || drillHoles.length > 0 || stations.length > 0;
+  // ── Gráfico 4: tipos estructurales por dirección de buzamiento ──────────────
+  const structuralTypeData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    structuralData.forEach((s) => {
+      const key = s.type || 'Sin tipo';
+      counts[key] = (counts[key] ?? 0) + 1;
+    });
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([name, value]) => ({ name, value }));
+  }, [structuralData]);
+
+  // ── Gráfico 5: buzamiento (dip) por dirección compass ───────────────────────
+  const dipDirectionData = useMemo(() => {
+    const SECTORS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+    const counts: Record<string, number> = {};
+    SECTORS.forEach((s) => { counts[s] = 0; });
+    structuralData.forEach((s) => {
+      const dir = s.dipDirection as string | undefined;
+      if (dir && counts[dir] !== undefined) counts[dir]++;
+    });
+    return SECTORS.map((name) => ({ name, value: counts[name] }));
+  }, [structuralData]);
+
+  const hasAnalyticsData = lithologies.length > 0 || drillHoles.length > 0 || stations.length > 0 || structuralData.length > 0;
 
   return (
     <div className="space-y-8">
@@ -307,6 +335,70 @@ export default function DashboardPage() {
                         <Tooltip content={<CustomBarTooltip />} />
                         <Bar dataKey="Planificado" fill="hsl(var(--muted-foreground))" opacity={0.4} radius={[2, 2, 0, 0]} />
                         <Bar dataKey="Real" fill="#22c55e" radius={[2, 2, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Tipos estructurales */}
+            {structuralTypeData.length > 0 && (
+              <Card>
+                <CardHeader className="pb-2 pt-4 px-4">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Tipos estructurales
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 pb-4">
+                  <div className="h-[220px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={structuralTypeData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={80}
+                          paddingAngle={2}
+                          dataKey="value"
+                        >
+                          {structuralTypeData.map((_, i) => (
+                            <Cell key={i} fill={CHART_COLORS[(i + 4) % CHART_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip content={<CustomPieTooltip />} />
+                        <Legend
+                          iconType="circle"
+                          iconSize={8}
+                          formatter={(value) => (
+                            <span className="text-xs text-muted-foreground">{value}</span>
+                          )}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Dirección de buzamiento */}
+            {dipDirectionData.some((d) => d.value > 0) && (
+              <Card>
+                <CardHeader className="pb-2 pt-4 px-4">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Dirección de buzamiento (frecuencia)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 pb-4">
+                  <div className="h-[220px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={dipDirectionData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
+                        <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} />
+                        <Tooltip content={<CustomBarTooltip />} />
+                        <Bar dataKey="value" name="Registros" fill="#f59e0b" radius={[2, 2, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>

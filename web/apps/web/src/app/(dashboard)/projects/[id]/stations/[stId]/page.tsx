@@ -45,7 +45,8 @@ import {
 import { LithologyForm } from '@/components/forms/lithology-form';
 import { StructuralForm } from '@/components/forms/structural-form';
 import { SampleForm } from '@/components/forms/sample-form';
-import type { LithologyFormData, StructuralFormData, SampleFormData } from '@geoagent/geo-shared/validation';
+import { StationForm } from '@/components/forms/station-form';
+import type { LithologyFormData, StructuralFormData, SampleFormData, StationFormData } from '@geoagent/geo-shared/validation';
 import type { GeoLithology, GeoStructural, GeoSample } from '@geoagent/geo-shared/types';
 import { toast } from 'sonner';
 
@@ -56,14 +57,18 @@ export default function StationDetailPage({
 }) {
   const { id: projectId, stId } = use(params);
   const { project } = useProject(projectId);
-  const { stations } = useStations(projectId);
+  const { stations, loading: stationsLoading, editStation } = useStations(projectId);
   const station = stations.find((s) => s.id === stId);
 
   const { lithologies, loading: lithoLoading, addOrUpdateLithology, removeLithology } = useLithologies(stId);
   const { structural, loading: structLoading, addOrUpdateStructural, removeStructural } = useStructural(stId);
   const { samples, loading: sampleLoading, addOrUpdateSample, removeSample } = useSamples(stId);
 
+  // Station edit state
+  const [stationEditOpen, setStationEditOpen] = useState(false);
+
   // Lithology dialog state
+
   const [lithoOpen, setLithoOpen] = useState(false);
   const [lithoEdit, setLithoEdit] = useState<GeoLithology | null>(null);
   const [lithoDelete, setLithoDelete] = useState<GeoLithology | null>(null);
@@ -78,6 +83,15 @@ export default function StationDetailPage({
   const [sampleEdit, setSampleEdit] = useState<GeoSample | null>(null);
   const [sampleDelete, setSampleDelete] = useState<GeoSample | null>(null);
 
+  if (stationsLoading) {
+    return (
+      <div className="flex items-center justify-center gap-2 py-20 text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        <span className="text-sm">Cargando estación...</span>
+      </div>
+    );
+  }
+
   if (!station) {
     return (
       <div className="flex flex-col items-center gap-3 py-20 text-center">
@@ -87,6 +101,17 @@ export default function StationDetailPage({
         </Button>
       </div>
     );
+  }
+
+  // Station handlers
+  async function handleStationEdit(data: StationFormData) {
+    try {
+      await editStation(stId, { ...data, projectId });
+      toast.success('Estación actualizada');
+      setStationEditOpen(false);
+    } catch {
+      toast.error('Error al actualizar estación');
+    }
   }
 
   // Lithology handlers
@@ -143,6 +168,14 @@ export default function StationDetailPage({
                 {station.weatherConditions}
               </Badge>
             )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 ml-1"
+              onClick={() => setStationEditOpen(true)}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
           </div>
           <p className="text-sm text-muted-foreground mt-1">{station.description}</p>
           <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
@@ -340,6 +373,20 @@ export default function StationDetailPage({
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Station Edit Dialog */}
+      <Dialog open={stationEditOpen} onOpenChange={setStationEditOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Editar estación {station.code}</DialogTitle>
+          </DialogHeader>
+          <StationForm
+            defaultValues={station}
+            onSubmit={handleStationEdit}
+            onCancel={() => setStationEditOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* Litho Dialog */}
       <Dialog open={lithoOpen} onOpenChange={(o) => { setLithoOpen(o); if (!o) setLithoEdit(null); }}>

@@ -808,3 +808,144 @@ La función `generateSnapshot` aparece en Firebase Console > Functions.
 - `app/src/main/java/com/geoagent/app/di/FirebaseModule.kt`
 
 **Commits:** `0e5ab69` (feat) + `29f4748` (chore: gitignore node_modules)
+
+---
+
+## 2026-04-17 — Sync Optimization Tasks 1 & 2: Pull Fix + Delta Sync
+
+### Task 1: Fix Android pull — update existing SYNCED records
+**Problema:** `pullFromRemote()` siempre hacía skip de records existentes (`if existing == null { insert } else { skip }`). Ediciones desde la web eran invisibles en Android.
+
+**Fix:** Lógica nueva de "insert-or-update": si `existing.syncStatus == SYNCED && remoteUpdatedAt > existing.updatedAt` → update. Protege cambios locales pendientes (PENDING/MODIFIED).
+
+**Nuevos métodos `updateFromRemote()` en DAOs:** ProjectDao, StationDao, LithologyDao, StructuralDao, SampleDao, DrillHoleDao, DrillIntervalDao — cada uno con `@Query UPDATE ... SET ... sync_status='SYNCED' WHERE id=:id`.
+
+### Task 2: Delta sync — filter pull by `updatedAt > lastSyncTimestamp`
+**Problema:** Cada sync descargaba todos los documentos de las 8 colecciones (sin filtro).
+
+**Fix:**
+- `RemoteDataSource.fetchAllSince(collection, sinceMs)`: usa `whereGreaterThan("updatedAt", Timestamp(Date(sinceMs)))` cuando `sinceMs > 0L`.
+- `SyncWorker`: captura `syncStartMs = System.currentTimeMillis()` ANTES del pull (no después — evita gap de documentos creados durante sync).
+- `preferencesHelper.lastSyncTimestamp = syncStartMs` en ambas ramas de éxito.
+- Pull de fotos migrado a `fetchAllPhotosRaw()` para consistencia.
+- ID maps (`projectIdMap`, etc.) limpiados al inicio de `doWork()` para evitar bugs en reintento.
+
+**Timestamp correcto:** Server timestamps de Firestore (`remoteUpdatedAt`) almacenados en Room en vez del device clock — elimina problemas de clock-skew entre dispositivos.
+
+**`firestore.indexes.json`:** Índice `updatedAt ASCENDING` agregado a las 8 colecciones. Deploy: `firebase deploy --only firestore:indexes`.
+
+---
+
+## 2026-04-17 — Task 4: Electron SPA — custom `app://` protocol
+
+**Problema:** `loadFile(indexPath)` carga `file:///.../index.html` como origen. Problemas:
+1. Firebase Auth rechaza cookies/tokens en `file://` en Electron 34+
+2. SPA routing con Next.js static export falla: navegar a `/projects` busca `file:///projects.html` (no existe)
+3. Assets con paths relativos se rompen en sub-rutas
+
+**Solución:**
+1. `protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { secure: true, standard: true, supportFetchAPI: true } }])` — antes de `app.whenReady()`.
+2. `protocol.handle('app', handler)` en `app.whenReady()` — sirve archivos de `resources/web-out/` con fallback: `path` → `path/index.html` → `index.html` (para deep links).
+3. `mainWindow.loadURL('app://./index.html')` en vez de `loadFile()`.
+4. `next.config.ts`: `trailingSlash: true` en el bloque `NEXT_EXPORT=1` — Next.js emite `/projects/index.html` en vez de `/projects.html`.
+
+**Archivos modificados:**
+- `web/apps/desktop/electron-src/main.ts`
+- `web/apps/web/next.config.ts`
+
+**Resultado:** Firebase Auth, localStorage, fetch, y SPA routing funcionan correctamente en producción Electron.
+
+---
+
+## 2026-04-17 — Mejoras autónomas (sesión continuada)
+
+### Android: Corrección crítica `updateFromRemote` — remoteUpdatedAt vs device clock
+**Problema:** Los 7 `updateFromRemote()` en `SyncWorker.kt` guardaban `now` (device clock) en lugar del timestamp del servidor Firestore. En el siguiente sync de otro dispositivo, `remoteUpdatedAt (ej: 950ms) < existing.updatedAt (1000ms)` → update silenciosamente omitido.
+**Fix:** Los 7 calls ahora pasan `remoteUpdatedAt` (parseado del campo `updatedAt` del documento Firestore).
+**Archivo:** `app/.../data/sync/SyncWorker.kt`
+
+### Cloud Functions: Cascade delete + snapshot cache
+**Nuevas funciones en `functions/src/index.ts`:**
+- `onStationDeleted` — elimina lithologies, structural_data, samples de esa estación al borrar desde web/admin
+- `onDrillHoleDeleted` — elimina drill_intervals al borrar sondaje
+- `onProjectDeleted` — elimina stations, drill_holes, photos al borrar proyecto (los triggers anteriores se encargan de los nietos)
+- Helper `deleteQuery()` — borra en lotes de 500, recursivo para colecciones grandes
+
+**Snapshot cache fix:** `file.save()` tenía clave `metadata` duplicada → fix a formato anidado correcto.
+
+### Web Firestore: subscribeToAllStructuralData + getBatch + bulk helpers
+**`web/.../firestore.ts`:**
+- `subscribeToAllStructuralData(userId, onData)` — para dashboard analytics
+- `getBatch<T>(userId, col, field, ids)` — divide ids en chunks de 10 (límite Firestore `whereIn`), ejecuta en paralelo → N queries → ceil(N/10) queries
+- `getLithologiesForStations`, `getStructuralForStations`, `getSamplesForStations`, `getIntervalsForDrillHoles` — usan getBatch
+
+### Web Home: Gráficos de datos estructurales
+**`web/.../home/page.tsx`:**
+- PieChart "Tipos estructurales" (count por type)
+- BarChart "Dirección de buzamiento" (count por dipDirection, 8 sectores, fill ámbar)
+- `hasAnalyticsData` incluye `structuralData.length > 0`
+
+### Web Export: Queries batched
+**`web/.../export/page.tsx`:** Todos los handlers (PDF, Excel, GeoJSON, CSV) usan las funciones batch en lugar de N queries individuales por estación/sondaje.
+
+### CI/CD: Deploy Cloud Functions
+**`.github/workflows/build-deploy.yml`:** Job 4 `deploy-functions` — se ejecuta en push si hay cambios en `functions/` o manualmente con `inputs.deploy_functions=true`.
+
+### Web Photos: Bugs corregidos
+**`web/.../photos/page.tsx`:**
+- **Storage leak (crítico):** `handleDelete()` ahora llama `deleteObject(storageRef(...))` antes de eliminar el doc Firestore. Las fotos eliminadas ya no dejan archivos huérfanos en Firebase Storage.
+- **URL cache inefficiency:** El `useEffect` anterior re-fetcheaba TODAS las URLs cada vez que cambiaba la lista (para 50 fotos + 1 nueva = 51 requests). Fix: `fetchedIdsRef` (Set) rastreo de IDs ya fetched → solo se fetchean fotos nuevas, se hace merge con `setPhotoUrls(prev => ({ ...prev, ...updates }))`.
+- **Upload cache:** `uploadFiles()` ahora cachea el URL inmediatamente tras `addDoc` (el `docRef.id` + el `downloadUrl` ya disponible del upload) → la miniatura aparece instantáneamente sin esperar el segundo `getDownloadURL`.
+
+### Web Settings: Network status real
+**`web/.../settings/page.tsx`:** Badge "Conectado" hardcodeado reemplazado por estado real `navigator.onLine` + listeners `window.addEventListener('online'/'offline')`. Muestra "En línea" (verde pulsante) o "Sin conexión" (ámbar) con mensaje contextual sobre caché local de Firestore.
+
+### Web Command Palette: Fix hint
+**`web/.../command-palette.tsx`:** Footer mostraba `Ctrl+K` como shortcut para cerrar — en realidad ese shortcut ABRE el palette. Corregido a `Esc`.
+
+---
+
+## 2026-04-17 — Mejoras autónomas (sesión continuada #2)
+
+### Web: Flash "not found" en detail pages durante carga
+**Problema:** `stations/[stId]/page.tsx` y `drillholes/[dhId]/page.tsx` llamaban `.find()` sobre un array vacío (`loading: true`) → mostraban "Estación no encontrada" inmediatamente en cada refresh o navegación directa a URL.
+**Fix:** Ambas páginas ahora consumen el `loading` del hook y muestran un spinner mientras se cargan los datos antes de intentar buscar el item.
+**Archivos:** `web/.../stations/[stId]/page.tsx`, `web/.../drillholes/[dhId]/page.tsx`
+
+### Android: Firestore no borraba campos nullable al sincronizar
+**Problema crítico de consistencia:** `RemoteDataSource.upsert()` filtraba `null` del mapa antes de escribir en Firestore (`if (v != null) cleanData[k] = v`). Si un usuario limpiaba un campo opcional (ej: `weatherConditions`) en Android, el dato antiguo quedaba en Firestore sin ser eliminado — la web seguía mostrando el valor obsoleto.
+**Fix:** Los valores `null` ahora se mapean a `FieldValue.delete()` para eliminar explícitamente el campo en Firestore durante un merge.
+**Archivo:** `app/.../data/remote/RemoteDataSource.kt`
+
+### Web Forms: Placeholder no aparecía al resetear Select
+**Problema:** En `interval-form.tsx`, `lithology-form.tsx` y `structural-form.tsx`, los `Select` usaban `value={value ?? undefined}`. En Radix UI, `'' ?? undefined = ''` (el operador `??` no cortocircuita en string vacío), así que el Select recibía `value=""` — un valor válido que suprime el placeholder. Visible al cambiar grupo de roca (el tipo de roca quedaba visualmente en blanco en lugar de mostrar "Seleccionar tipo").
+**Fix:** Cambiado a `value={value || undefined}` — el operador `||` sí cortocircuita en string vacío, pasando `undefined` al Select para activar el placeholder.
+**Archivos:** `web/.../forms/interval-form.tsx`, `web/.../forms/lithology-form.tsx`, `web/.../forms/structural-form.tsx`
+
+---
+
+## 2026-04-17 — Mejoras autónomas (sesión continuada #3)
+
+### Web: Botón "Editar" en páginas de detalle de estación y sondaje
+**Problema:** Las páginas de detalle (`stations/[stId]` y `drillholes/[dhId]`) no tenían botón para editar el registro padre — solo sus sub-datos (litologías, intervalos). El usuario debía volver a la lista para encontrar el ícono de edición.
+**Fix:** Ícono `Pencil` añadido junto al título. Dialog con `StationForm`/`DrillHoleForm` pre-llenado con los datos actuales.
+**Archivos:** `web/.../stations/[stId]/page.tsx`, `web/.../drillholes/[dhId]/page.tsx`
+
+### Android: Fecha incorrecta en sondajes del snapshot
+**Problema:** `applySnapshot()` usaba `parseIsoDate(item["startDate"] as? String).takeIf { it > 0 }`. Pero `parseIsoDate(null)` retorna `System.currentTimeMillis()` (siempre > 0), así que sondajes sin `startDate` recibían la fecha actual al importar el snapshot.
+**Fix:** Cambiado a `(item["startDate"] as? String)?.let { parseIsoDate(it) }` — null-safe, retorna `null` si el campo está ausente.
+**Archivo:** `app/.../data/sync/SyncWorker.kt`
+
+---
+
+## 2026-04-17 — Fix crítico de sincronización Android ↔ Web
+
+### Bug #1: Firestore rules NUNCA desplegadas → sync error permanente
+**Problema raíz:** El archivo `firestore.rules` en el repo tiene las reglas correctas (`allow read, write: if request.auth != null && request.auth.uid == userId`), pero **el CI/CD nunca las desplegaba**. Firebase revierte a `allow read, write: if false` después de los primeros 30 días. Todos los writes desde Android fallaban con `PERMISSION_DENIED` → mensaje "error de sincronización".
+**Fix:** Nuevo job `deploy-firestore-rules` en `.github/workflows/build-deploy.yml` — se ejecuta en cada push a master y despliega `firestore.rules` + `firestore.indexes.json` con `firebase deploy --only firestore`.
+**ACCIÓN MANUAL REQUERIDA:** Ejecutar `firebase deploy --only firestore` desde la terminal ahora mismo para aplicar las reglas en producción sin esperar el próximo push.
+
+### Bug #2: Delta sync omitía todos los registros hijo si el padre no fue modificado recientemente
+**Problema raíz:** En `pullFromRemote(sinceMs)`, los mapas `remoteProjectToLocal` y `remoteStationToLocal` se construían **solo** con documentos retornados por el query delta (modificados desde `sinceMs`). Al sincronizar una estación editada cuyo proyecto padre no fue modificado, `remoteProjectToLocal[rs.projectId]` retornaba null → `return@forEach` → **estación silenciosamente omitida**. Mismo problema en cascada para litologías, estructural, muestras, intervalos y fotos.
+**Fix:** Tres nuevas funciones `resolveLocalProjectId()`, `resolveLocalStationId()`, `resolveLocalDrillHoleId()` — primero buscan en el mapa en memoria (eficiente para el caso común), luego hacen un fallback a `dao.getByRemoteId()` (Room query) cuando el padre no está en el delta. El resultado se cachea en el mapa para evitar queries repetidas.
+**Archivo:** `app/.../data/sync/SyncWorker.kt`

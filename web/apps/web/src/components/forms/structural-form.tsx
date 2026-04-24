@@ -102,7 +102,7 @@ export function StructuralForm({ defaultValues, onSubmit, onCancel }: Structural
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label>Movimiento</Label>
-          <Select onValueChange={(v) => setValue('movement', v)} value={watch('movement') ?? undefined}>
+          <Select onValueChange={(v) => setValue('movement', v)} value={watch('movement') || undefined}>
             <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
             <SelectContent>
               {FAULT_MOVEMENTS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
@@ -118,7 +118,7 @@ export function StructuralForm({ defaultValues, onSubmit, onCancel }: Structural
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label>Rugosidad</Label>
-          <Select onValueChange={(v) => setValue('roughness', v)} value={watch('roughness') ?? undefined}>
+          <Select onValueChange={(v) => setValue('roughness', v)} value={watch('roughness') || undefined}>
             <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
             <SelectContent>
               {ROUGHNESS.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
@@ -127,7 +127,7 @@ export function StructuralForm({ defaultValues, onSubmit, onCancel }: Structural
         </div>
         <div className="space-y-1.5">
           <Label>Continuidad</Label>
-          <Select onValueChange={(v) => setValue('continuity', v)} value={watch('continuity') ?? undefined}>
+          <Select onValueChange={(v) => setValue('continuity', v)} value={watch('continuity') || undefined}>
             <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
             <SelectContent>
               {CONTINUITY.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}

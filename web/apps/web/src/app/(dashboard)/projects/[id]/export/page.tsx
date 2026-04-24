@@ -19,11 +19,11 @@ import { useAuth } from '@/lib/firebase/auth';
 import {
   getStationsOnce,
   getDrillHolesOnce,
-  getLithologiesOnce,
-  getStructuralOnce,
-  getSamplesOnce,
-  getIntervalsOnce,
   getPhotosOnce,
+  getLithologiesForStations,
+  getStructuralForStations,
+  getSamplesForStations,
+  getIntervalsForDrillHoles,
 } from '@/lib/firebase/firestore';
 import { downloadPDF } from '@/lib/export/pdf';
 import { downloadExcel } from '@/lib/export/excel';
@@ -120,12 +120,14 @@ export default function ExportPage({ params }: { params: Promise<{ id: string }>
         getPhotosOnce(user.uid, id),
       ]);
 
-      // Fetch per-station and per-hole sub-data in parallel
+      // Batch fetch sub-data — single whereIn query per collection instead of N queries
+      const stationIds = (allStations as any[]).map((s) => s.id);
+      const drillHoleIds = (allDrillHoles as any[]).map((d) => d.id);
       const [allLithologies, allStructural, allSamples, allIntervals] = await Promise.all([
-        Promise.all(allStations.map((s: any) => getLithologiesOnce(user.uid, s.id))).then((r) => r.flat()),
-        Promise.all(allStations.map((s: any) => getStructuralOnce(user.uid, s.id))).then((r) => r.flat()),
-        Promise.all(allStations.map((s: any) => getSamplesOnce(user.uid, s.id))).then((r) => r.flat()),
-        Promise.all(allDrillHoles.map((d: any) => getIntervalsOnce(user.uid, d.id))).then((r) => r.flat()),
+        getLithologiesForStations(user.uid, stationIds),
+        getStructuralForStations(user.uid, stationIds),
+        getSamplesForStations(user.uid, stationIds),
+        getIntervalsForDrillHoles(user.uid, drillHoleIds),
       ]);
 
       // Resolve Firebase Storage download URLs for photos
@@ -173,11 +175,13 @@ export default function ExportPage({ params }: { params: Promise<{ id: string }>
         getDrillHolesOnce(user.uid, id),
       ]);
 
+      const stationIdsExcel = (allStations as any[]).map((s) => s.id);
+      const drillHoleIdsExcel = (allDrillHoles as any[]).map((d) => d.id);
       const [allLithologies, allStructural, allSamples, allIntervals] = await Promise.all([
-        Promise.all(allStations.map((s: any) => getLithologiesOnce(user.uid, s.id))).then((r) => r.flat()),
-        Promise.all(allStations.map((s: any) => getStructuralOnce(user.uid, s.id))).then((r) => r.flat()),
-        Promise.all(allStations.map((s: any) => getSamplesOnce(user.uid, s.id))).then((r) => r.flat()),
-        Promise.all(allDrillHoles.map((d: any) => getIntervalsOnce(user.uid, d.id))).then((r) => r.flat()),
+        getLithologiesForStations(user.uid, stationIdsExcel),
+        getStructuralForStations(user.uid, stationIdsExcel),
+        getSamplesForStations(user.uid, stationIdsExcel),
+        getIntervalsForDrillHoles(user.uid, drillHoleIdsExcel),
       ]);
 
       await downloadExcel({
@@ -209,12 +213,14 @@ export default function ExportPage({ params }: { params: Promise<{ id: string }>
         getDrillHolesOnce(user.uid, id),
       ]);
 
-      // Fetch all sub-data for rich GeoJSON properties
+      // Batch fetch sub-data for rich GeoJSON properties
+      const stationIdsGeo = (allStations as any[]).map((s) => s.id);
+      const drillHoleIdsGeo = (allDrillHoles as any[]).map((d) => d.id);
       const [allLithologies, allStructural, allSamples, allIntervals] = await Promise.all([
-        Promise.all((allStations as any[]).map((s) => getLithologiesOnce(user.uid, s.id))).then((r) => r.flat()),
-        Promise.all((allStations as any[]).map((s) => getStructuralOnce(user.uid, s.id))).then((r) => r.flat()),
-        Promise.all((allStations as any[]).map((s) => getSamplesOnce(user.uid, s.id))).then((r) => r.flat()),
-        Promise.all((allDrillHoles as any[]).map((d) => getIntervalsOnce(user.uid, d.id))).then((r) => r.flat()),
+        getLithologiesForStations(user.uid, stationIdsGeo),
+        getStructuralForStations(user.uid, stationIdsGeo),
+        getSamplesForStations(user.uid, stationIdsGeo),
+        getIntervalsForDrillHoles(user.uid, drillHoleIdsGeo),
       ]);
 
       await downloadGeoJSON({
@@ -243,9 +249,8 @@ export default function ExportPage({ params }: { params: Promise<{ id: string }>
     setCsvStatus('loading');
     try {
       const allDrillHoles = await getDrillHolesOnce(user.uid, id);
-      const allIntervals = await Promise.all(
-        (allDrillHoles as any[]).map((d) => getIntervalsOnce(user.uid, d.id)),
-      ).then((r) => r.flat());
+      const drillHoleIdsCsv = (allDrillHoles as any[]).map((d) => d.id);
+      const allIntervals = await getIntervalsForDrillHoles(user.uid, drillHoleIdsCsv);
 
       // Enrich intervals with readable holeId for CSV
       const drillHoleMap: Record<string, string> = Object.fromEntries(

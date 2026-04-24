@@ -40,8 +40,9 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { IntervalForm } from '@/components/forms/interval-form';
+import { DrillHoleForm } from '@/components/forms/drillhole-form';
 import { StratigraphicColumn } from '@/components/drillhole/stratigraphic-column';
-import type { DrillIntervalFormData } from '@geoagent/geo-shared/validation';
+import type { DrillIntervalFormData, DrillHoleFormData } from '@geoagent/geo-shared/validation';
 import type { GeoDrillInterval } from '@geoagent/geo-shared/types';
 import { toast } from 'sonner';
 
@@ -59,13 +60,24 @@ export default function DrillHoleDetailPage({
 }) {
   const { id: projectId, dhId } = use(params);
   const { project } = useProject(projectId);
-  const { drillHoles } = useDrillHoles(projectId);
+  const { drillHoles, loading: dhLoading, editDrillHole } = useDrillHoles(projectId);
   const drillHole = drillHoles.find((d) => d.id === dhId);
   const { intervals, loading, saveInterval, removeInterval } = useDrillIntervals(dhId);
+
+  const [drillHoleEditOpen, setDrillHoleEditOpen] = useState(false);
 
   const [intervalOpen, setIntervalOpen] = useState(false);
   const [editInterval, setEditInterval] = useState<GeoDrillInterval | null>(null);
   const [deleteInterval, setDeleteInterval] = useState<GeoDrillInterval | null>(null);
+
+  if (dhLoading) {
+    return (
+      <div className="flex items-center justify-center gap-2 py-20 text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        <span className="text-sm">Cargando sondaje...</span>
+      </div>
+    );
+  }
 
   if (!drillHole) {
     return (
@@ -82,6 +94,16 @@ export default function DrillHoleDetailPage({
   const pct = drillHole.plannedDepth > 0 ? Math.min(100, (actualDepth / drillHole.plannedDepth) * 100) : 0;
   const nextDepth = intervals.length > 0 ? Math.max(...intervals.map((i) => i.toDepth)) : 0;
   const StatusIcon = statusIcons[drillHole.status] ?? Clock;
+
+  async function handleDrillHoleEdit(data: DrillHoleFormData) {
+    try {
+      await editDrillHole(dhId, { ...data, projectId });
+      toast.success('Sondaje actualizado');
+      setDrillHoleEditOpen(false);
+    } catch {
+      toast.error('Error al actualizar sondaje');
+    }
+  }
 
   async function handleIntervalSubmit(data: DrillIntervalFormData) {
     try {
@@ -111,6 +133,14 @@ export default function DrillHoleDetailPage({
               <StatusIcon className="h-4 w-4" />
               {drillHole.status}
             </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 ml-1"
+              onClick={() => setDrillHoleEditOpen(true)}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
@@ -273,6 +303,20 @@ export default function DrillHoleDetailPage({
           </div>
         )}
       </div>
+
+      {/* Drill Hole Edit Dialog */}
+      <Dialog open={drillHoleEditOpen} onOpenChange={setDrillHoleEditOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Editar sondaje {drillHole.holeId}</DialogTitle>
+          </DialogHeader>
+          <DrillHoleForm
+            defaultValues={drillHole}
+            onSubmit={handleDrillHoleEdit}
+            onCancel={() => setDrillHoleEditOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* Interval Dialog */}
       <Dialog open={intervalOpen} onOpenChange={(o) => { setIntervalOpen(o); if (!o) setEditInterval(null); }}>

@@ -318,6 +318,37 @@ class SyncWorker @AssistedInject constructor(
      * AND the remote updatedAt is newer than the local updated_at, it overwrites the local row.
      * This enables multi-device use and ensures web edits are visible on Android.
      */
+    /**
+     * Resolves a remote project ID to a local Room ID.
+     * Checks the in-memory delta map first, then falls back to the DB.
+     * This is necessary for delta syncs: a project not modified since [sinceMs]
+     * won't appear in the delta fetch, but its children (stations, intervals, etc.)
+     * may have been modified and need the local parent ID.
+     */
+    private suspend fun resolveLocalProjectId(
+        remoteId: String,
+        map: MutableMap<String, Long>,
+    ): Long? {
+        map[remoteId]?.let { return it }
+        return projectDao.getByRemoteId(remoteId)?.id?.also { map[remoteId] = it }
+    }
+
+    private suspend fun resolveLocalStationId(
+        remoteId: String,
+        map: MutableMap<String, Long>,
+    ): Long? {
+        map[remoteId]?.let { return it }
+        return stationDao.getByRemoteId(remoteId)?.id?.also { map[remoteId] = it }
+    }
+
+    private suspend fun resolveLocalDrillHoleId(
+        remoteId: String,
+        map: MutableMap<String, Long>,
+    ): Long? {
+        map[remoteId]?.let { return it }
+        return drillHoleDao.getByRemoteId(remoteId)?.id?.also { map[remoteId] = it }
+    }
+
     private suspend fun pullFromRemote(sinceMs: Long) {
         Log.d(TAG, "Pull phase: fetching remote data since ${if (sinceMs == 0L) "beginning" else java.util.Date(sinceMs)}...")
         val now = System.currentTimeMillis()
@@ -345,7 +376,7 @@ class SyncWorker @AssistedInject constructor(
             } else {
                 if (existing.syncStatus == SYNC_STATUS_SYNCED && remoteUpdatedAt > existing.updatedAt) {
                     Log.d(TAG, "Pull: updating project '${rp.name}' (remote newer)")
-                    projectDao.updateFromRemote(existing.id, rp.name, rp.description, rp.location, now)
+                    projectDao.updateFromRemote(existing.id, rp.name, rp.description, rp.location, remoteUpdatedAt)
                 }
                 existing.id
             }
@@ -356,7 +387,7 @@ class SyncWorker @AssistedInject constructor(
         // 2. Pull stations
         remoteDataSource.fetchAllStationsRaw(sinceMs).forEach { (id, rawData) ->
             val rs = runCatching { RemoteStation.fromFirestoreMap(id, rawData) }.getOrNull() ?: return@forEach
-            val localProjectId = remoteProjectToLocal[rs.projectId] ?: return@forEach
+            val localProjectId = resolveLocalProjectId(rs.projectId, remoteProjectToLocal) ?: return@forEach
             val remoteUpdatedAt = remoteDataSource.extractUpdatedAt(rawData)
             val existing = stationDao.getByRemoteId(id)
             val localId = if (existing == null) {
@@ -381,7 +412,7 @@ class SyncWorker @AssistedInject constructor(
                     Log.d(TAG, "Pull: updating station '${rs.code}' (remote newer)")
                     stationDao.updateFromRemote(
                         existing.id, rs.code, rs.latitude, rs.longitude, rs.altitude,
-                        parseIsoDate(rs.date), rs.geologist, rs.description, rs.weatherConditions, now
+                        parseIsoDate(rs.date), rs.geologist, rs.description, rs.weatherConditions, remoteUpdatedAt
                     )
                 }
                 existing.id
@@ -393,7 +424,7 @@ class SyncWorker @AssistedInject constructor(
         // 3. Pull lithologies
         remoteDataSource.fetchAllLithologiesRaw(sinceMs).forEach { (id, rawData) ->
             val rl = runCatching { RemoteLithology.fromFirestoreMap(id, rawData) }.getOrNull() ?: return@forEach
-            val localStationId = remoteStationToLocal[rl.stationId] ?: return@forEach
+            val localStationId = resolveLocalStationId(rl.stationId, remoteStationToLocal) ?: return@forEach
             val remoteUpdatedAt = remoteDataSource.extractUpdatedAt(rawData)
             val existing = lithologyDao.getByRemoteId(id)
             if (existing == null) {
@@ -412,7 +443,7 @@ class SyncWorker @AssistedInject constructor(
                 lithologyDao.updateFromRemote(
                     existing.id, rl.rockType, rl.rockGroup, rl.color, rl.texture, rl.grainSize,
                     rl.mineralogy, rl.alteration, rl.alterationIntensity, rl.mineralization,
-                    rl.mineralizationPercent, rl.structure, rl.weathering, rl.notes, now
+                    rl.mineralizationPercent, rl.structure, rl.weathering, rl.notes, remoteUpdatedAt
                 )
             }
         }
@@ -420,7 +451,7 @@ class SyncWorker @AssistedInject constructor(
         // 4. Pull structural data
         remoteDataSource.fetchAllStructuralDataRaw(sinceMs).forEach { (id, rawData) ->
             val rs = runCatching { RemoteStructural.fromFirestoreMap(id, rawData) }.getOrNull() ?: return@forEach
-            val localStationId = remoteStationToLocal[rs.stationId] ?: return@forEach
+            val localStationId = resolveLocalStationId(rs.stationId, remoteStationToLocal) ?: return@forEach
             val remoteUpdatedAt = remoteDataSource.extractUpdatedAt(rawData)
             val existing = structuralDao.getByRemoteId(id)
             if (existing == null) {
@@ -436,7 +467,7 @@ class SyncWorker @AssistedInject constructor(
                 Log.d(TAG, "Pull: updating structural '${rs.type}' (remote newer)")
                 structuralDao.updateFromRemote(
                     existing.id, rs.type, rs.strike, rs.dip, rs.dipDirection, rs.movement,
-                    rs.thickness, rs.filling, rs.roughness, rs.continuity, rs.notes, now
+                    rs.thickness, rs.filling, rs.roughness, rs.continuity, rs.notes, remoteUpdatedAt
                 )
             }
         }
@@ -444,7 +475,7 @@ class SyncWorker @AssistedInject constructor(
         // 5. Pull samples
         remoteDataSource.fetchAllSamplesRaw(sinceMs).forEach { (id, rawData) ->
             val rs = runCatching { RemoteSample.fromFirestoreMap(id, rawData) }.getOrNull() ?: return@forEach
-            val localStationId = remoteStationToLocal[rs.stationId] ?: return@forEach
+            val localStationId = resolveLocalStationId(rs.stationId, remoteStationToLocal) ?: return@forEach
             val remoteUpdatedAt = remoteDataSource.extractUpdatedAt(rawData)
             val existing = sampleDao.getByRemoteId(id)
             if (existing == null) {
@@ -461,7 +492,7 @@ class SyncWorker @AssistedInject constructor(
                 sampleDao.updateFromRemote(
                     existing.id, rs.code, rs.type, rs.weight, rs.length, rs.description,
                     rs.latitude, rs.longitude, rs.altitude, rs.destination,
-                    rs.analysisRequested, rs.status, rs.notes, now
+                    rs.analysisRequested, rs.status, rs.notes, remoteUpdatedAt
                 )
             }
         }
@@ -469,7 +500,7 @@ class SyncWorker @AssistedInject constructor(
         // 6. Pull drill holes
         remoteDataSource.fetchAllDrillHolesRaw(sinceMs).forEach { (id, rawData) ->
             val rh = runCatching { RemoteDrillHole.fromFirestoreMap(id, rawData) }.getOrNull() ?: return@forEach
-            val localProjectId = remoteProjectToLocal[rh.projectId] ?: return@forEach
+            val localProjectId = resolveLocalProjectId(rh.projectId, remoteProjectToLocal) ?: return@forEach
             val remoteUpdatedAt = remoteDataSource.extractUpdatedAt(rawData)
             val existing = drillHoleDao.getByRemoteId(id)
             val localId = if (existing == null) {
@@ -491,7 +522,7 @@ class SyncWorker @AssistedInject constructor(
                         existing.id, rh.holeId, rh.type, rh.latitude, rh.longitude, rh.altitude,
                         rh.azimuth, rh.inclination, rh.plannedDepth, rh.actualDepth,
                         rh.startDate?.let { parseIsoDate(it) }, rh.endDate?.let { parseIsoDate(it) },
-                        rh.status, rh.geologist, rh.notes, now
+                        rh.status, rh.geologist, rh.notes, remoteUpdatedAt
                     )
                 }
                 existing.id
@@ -503,7 +534,7 @@ class SyncWorker @AssistedInject constructor(
         // 7. Pull drill intervals
         remoteDataSource.fetchAllDrillIntervalsRaw(sinceMs).forEach { (id, rawData) ->
             val ri = runCatching { RemoteDrillInterval.fromFirestoreMap(id, rawData) }.getOrNull() ?: return@forEach
-            val localDrillHoleId = remoteDrillHoleToLocal[ri.drillHoleId] ?: return@forEach
+            val localDrillHoleId = resolveLocalDrillHoleId(ri.drillHoleId, remoteDrillHoleToLocal) ?: return@forEach
             val remoteUpdatedAt = remoteDataSource.extractUpdatedAt(rawData)
             val existing = drillIntervalDao.getByRemoteId(id)
             if (existing == null) {
@@ -524,7 +555,7 @@ class SyncWorker @AssistedInject constructor(
                     existing.id, ri.fromDepth, ri.toDepth, ri.rockType, ri.rockGroup,
                     ri.color, ri.texture, ri.grainSize, ri.mineralogy, ri.alteration,
                     ri.alterationIntensity, ri.mineralization, ri.mineralizationPercent,
-                    ri.rqd, ri.recovery, ri.structure, ri.weathering, ri.notes, now
+                    ri.rqd, ri.recovery, ri.structure, ri.weathering, ri.notes, remoteUpdatedAt
                 )
             }
         }
@@ -535,9 +566,9 @@ class SyncWorker @AssistedInject constructor(
                 val rp = runCatching {
                     RemotePhoto.fromFirestoreMap(remoteId, rawData)
                 }.getOrNull() ?: return@forEach
-                val localProjectId = rp.projectId?.let { remoteProjectToLocal[it] }
-                val localStationId = rp.stationId?.let { remoteStationToLocal[it] }
-                val localDrillHoleId = rp.drillHoleId?.let { remoteDrillHoleToLocal[it] }
+                val localProjectId = rp.projectId?.let { resolveLocalProjectId(it, remoteProjectToLocal) }
+                val localStationId = rp.stationId?.let { resolveLocalStationId(it, remoteStationToLocal) }
+                val localDrillHoleId = rp.drillHoleId?.let { resolveLocalDrillHoleId(it, remoteDrillHoleToLocal) }
                 val takenAtMs = parseIsoDate(rp.takenAt)
                 Log.d(TAG, "Pull: inserting new photo '${rp.fileName}'")
                 photoDao.insert(PhotoEntity(
@@ -687,8 +718,8 @@ class SyncWorker @AssistedInject constructor(
                 inclination = (item["inclination"] as? Number)?.toDouble() ?: 0.0,
                 plannedDepth = (item["plannedDepth"] as? Number)?.toDouble() ?: 0.0,
                 actualDepth = (item["actualDepth"] as? Number)?.toDouble(),
-                startDate = parseIsoDate(item["startDate"] as? String).takeIf { it > 0 },
-                endDate = parseIsoDate(item["endDate"] as? String).takeIf { it > 0 },
+                startDate = (item["startDate"] as? String)?.let { parseIsoDate(it) },
+                endDate = (item["endDate"] as? String)?.let { parseIsoDate(it) },
                 status = item["status"] as? String ?: "En Progreso",
                 geologist = item["geologist"] as? String ?: "",
                 notes = item["notes"] as? String,

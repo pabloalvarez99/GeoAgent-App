@@ -142,7 +142,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         <div className="border-t px-3 py-1.5 flex items-center gap-3 text-xs text-muted-foreground">
           <span><kbd className="border rounded px-1">↑↓</kbd> navegar</span>
           <span><kbd className="border rounded px-1">↵</kbd> ir</span>
-          <span><kbd className="border rounded px-1">Ctrl+K</kbd> cerrar</span>
+          <span><kbd className="border rounded px-1">Esc</kbd> cerrar</span>
         </div>
       </DialogContent>
     </Dialog>

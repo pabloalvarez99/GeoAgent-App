@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
@@ -72,6 +72,20 @@ export default function SettingsPage() {
   const router = useRouter();
   const [syncing, setSyncing] = useState(false);
   const [syncDone, setSyncDone] = useState(false);
+  const [isOnline, setIsOnline] = useState(
+    typeof navigator !== 'undefined' ? navigator.onLine : true,
+  );
+
+  useEffect(() => {
+    const setOnline = () => setIsOnline(true);
+    const setOffline = () => setIsOnline(false);
+    window.addEventListener('online', setOnline);
+    window.addEventListener('offline', setOffline);
+    return () => {
+      window.removeEventListener('online', setOnline);
+      window.removeEventListener('offline', setOffline);
+    };
+  }, []);
 
   async function handleSignOut() {
     await signOut();
@@ -164,14 +178,26 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-2">
-            <Badge
-              variant="outline"
-              className="border-green-500/40 bg-green-500/10 text-green-400 gap-1.5"
-            >
-              <span className="h-1.5 w-1.5 rounded-full bg-green-400 inline-block" />
-              Conectado
-            </Badge>
-            <span className="text-xs text-muted-foreground">Firebase Auth activo</span>
+            {isOnline ? (
+              <Badge
+                variant="outline"
+                className="border-green-500/40 bg-green-500/10 text-green-400 gap-1.5"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-green-400 inline-block animate-pulse" />
+                En línea
+              </Badge>
+            ) : (
+              <Badge
+                variant="outline"
+                className="border-yellow-500/40 bg-yellow-500/10 text-yellow-400 gap-1.5"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-yellow-400 inline-block" />
+                Sin conexión
+              </Badge>
+            )}
+            <span className="text-xs text-muted-foreground">
+              {isOnline ? 'Firebase Auth activo' : 'Usando caché local de Firestore'}
+            </span>
           </div>
 
           <Separator />

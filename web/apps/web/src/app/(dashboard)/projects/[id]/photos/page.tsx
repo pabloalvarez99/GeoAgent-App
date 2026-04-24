@@ -3,7 +3,7 @@
 import { use, useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ref as storageRef, getDownloadURL, uploadBytesResumable } from 'firebase/storage';
+import { ref as storageRef, getDownloadURL, uploadBytesResumable, deleteObject } from 'firebase/storage';
 import { addDoc, serverTimestamp } from 'firebase/firestore';
 import { storage, db } from '@/lib/firebase/client';
 import { userCollection } from '@/lib/firebase/firestore';
@@ -79,6 +79,8 @@ export default function ProjectPhotosPage({ params }: { params: Promise<{ id: st
 
   // Map of photoId → download URL
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
+  // Tracks which photo IDs have already been fetched (avoids re-fetching on every list update)
+  const fetchedIdsRef = useRef<Set<string>>(new Set());
   // Which photo is open in the lightbox
   const [lightboxPhoto, setLightboxPhoto] = useState<GeoPhoto | null>(null);
   // Which photo is pending deletion confirmation
@@ -104,7 +106,7 @@ export default function ProjectPhotosPage({ params }: { params: Promise<{ id: st
             (err) => { throw err; },
           );
           const downloadUrl = await getDownloadURL(fileRef);
-          await addDoc(userCollection(user.uid, COLLECTIONS.PHOTOS), {
+          const docRef = await addDoc(userCollection(user.uid, COLLECTIONS.PHOTOS), {
             projectId,
             fileName: file.name,
             storagePath: path,
@@ -112,8 +114,9 @@ export default function ProjectPhotosPage({ params }: { params: Promise<{ id: st
             takenAt: new Date().toISOString(),
             updatedAt: serverTimestamp(),
           });
-          // Immediately cache the URL so the new photo renders
-          return { path, downloadUrl };
+          // Cache URL immediately so thumbnail renders without waiting for a second getDownloadURL
+          fetchedIdsRef.current.add(docRef.id);
+          setPhotoUrls((prev) => ({ ...prev, [docRef.id]: downloadUrl }));
         }),
       );
       toast.success(
@@ -139,36 +142,51 @@ export default function ProjectPhotosPage({ params }: { params: Promise<{ id: st
     [user, projectId],
   );
 
-  // Fetch Firebase Storage download URLs whenever the photo list changes
+  // Fetch Firebase Storage download URLs — only for photos not yet cached
   useEffect(() => {
-    if (photos.length === 0) return;
+    const toFetch = photos.filter((p) => p.storagePath && !fetchedIdsRef.current.has(p.id));
+    if (toFetch.length === 0) return;
 
-    async function fetchUrls() {
-      const urlMap: Record<string, string> = {};
+    let cancelled = false;
+    // Mark all as in-flight to prevent duplicate fetches if the effect re-runs
+    toFetch.forEach((p) => fetchedIdsRef.current.add(p.id));
+
+    (async () => {
+      const updates: Record<string, string> = {};
       await Promise.all(
-        photos.map(async (photo) => {
-          if (photo.storagePath) {
-            try {
-              const url = await getDownloadURL(storageRef(storage, photo.storagePath));
-              urlMap[photo.id] = url;
-            } catch {
-              // Photo missing from Storage — skip silently
-            }
+        toFetch.map(async (photo) => {
+          try {
+            const url = await getDownloadURL(storageRef(storage, photo.storagePath!));
+            updates[photo.id] = url;
+          } catch {
+            // Photo missing from Storage — allow retry by removing from fetched set
+            fetchedIdsRef.current.delete(photo.id);
           }
         }),
       );
-      setPhotoUrls(urlMap);
-    }
+      if (!cancelled && Object.keys(updates).length > 0) {
+        setPhotoUrls((prev) => ({ ...prev, ...updates }));
+      }
+    })();
 
-    fetchUrls();
+    return () => { cancelled = true; };
   }, [photos]);
 
   async function handleDelete() {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
+      // Delete the Storage file first to avoid orphaned files accumulating cost
+      if (deleteTarget.storagePath) {
+        try {
+          await deleteObject(storageRef(storage, deleteTarget.storagePath));
+        } catch {
+          // File may already be missing from Storage — proceed with Firestore delete
+        }
+      }
       await removePhoto(deleteTarget.id);
-      // Clean up URL cache entry
+      // Clean up caches
+      fetchedIdsRef.current.delete(deleteTarget.id);
       setPhotoUrls((prev) => {
         const next = { ...prev };
         delete next[deleteTarget.id];

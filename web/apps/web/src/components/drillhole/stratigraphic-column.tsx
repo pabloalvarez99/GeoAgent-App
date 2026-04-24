@@ -3,11 +3,15 @@
 import type { GeoDrillInterval } from '@geoagent/geo-shared/types';
 
 // Rock group → hue for SVG fill
+// Keys must match ROCK_GROUPS in geo-shared/constants.ts exactly (no accents)
 const ROCK_GROUP_COLORS: Record<string, string> = {
-  'Ígnea': '#f97316',
-  'Ígneo': '#f97316',
-  'Sedimentaria': '#eab308',
-  'Sedimentario': '#eab308',
+  'Ignea':       '#f97316',  // orange
+  'Sedimentaria':'#eab308',  // yellow
+  'Metamorfica': '#a855f7',  // purple
+  // Fallback variants (accented/gendered) in case older data has them
+  'Ígnea':       '#f97316',
+  'Ígneo':       '#f97316',
+  'Sedimentario':'#eab308',
   'Metamórfica': '#a855f7',
   'Metamórfico': '#a855f7',
 };
@@ -59,13 +63,13 @@ export function StratigraphicColumn({ intervals, totalDepth }: StratigraphicColu
     <div className="overflow-x-auto">
       <div className="text-xs text-muted-foreground mb-2 flex items-center gap-4">
         <span className="flex items-center gap-1.5">
-          <span className="inline-block w-3 h-3 rounded-sm" style={{ background: '#f97316' }} /> Ígnea
+          <span className="inline-block w-3 h-3 rounded-sm" style={{ background: '#f97316' }} /> Ignea
         </span>
         <span className="flex items-center gap-1.5">
           <span className="inline-block w-3 h-3 rounded-sm" style={{ background: '#eab308' }} /> Sedimentaria
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block w-3 h-3 rounded-sm" style={{ background: '#a855f7' }} /> Metamórfica
+          <span className="inline-block w-3 h-3 rounded-sm" style={{ background: '#a855f7' }} /> Metamorfica
         </span>
       </div>
       <svg
