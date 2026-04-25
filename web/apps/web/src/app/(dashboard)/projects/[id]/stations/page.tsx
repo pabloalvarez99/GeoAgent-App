@@ -8,7 +8,6 @@ import {
   Plus,
   Search,
   Layers,
-  Loader2,
   Pencil,
   Trash2,
   MapPin,
@@ -20,7 +19,6 @@ import { useStations } from '@/lib/hooks/use-stations';
 import { useProject } from '@/lib/hooks/use-projects';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   Select,
@@ -162,9 +160,20 @@ export default function StationsPage({ params }: { params: Promise<{ id: string 
 
       {/* List */}
       {loading ? (
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span className="text-sm">Cargando estaciones...</span>
+        <div className="rounded-lg border border-border overflow-hidden">
+          <div className="bg-muted/20 border-b border-border px-4 py-2.5 flex gap-8">
+            {['Código', 'Descripción', 'Geólogo', 'Fecha'].map((h) => (
+              <span key={h} className="text-xs font-medium text-muted-foreground">{h}</span>
+            ))}
+          </div>
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="flex items-center gap-6 px-4 py-3.5 border-b border-border last:border-0">
+              <div className="skeleton h-5 w-16 rounded" />
+              <div className="skeleton h-4 w-40 rounded hidden sm:block" />
+              <div className="skeleton h-4 w-24 rounded hidden md:block" />
+              <div className="skeleton h-4 w-20 rounded hidden lg:block" />
+            </div>
+          ))}
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-16 text-center">
@@ -182,62 +191,75 @@ export default function StationsPage({ params }: { params: Promise<{ id: string 
           )}
         </div>
       ) : (
-        <div className="space-y-2">
-          {filtered.map((station) => (
-            <Card
-              key={station.id}
-              className="group hover:border-primary/40 transition-colors cursor-pointer"
-              onClick={() => router.push(`/projects/${projectId}/stations/${station.id}`)}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge variant="outline" className="font-mono text-xs shrink-0">
+        <div className="space-y-3">
+          <div className="rounded-lg border border-border overflow-hidden">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th className="hidden sm:table-cell">Descripción</th>
+                  <th className="hidden md:table-cell">Geólogo</th>
+                  <th className="hidden lg:table-cell">Fecha</th>
+                  <th className="hidden xl:table-cell">Coordenadas</th>
+                  <th className="text-right w-16"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((station) => (
+                  <tr
+                    key={station.id}
+                    className="group"
+                    onClick={() => router.push(`/projects/${projectId}/stations/${station.id}`)}
+                  >
+                    <td>
+                      <Badge variant="outline" className="font-mono text-xs">
                         {station.code}
                       </Badge>
-                      <span className="text-sm text-muted-foreground truncate">
-                        {station.description}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <User className="h-3 w-3" />
+                    </td>
+                    <td className="hidden sm:table-cell text-muted-foreground max-w-[200px]">
+                      <span className="block truncate">{station.description || '—'}</span>
+                    </td>
+                    <td className="hidden md:table-cell text-muted-foreground">
+                      <span className="flex items-center gap-1.5">
+                        <User className="h-3 w-3 shrink-0" />
                         {station.geologist}
                       </span>
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
+                    </td>
+                    <td className="hidden lg:table-cell text-muted-foreground">
+                      <span className="flex items-center gap-1.5">
+                        <Calendar className="h-3 w-3 shrink-0" />
                         {station.date}
                       </span>
-                      <span className="flex items-center gap-1 font-mono">
-                        <MapPin className="h-3 w-3" />
-                        {station.latitude.toFixed(5)}, {station.longitude.toFixed(5)}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" onClick={(e) => e.stopPropagation()}>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => { setEditTarget(station); setEditOpen(true); }}
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-destructive hover:text-destructive"
-                      onClick={() => setDeleteTarget(station)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-          <p className="text-xs text-muted-foreground text-right pt-1">
+                    </td>
+                    <td className="hidden xl:table-cell font-mono text-xs text-muted-foreground">
+                      {station.latitude.toFixed(5)}, {station.longitude.toFixed(5)}
+                    </td>
+                    <td className="text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => { setEditTarget(station); setEditOpen(true); }}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive"
+                          onClick={() => setDeleteTarget(station)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-muted-foreground text-right">
             {filtered.length} estación{filtered.length !== 1 ? 'es' : ''}
           </p>
         </div>

@@ -71,7 +71,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          'flex flex-col border-r border-border bg-background transition-all duration-200 z-50 relative',
+          'flex flex-col border-r border-border sidebar-surface transition-all duration-200 z-50 relative',
           'hidden md:flex',
           collapsed ? 'md:w-14' : 'md:w-56',
           mobileOpen && 'fixed inset-y-0 left-0 flex w-64 md:relative md:w-auto',

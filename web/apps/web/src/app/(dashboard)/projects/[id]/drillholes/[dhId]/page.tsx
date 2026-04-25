@@ -169,28 +169,28 @@ export default function DrillHoleDetailPage({
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
-        <Card>
+        <Card className="stat-accent-blue">
           <CardHeader className="pb-1 pt-3 px-4">
             <p className="text-xs text-muted-foreground">Intervalos</p>
           </CardHeader>
           <CardContent className="px-4 pb-3">
-            <p className="text-2xl font-bold text-blue-400">{intervals.length}</p>
+            <p className="text-2xl font-bold text-blue-400 font-data">{intervals.length}</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="stat-accent-amber">
           <CardHeader className="pb-1 pt-3 px-4">
             <p className="text-xs text-muted-foreground">Prof. perforada</p>
           </CardHeader>
           <CardContent className="px-4 pb-3">
-            <p className="text-2xl font-bold text-orange-400">{actualDepth} m</p>
+            <p className="text-2xl font-bold text-orange-400 font-data">{actualDepth} m</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="stat-accent-green">
           <CardHeader className="pb-1 pt-3 px-4">
             <p className="text-xs text-muted-foreground">RQD prom.</p>
           </CardHeader>
           <CardContent className="px-4 pb-3">
-            <p className="text-2xl font-bold text-green-400">
+            <p className="text-2xl font-bold text-green-400 font-data">
               {intervals.length > 0 && intervals.some((i) => i.rqd != null)
                 ? `${(intervals.reduce((s, i) => s + (i.rqd ?? 0), 0) / intervals.filter((i) => i.rqd != null).length).toFixed(0)}%`
                 : '—'}
@@ -230,43 +230,50 @@ export default function DrillHoleDetailPage({
             No hay intervalos registrados. Agrega el primer intervalo litológico.
           </p>
         ) : (
-          <div className="space-y-1.5">
-            {/* Table header */}
-            <div className="hidden sm:grid grid-cols-[80px_80px_1fr_80px_80px_60px_60px_60px] gap-2 px-3 py-1 text-xs text-muted-foreground font-medium border-b border-border">
-              <span>Desde</span>
-              <span>Hasta</span>
-              <span>Litología</span>
-              <span>Alteración</span>
-              <span>Mineraliz.</span>
-              <span>RQD</span>
-              <span>Rec.</span>
-              <span></span>
+          <div className="space-y-3">
+            {/* Desktop table */}
+            <div className="hidden sm:block rounded-lg border border-border overflow-hidden">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Desde (m)</th>
+                    <th>Hasta (m)</th>
+                    <th>Litología</th>
+                    <th className="hidden md:table-cell">Alteración</th>
+                    <th className="hidden lg:table-cell">Mineraliz.</th>
+                    <th>RQD</th>
+                    <th className="hidden md:table-cell">Rec.</th>
+                    <th className="text-right w-16"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {intervals.map((interval) => (
+                    <tr key={interval.id} className="group">
+                      <td className="font-mono text-xs">{interval.fromDepth.toFixed(1)}</td>
+                      <td className="font-mono text-xs">{interval.toDepth.toFixed(1)}</td>
+                      <td>
+                        <p className="text-xs font-medium truncate max-w-[160px]">{interval.rockType}</p>
+                        <p className="text-[11px] text-muted-foreground">{interval.color} · {interval.texture}</p>
+                      </td>
+                      <td className="hidden md:table-cell text-xs text-muted-foreground">{interval.alteration ?? '—'}</td>
+                      <td className="hidden lg:table-cell text-xs text-muted-foreground">{interval.mineralization ?? '—'}</td>
+                      <td className="font-mono text-xs">{interval.rqd != null ? `${interval.rqd}%` : '—'}</td>
+                      <td className="hidden md:table-cell font-mono text-xs">{interval.recovery != null ? `${interval.recovery}%` : '—'}</td>
+                      <td className="text-right">
+                        <div className="flex justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setEditInterval(interval); setIntervalOpen(true); }}>
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => setDeleteInterval(interval)}>
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            {intervals.map((interval) => (
-              <div
-                key={interval.id}
-                className="group hidden sm:grid grid-cols-[80px_80px_1fr_80px_80px_60px_60px_60px] gap-2 px-3 py-2 items-center hover:bg-muted/30 rounded text-sm"
-              >
-                <span className="font-mono text-xs">{interval.fromDepth.toFixed(1)}</span>
-                <span className="font-mono text-xs">{interval.toDepth.toFixed(1)}</span>
-                <div className="min-w-0">
-                  <p className="truncate font-medium text-xs">{interval.rockType}</p>
-                  <p className="truncate text-xs text-muted-foreground">{interval.color} · {interval.texture}</p>
-                </div>
-                <span className="text-xs text-muted-foreground truncate">{interval.alteration ?? '—'}</span>
-                <span className="text-xs text-muted-foreground truncate">{interval.mineralization ?? '—'}</span>
-                <span className="font-mono text-xs">{interval.rqd != null ? `${interval.rqd}%` : '—'}</span>
-                <span className="font-mono text-xs">{interval.recovery != null ? `${interval.recovery}%` : '—'}</span>
-                <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setEditInterval(interval); setIntervalOpen(true); }}>
-                    <Pencil className="h-3 w-3" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => setDeleteInterval(interval)}>
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </div>
-              </div>
-            ))}
             {/* Mobile cards */}
             {intervals.map((interval) => (
               <Card key={`mobile-${interval.id}`} className="sm:hidden group">

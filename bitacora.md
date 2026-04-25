@@ -949,3 +949,52 @@ La función `generateSnapshot` aparece en Firebase Console > Functions.
 **Problema raíz:** En `pullFromRemote(sinceMs)`, los mapas `remoteProjectToLocal` y `remoteStationToLocal` se construían **solo** con documentos retornados por el query delta (modificados desde `sinceMs`). Al sincronizar una estación editada cuyo proyecto padre no fue modificado, `remoteProjectToLocal[rs.projectId]` retornaba null → `return@forEach` → **estación silenciosamente omitida**. Mismo problema en cascada para litologías, estructural, muestras, intervalos y fotos.
 **Fix:** Tres nuevas funciones `resolveLocalProjectId()`, `resolveLocalStationId()`, `resolveLocalDrillHoleId()` — primero buscan en el mapa en memoria (eficiente para el caso común), luego hacen un fallback a `dao.getByRemoteId()` (Room query) cuando el padre no está en el delta. El resultado se cachea en el mapa para evitar queries repetidas.
 **Archivo:** `app/.../data/sync/SyncWorker.kt`
+
+---
+
+## 2026-04-25 — Rediseño UI ultra-profesional (Sesión nueva)
+
+### Design System: GeoAgent Design Handoff implementado
+Implementado sistema de diseño extraído de `https://api.anthropic.com/v1/design/h/8QZnfQT1Lc8FlikUP3b6tQ`:
+- **Tokens:** Dark zinc-950 base (`--background: 240 10% 3.9%`), flat cards (mismo color que bg, bordes hacen el trabajo), accent verde `#22c55e`
+- **Logo:** SVG `GeoMark` — triángulo outline verde (#22c55e) + círculo en vértice superior
+- **Login:** Centrado max-w-sm, fondo con grid 48px (`.login-grid`) + glow verde radial (`.login-glow`)
+- **Sidebar:** `GeoMark` logo + `UserAvatar` (inicial del email en anillo verde), `sidebar-surface` para diferenciar del contenido
+- **StatCards:** Accent borders izquierdo via `.stat-accent-*`, `font-data` (Geist Mono) en números
+- **Project avatars:** Hash determinístico del nombre → 8 colores de acento → avatar con iniciales (consistent entre Home y Projects pages)
+- **PWA:** `icon.svg`, `icon-192.png`, `icon-512.png`, `favicon.png` del design bundle
+
+### UI: Data Tables — reemplazo de card lists
+Listas de estaciones y sondajes reemplazadas con tablas responsivas usando la clase `.data-table` (definida en globals.css). En desktop muestran todas las columnas; en mobile solo las esenciales. Beneficios: mayor densidad de datos, look de software profesional.
+- **Estaciones:** Code | Descripción | Geólogo | Fecha | Coordenadas | Actions
+- **Sondajes:** ID | Tipo | Estado | Profundidad (from/to) | Progreso (mini progress bar) | Az/Inc | Actions
+- **Intervalos (drillhole detail):** reemplazada inline grid con `data-table` bordered
+- **Estructural (station detail):** tabla con Tipo | Rumbo/Buz. | Movimiento | Rugosidad | Espesor
+- **Muestras (station detail):** tabla con Código | Tipo | Estado | Peso | Descripción
+
+### UI: Skeleton loading states
+Reemplazados spinners `<Loader2>` en estaciones y sondajes con skeleton placeholder rows que muestran la estructura de la tabla durante la carga.
+
+### UI: Command Palette mejorado
+- Icon box con bg/border activo cuando item seleccionado
+- Shortcut `↵` visible en item activo
+- Empty state con icono + mensaje
+- Footer con count de resultados
+- Clara jerarquía de grupos
+
+### CSS globals.css: Nuevas clases
+```css
+.sidebar-surface   /* bg ligeramente más claro que background */
+.card-lift         /* translateY(-1px) en hover */
+.data-table        /* tabla responsiva con estilos consistentes */
+.skeleton          /* animación shimmer para loading states */
+```
+
+### Drillhole detail: Stat cards mejoradas
+Stats de intervalos/profundidad/RQD con `stat-accent-*` borders + `font-data` en números.
+
+### Export page: CSS tokens
+Reemplazados colores hardcodeados `bg-zinc-900/60 border-zinc-800` con tokens CSS del design system (`hover:border-border/80 bg-card`).
+
+**URL producción:** `https://web-taupe-three-27.vercel.app`
+**Commits de esta sesión:** feat(web): data tables, skeletons, command palette polish, stat accents

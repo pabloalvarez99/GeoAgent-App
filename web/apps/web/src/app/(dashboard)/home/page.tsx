@@ -45,6 +45,24 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
+// ── Colores para avatares de proyecto ────────────────────────────────────────
+const PROJECT_ACCENTS = [
+  { bg: 'bg-emerald-500/15', text: 'text-emerald-400', ring: 'ring-emerald-500/25' },
+  { bg: 'bg-blue-500/15',    text: 'text-blue-400',    ring: 'ring-blue-500/25'    },
+  { bg: 'bg-violet-500/15',  text: 'text-violet-400',  ring: 'ring-violet-500/25'  },
+  { bg: 'bg-amber-500/15',   text: 'text-amber-400',   ring: 'ring-amber-500/25'   },
+  { bg: 'bg-rose-500/15',    text: 'text-rose-400',    ring: 'ring-rose-500/25'    },
+  { bg: 'bg-cyan-500/15',    text: 'text-cyan-400',    ring: 'ring-cyan-500/25'    },
+  { bg: 'bg-orange-500/15',  text: 'text-orange-400',  ring: 'ring-orange-500/25'  },
+  { bg: 'bg-pink-500/15',    text: 'text-pink-400',    ring: 'ring-pink-500/25'    },
+];
+
+function getProjectAccent(name: string) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return PROJECT_ACCENTS[Math.abs(hash) % PROJECT_ACCENTS.length];
+}
+
 // ── Colores para gráficos ────────────────────────────────────────────────────
 const CHART_COLORS = [
   '#22c55e', '#3b82f6', '#a855f7', '#f59e0b', '#ef4444',
@@ -57,15 +75,17 @@ function StatCard({
   value,
   sub,
   iconColor = 'text-primary',
+  accentClass,
 }: {
   icon: React.ElementType;
   label: string;
   value: string | number;
   sub?: string;
   iconColor?: string;
+  accentClass?: string;
 }) {
   return (
-    <Card>
+    <Card className={cn(accentClass)}>
       <CardHeader className="pb-2 pt-4 px-4">
         <div className="flex items-center gap-2">
           <div className="rounded-md bg-muted p-1.5">
@@ -216,24 +236,28 @@ export default function DashboardPage() {
           label="Proyectos"
           value={loading ? '—' : projects.length}
           iconColor="text-primary"
+          accentClass="stat-accent-green"
         />
         <StatCard
           icon={Layers}
           label="Estaciones"
           value={dataLoading ? '—' : stations.length}
           iconColor="text-blue-400"
+          accentClass="stat-accent-blue"
         />
         <StatCard
           icon={Drill}
           label="Sondajes"
           value={dataLoading ? '—' : drillHoles.length}
           iconColor="text-purple-400"
+          accentClass="stat-accent-purple"
         />
         <StatCard
           icon={FlaskConical}
           label="Muestras"
           value={dataLoading ? '—' : samples.length}
           iconColor="text-amber-400"
+          accentClass="stat-accent-amber"
         />
       </div>
 
@@ -449,31 +473,38 @@ export default function DashboardPage() {
 
         {!loading && recentProjects.length > 0 && (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {recentProjects.map((project) => (
-              <Link key={project.id} href={`/projects/${project.id}`}>
-                <Card className="hover:border-primary/50 transition-colors h-full">
-                  <CardHeader className="pb-2 pt-4 px-4">
-                    <div className="flex items-start gap-3">
-                      <div className="rounded-lg bg-primary/10 p-2 shrink-0">
-                        <FolderOpen className="h-4 w-4 text-primary" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold truncate">{project.name}</p>
-                        <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground">
-                          <MapPin className="h-3 w-3 shrink-0" />
-                          <span className="truncate">{project.location}</span>
+            {recentProjects.map((project) => {
+              const accent = getProjectAccent(project.name);
+              const initials = project.name.slice(0, 2).toUpperCase();
+              return (
+                <Link key={project.id} href={`/projects/${project.id}`}>
+                  <Card className="hover:border-primary/40 transition-colors h-full card-lift">
+                    <CardHeader className="pb-2 pt-4 px-4">
+                      <div className="flex items-start gap-3">
+                        <div className={cn(
+                          'flex h-9 w-9 rounded-lg items-center justify-center shrink-0 ring-1 text-sm font-bold select-none',
+                          accent.bg, accent.text, accent.ring,
+                        )}>
+                          {initials}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold truncate">{project.name}</p>
+                          <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground">
+                            <MapPin className="h-3 w-3 shrink-0" />
+                            <span className="truncate">{project.location}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="px-4 pb-4">
-                    <p className="text-xs text-muted-foreground line-clamp-2">
-                      {project.description || 'Sin descripción'}
-                    </p>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
+                    </CardHeader>
+                    <CardContent className="px-4 pb-4">
+                      <p className="text-xs text-muted-foreground line-clamp-2">
+                        {project.description || 'Sin descripción'}
+                      </p>
+                    </CardContent>
+                  </Card>
+                </Link>
+              );
+            })}
           </div>
         )}
 

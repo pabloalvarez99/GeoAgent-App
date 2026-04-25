@@ -8,7 +8,6 @@ import {
   Plus,
   Search,
   Drill,
-  Loader2,
   Pencil,
   Trash2,
   MapPin,
@@ -23,9 +22,7 @@ import { useDrillHoles } from '@/lib/hooks/use-drillholes';
 import { useProject } from '@/lib/hooks/use-projects';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import {
   Dialog,
   DialogContent,
@@ -176,9 +173,20 @@ export default function DrillHolesPage({ params }: { params: Promise<{ id: strin
 
       {/* List */}
       {loading ? (
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span className="text-sm">Cargando sondajes...</span>
+        <div className="rounded-lg border border-border overflow-hidden">
+          <div className="bg-muted/20 border-b border-border px-4 py-2.5 flex gap-8">
+            {['ID', 'Tipo', 'Estado', 'Profundidad'].map((h) => (
+              <span key={h} className="text-xs font-medium text-muted-foreground">{h}</span>
+            ))}
+          </div>
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="flex items-center gap-6 px-4 py-4 border-b border-border last:border-0">
+              <div className="skeleton h-5 w-20 rounded" />
+              <div className="skeleton h-4 w-16 rounded hidden sm:block" />
+              <div className="skeleton h-5 w-24 rounded" />
+              <div className="skeleton h-2 w-32 rounded-full hidden md:block" />
+            </div>
+          ))}
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-16 text-center">
@@ -196,77 +204,100 @@ export default function DrillHolesPage({ params }: { params: Promise<{ id: strin
           )}
         </div>
       ) : (
-        <div className="space-y-2">
-          {filtered.map((dh) => {
-            const actualDepth = dh.actualDepth ?? 0;
-            const pct = dh.plannedDepth > 0 ? Math.min(100, (actualDepth / dh.plannedDepth) * 100) : 0;
-            const StatusIcon = statusIcons[dh.status] ?? Clock;
-            const statusColor = statusColors[dh.status] ?? 'text-muted-foreground';
+        <div className="space-y-3">
+          <div className="rounded-lg border border-border overflow-hidden">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th className="hidden sm:table-cell">Tipo</th>
+                  <th>Estado</th>
+                  <th className="hidden md:table-cell">Profundidad</th>
+                  <th className="hidden lg:table-cell">Progreso</th>
+                  <th className="hidden xl:table-cell">Az / Inc</th>
+                  <th className="text-right w-16"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((dh) => {
+                  const actualDepth = dh.actualDepth ?? 0;
+                  const pct = dh.plannedDepth > 0 ? Math.min(100, (actualDepth / dh.plannedDepth) * 100) : 0;
+                  const StatusIcon = statusIcons[dh.status] ?? Clock;
+                  const statusColor = statusColors[dh.status] ?? 'text-muted-foreground';
 
-            return (
-              <Card
-                key={dh.id}
-                className="group hover:border-primary/40 transition-colors cursor-pointer"
-                onClick={() => router.push(`/projects/${projectId}/drillholes/${dh.id}`)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0 space-y-2">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="outline" className="font-mono text-sm shrink-0">
+                  return (
+                    <tr
+                      key={dh.id}
+                      className="group"
+                      onClick={() => router.push(`/projects/${projectId}/drillholes/${dh.id}`)}
+                    >
+                      <td>
+                        <Badge variant="outline" className="font-mono text-xs">
                           {dh.holeId}
                         </Badge>
-                        <Badge variant="secondary">{dh.type}</Badge>
-                        <span className={`flex items-center gap-1 text-xs ${statusColor}`}>
-                          <StatusIcon className="h-3 w-3" />
-                          {dh.status}
+                      </td>
+                      <td className="hidden sm:table-cell">
+                        <Badge variant="secondary" className="text-xs">{dh.type}</Badge>
+                      </td>
+                      <td>
+                        <span className={`flex items-center gap-1.5 text-xs ${statusColor}`}>
+                          <StatusIcon className="h-3 w-3 shrink-0" />
+                          <span className="hidden sm:inline">{dh.status}</span>
                         </span>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                      </td>
+                      <td className="hidden md:table-cell font-mono text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
-                          <ArrowDown className="h-3 w-3" />
-                          {dh.actualDepth ?? 0}/{dh.plannedDepth} m
+                          <ArrowDown className="h-3 w-3 shrink-0" />
+                          {actualDepth}/{dh.plannedDepth} m
                         </span>
-                        <span className="flex items-center gap-1 font-mono">
-                          <MapPin className="h-3 w-3" />
-                          {dh.latitude.toFixed(5)}, {dh.longitude.toFixed(5)}
-                        </span>
-                        <span>Az: {dh.azimuth}° / Inc: {dh.inclination}°</span>
-                      </div>
-                      {dh.actualDepth != null && dh.actualDepth > 0 && (
-                        <div className="space-y-0.5">
-                          <Progress value={pct} className="h-1.5" />
-                          <p className="text-xs text-muted-foreground">{pct.toFixed(0)}% perforado</p>
+                      </td>
+                      <td className="hidden lg:table-cell">
+                        {dh.plannedDepth > 0 ? (
+                          <div className="flex items-center gap-2 min-w-[100px]">
+                            <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                              <div
+                                className="h-full rounded-full bg-primary transition-all"
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                            <span className="text-xs text-muted-foreground w-8 text-right font-mono">
+                              {pct.toFixed(0)}%
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      <td className="hidden xl:table-cell font-mono text-xs text-muted-foreground">
+                        {dh.azimuth}° / {dh.inclination}°
+                      </td>
+                      <td className="text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => setEditTarget(dh)}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-destructive hover:text-destructive"
+                            onClick={() => setDeleteTarget(dh)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
                         </div>
-                      )}
-                    </div>
-                    <div
-                      className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => setEditTarget(dh)}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-destructive hover:text-destructive"
-                        onClick={() => setDeleteTarget(dh)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-          <p className="text-xs text-muted-foreground text-right pt-1">
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-muted-foreground text-right">
             {filtered.length} sondaje{filtered.length !== 1 ? 's' : ''}
           </p>
         </div>

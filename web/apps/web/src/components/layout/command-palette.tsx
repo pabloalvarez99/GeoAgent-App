@@ -93,8 +93,9 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="p-0 gap-0 max-w-lg overflow-hidden">
-        <div className="flex items-center border-b px-3">
-          <Search className="h-4 w-4 text-muted-foreground shrink-0 mr-2" />
+        {/* Search input */}
+        <div className="flex items-center gap-2.5 border-b border-border px-3 py-0.5">
+          <Search className="h-4 w-4 text-muted-foreground shrink-0" />
           <input
             autoFocus
             className="flex-1 bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground"
@@ -103,46 +104,83 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKey}
           />
-          <kbd className="ml-2 text-xs text-muted-foreground border rounded px-1.5 py-0.5">Esc</kbd>
+          {query && (
+            <button
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => setQuery('')}
+            >
+              ✕
+            </button>
+          )}
+          <kbd className="text-[10px] text-muted-foreground border border-border rounded px-1.5 py-0.5 shrink-0 font-mono">
+            Esc
+          </kbd>
         </div>
-        <div className="max-h-[400px] overflow-y-auto py-2">
+
+        {/* Results */}
+        <div className="max-h-[420px] overflow-y-auto">
           {filtered.length === 0 ? (
-            <p className="text-center text-sm text-muted-foreground py-8">Sin resultados</p>
+            <div className="flex flex-col items-center justify-center py-12 gap-2 text-center">
+              <Search className="h-8 w-8 text-muted-foreground/30" />
+              <p className="text-sm text-muted-foreground">Sin resultados para &ldquo;{query}&rdquo;</p>
+            </div>
           ) : (
-            Object.entries(groups).map(([group, items]) => (
-              <div key={group}>
-                <p className="px-3 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  {group}
-                </p>
-                {items.map((item) => {
-                  const idx = globalIndex++;
-                  const Icon = item.icon;
-                  return (
-                    <button
-                      key={item.id}
-                      className={`w-full flex items-center gap-3 px-3 py-2 text-left text-sm transition-colors
-                        ${idx === selected ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/50'}`}
-                      onClick={item.action}
-                      onMouseEnter={() => setSelected(idx)}
-                    >
-                      <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <div className="min-w-0">
-                        <p className="truncate">{item.label}</p>
-                        {item.description && (
-                          <p className="text-xs text-muted-foreground truncate">{item.description}</p>
+            <div className="py-1.5">
+              {Object.entries(groups).map(([group, items]) => (
+                <div key={group} className="mb-1">
+                  <p className="px-3 pt-2 pb-1 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-widest">
+                    {group}
+                  </p>
+                  {items.map((item) => {
+                    const idx = globalIndex++;
+                    const Icon = item.icon;
+                    return (
+                      <button
+                        key={item.id}
+                        className={`w-full flex items-center gap-3 px-3 py-2 text-left text-sm transition-colors rounded-sm mx-1 pr-4
+                          ${idx === selected
+                            ? 'bg-primary/10 text-foreground'
+                            : 'hover:bg-muted/50 text-foreground/80'
+                          }`}
+                        style={{ width: 'calc(100% - 8px)' }}
+                        onClick={item.action}
+                        onMouseEnter={() => setSelected(idx)}
+                      >
+                        <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border/60
+                          ${idx === selected ? 'bg-primary/10 border-primary/20' : 'bg-muted/40'}`}>
+                          <Icon className={`h-3.5 w-3.5 ${idx === selected ? 'text-primary' : 'text-muted-foreground'}`} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-medium text-sm">{item.label}</p>
+                          {item.description && (
+                            <p className="text-xs text-muted-foreground truncate">{item.description}</p>
+                          )}
+                        </div>
+                        {idx === selected && (
+                          <kbd className="text-[10px] text-muted-foreground border border-border rounded px-1 py-0.5 font-mono shrink-0">↵</kbd>
                         )}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            ))
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
           )}
         </div>
-        <div className="border-t px-3 py-1.5 flex items-center gap-3 text-xs text-muted-foreground">
-          <span><kbd className="border rounded px-1">↑↓</kbd> navegar</span>
-          <span><kbd className="border rounded px-1">↵</kbd> ir</span>
-          <span><kbd className="border rounded px-1">Esc</kbd> cerrar</span>
+
+        {/* Footer */}
+        <div className="border-t border-border px-3 py-2 flex items-center gap-4 text-[11px] text-muted-foreground/60">
+          <span className="flex items-center gap-1">
+            <kbd className="border border-border/60 rounded px-1 py-0.5 font-mono">↑↓</kbd>
+            navegar
+          </span>
+          <span className="flex items-center gap-1">
+            <kbd className="border border-border/60 rounded px-1 py-0.5 font-mono">↵</kbd>
+            ir
+          </span>
+          <span className="ml-auto">
+            {filtered.length} resultado{filtered.length !== 1 ? 's' : ''}
+          </span>
         </div>
       </DialogContent>
     </Dialog>

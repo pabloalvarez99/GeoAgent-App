@@ -164,25 +164,27 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         return (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
-              { label: 'Estaciones', value: stations.length, color: 'text-blue-400' },
-              { label: 'Sondajes', value: drillHoles.length, color: 'text-purple-400' },
+              { label: 'Estaciones', value: stations.length, color: 'text-blue-400', accent: 'stat-accent-blue' },
+              { label: 'Sondajes', value: drillHoles.length, color: 'text-purple-400', accent: 'stat-accent-purple' },
               {
                 label: 'Prof. máxima',
                 value: maxDepth != null ? `${maxDepth} m` : '—',
                 color: 'text-orange-400',
+                accent: 'stat-accent-amber',
               },
               {
                 label: 'Total perforado',
                 value: totalDrilled > 0 ? `${totalDrilled} m` : '—',
                 color: 'text-green-400',
+                accent: 'stat-accent-green',
               },
-            ].map(({ label, value, color }) => (
-              <Card key={label}>
+            ].map(({ label, value, color, accent }) => (
+              <Card key={label} className={accent}>
                 <CardHeader className="pb-1 pt-4 px-4">
                   <p className="text-xs text-muted-foreground">{label}</p>
                 </CardHeader>
                 <CardContent className="px-4 pb-4">
-                  <p className={`text-2xl font-semibold ${color}`}>{value}</p>
+                  <p className={`text-2xl font-semibold font-data ${color}`}>{value}</p>
                 </CardContent>
               </Card>
             ))}

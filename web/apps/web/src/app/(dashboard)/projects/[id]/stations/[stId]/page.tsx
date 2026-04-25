@@ -278,41 +278,49 @@ export default function StationDetailPage({
               No hay datos estructurales
             </p>
           ) : (
-            structural.map((s) => (
-              <Card key={s.id} className="group">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="space-y-1 flex-1 min-w-0">
-                      <div className="flex flex-wrap gap-1.5 items-center">
-                        <Badge>{s.type}</Badge>
-                        <span className="text-sm font-mono font-semibold">
-                          {s.strike}°/{s.dip}°{s.dipDirection}
-                        </span>
-                        {s.movement && <Badge variant="secondary">{s.movement}</Badge>}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {[
-                          s.roughness && `Rugosidad: ${s.roughness}`,
-                          s.continuity && `Continuidad: ${s.continuity}`,
-                          s.thickness != null && `Espesor: ${s.thickness} m`,
-                        ].filter(Boolean).join(' · ')}
-                      </p>
-                      {s.notes && (
-                        <p className="text-xs text-muted-foreground italic">{s.notes}</p>
-                      )}
-                    </div>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setStructEdit(s); setStructOpen(true); }}>
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setStructDelete(s)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+            <div className="rounded-lg border border-border overflow-hidden">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Tipo</th>
+                    <th>Rumbo / Buz.</th>
+                    <th className="hidden md:table-cell">Movimiento</th>
+                    <th className="hidden lg:table-cell">Rugosidad</th>
+                    <th className="hidden lg:table-cell">Espesor</th>
+                    <th className="text-right w-16"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {structural.map((s) => (
+                    <tr key={s.id} className="group">
+                      <td>
+                        <Badge className="text-xs">{s.type}</Badge>
+                      </td>
+                      <td className="font-mono text-xs font-semibold">
+                        {s.strike}° / {s.dip}° {s.dipDirection}
+                      </td>
+                      <td className="hidden md:table-cell text-xs text-muted-foreground">
+                        {s.movement ? <Badge variant="secondary" className="text-xs">{s.movement}</Badge> : '—'}
+                      </td>
+                      <td className="hidden lg:table-cell text-xs text-muted-foreground">{s.roughness ?? '—'}</td>
+                      <td className="hidden lg:table-cell font-mono text-xs text-muted-foreground">
+                        {s.thickness != null ? `${s.thickness} m` : '—'}
+                      </td>
+                      <td className="text-right">
+                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setStructEdit(s); setStructOpen(true); }}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setStructDelete(s)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </TabsContent>
 
@@ -332,44 +340,56 @@ export default function StationDetailPage({
               No hay muestras registradas
             </p>
           ) : (
-            samples.map((sample) => (
-              <Card key={sample.id} className="group">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="space-y-1 flex-1 min-w-0">
-                      <div className="flex flex-wrap gap-1.5 items-center">
-                        <Badge variant="outline" className="font-mono">{sample.code}</Badge>
-                        <Badge>{sample.type}</Badge>
+            <div className="rounded-lg border border-border overflow-hidden">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Código</th>
+                    <th>Tipo</th>
+                    <th>Estado</th>
+                    <th className="hidden md:table-cell">Peso</th>
+                    <th className="hidden lg:table-cell">Descripción</th>
+                    <th className="text-right w-16"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {samples.map((sample) => (
+                    <tr key={sample.id} className="group">
+                      <td>
+                        <Badge variant="outline" className="font-mono text-xs">{sample.code}</Badge>
+                      </td>
+                      <td>
+                        <Badge className="text-xs">{sample.type}</Badge>
+                      </td>
+                      <td>
                         <Badge
                           variant={sample.status === 'Resultados Recibidos' ? 'default' : 'secondary'}
-                          className={sample.status === 'Resultados Recibidos' ? 'bg-green-600' : ''}
+                          className={`text-xs ${sample.status === 'Resultados Recibidos' ? 'bg-green-600/20 text-green-400 border-green-500/30' : ''}`}
                         >
                           {sample.status}
                         </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {sample.description}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {[
-                          sample.weight != null && `${sample.weight} kg`,
-                          sample.analysisRequested && `Análisis: ${sample.analysisRequested}`,
-                          sample.destination && `Destino: ${sample.destination}`,
-                        ].filter(Boolean).join(' · ')}
-                      </p>
-                    </div>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setSampleEdit(sample); setSampleOpen(true); }}>
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setSampleDelete(sample)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+                      </td>
+                      <td className="hidden md:table-cell font-mono text-xs text-muted-foreground">
+                        {sample.weight != null ? `${sample.weight} kg` : '—'}
+                      </td>
+                      <td className="hidden lg:table-cell text-xs text-muted-foreground max-w-[200px]">
+                        <span className="block truncate">{sample.description || '—'}</span>
+                      </td>
+                      <td className="text-right">
+                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setSampleEdit(sample); setSampleOpen(true); }}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setSampleDelete(sample)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </TabsContent>
       </Tabs>

@@ -49,7 +49,7 @@ interface ExportCardProps {
 
 function ExportCard({ icon: Icon, title, description, formats, status, onExport, accent }: ExportCardProps) {
   return (
-    <Card className="bg-zinc-900/60 border-zinc-800 hover:border-zinc-700 transition-colors">
+    <Card className="hover:border-border/80 transition-colors card-lift">
       <CardHeader className="pb-3">
         <div className="flex items-center gap-3">
           <div className={`p-2.5 rounded-lg ${accent}`}>
@@ -353,7 +353,7 @@ export default function ExportPage({ params }: { params: Promise<{ id: string }>
       </div>
 
       {/* Note */}
-      <p className="text-xs text-muted-foreground bg-zinc-900/40 border border-zinc-800 rounded-lg p-4">
+      <p className="text-xs text-muted-foreground bg-muted/30 border border-border rounded-lg p-4">
         <strong>Nota:</strong> Los exports más completos (PDF, Excel) cargan todos los datos del proyecto incluyendo sub-datos de estaciones y sondajes. El proceso puede tomar algunos segundos según la cantidad de datos.
       </p>
     </div>
