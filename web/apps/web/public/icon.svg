@@ -1,11 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#09090b"/>
-  <!-- Mountain peak -->
-  <polygon points="256,80 400,340 112,340" fill="none" stroke="#22c55e" stroke-width="28" stroke-linejoin="round"/>
-  <!-- Inner peak highlight -->
-  <polygon points="256,140 340,300 172,300" fill="#22c55e" opacity="0.15"/>
-  <!-- Drill hole dot -->
-  <circle cx="256" cy="390" r="24" fill="#22c55e"/>
-  <!-- Ground line -->
-  <line x1="100" y1="350" x2="412" y2="350" stroke="#22c55e" stroke-width="12" stroke-linecap="round" opacity="0.6"/>
+  
+  <rect width="512" height="512" rx="112" fill="#09090b"></rect>
+
+  
+  <polygon points="256,88 420,348 92,348" fill="none" stroke="#22c55e" stroke-width="24" stroke-linejoin="round" stroke-linecap="round"></polygon>
+
+  
+  <polygon points="256,88 420,348 92,348" fill="#22c55e" opacity="0.07"></polygon>
+
+  
+  <polygon points="256,148 328,298 184,298" fill="#22c55e" opacity="0.13"></polygon>
+
+  
+  <line x1="72" y1="362" x2="440" y2="362" stroke="#22c55e" stroke-width="10" stroke-linecap="round" opacity="0.5"></line>
+
+  
+  <circle cx="256" cy="88" r="14" fill="#22c55e"></circle>
+
+  
+  <circle cx="256" cy="348" r="6" fill="#22c55e" opacity="0.8"></circle>
 </svg>

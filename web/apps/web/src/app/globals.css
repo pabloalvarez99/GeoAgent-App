@@ -4,32 +4,28 @@
 
 @layer base {
   :root {
-    /* Dark mode by default — zinc/slate palette with real depth */
-    --background: 240 10% 2.4%;      /* near-black base */
-    --foreground: 0 0% 96%;
-    --card: 240 9% 5.5%;             /* cards visually lift off background */
-    --card-foreground: 0 0% 96%;
-    --popover: 240 8% 8%;
-    --popover-foreground: 0 0% 96%;
+    /* Dark mode by default — zinc-950 base, flat surfaces, borders for depth */
+    --background: 240 10% 3.9%;      /* #09090b zinc-950 */
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;            /* flat — same as bg, borders do the work */
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
     /* Primary = geo green #22c55e */
     --primary: 142 71% 45%;
     --primary-foreground: 144 100% 5%;
-    --secondary: 240 5% 13%;
-    --secondary-foreground: 0 0% 96%;
-    --muted: 240 5% 11%;
-    --muted-foreground: 240 4% 58%;
-    --accent: 240 5% 13%;
-    --accent-foreground: 0 0% 96%;
-    --destructive: 0 62.8% 38%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 5% 10%;
-    --input: 240 5% 10%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
     --ring: 142 71% 45%;
     --radius: 0.5rem;
-    /* Elevation tokens — surfaces stack predictably */
-    --surface-1: 240 9% 5.5%;       /* cards */
-    --surface-2: 240 8% 8%;         /* dialogs, dropdowns */
-    --surface-3: 240 7% 11%;        /* hover states, selected rows */
   }
 }
 
@@ -62,13 +58,18 @@
   @apply bg-muted-foreground;
 }
 
-/* Card lift animation */
-.card-lift {
-  transition: transform 150ms ease, box-shadow 150ms ease;
+/* Login: subtle grid texture */
+.login-grid {
+  background-image:
+    linear-gradient(hsl(var(--border)) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--border)) 1px, transparent 1px);
+  background-size: 48px 48px;
+  opacity: 0.35;
 }
-.card-lift:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.5);
+
+/* Login: green radial glow at top */
+.login-glow {
+  background: radial-gradient(ellipse 600px 300px at 50% 0%, rgba(34,197,94,0.08) 0%, transparent 70%);
 }
 
 /* Stat accent borders */
@@ -76,16 +77,3 @@
 .stat-accent-blue   { border-left: 3px solid #3b82f6; }
 .stat-accent-purple { border-left: 3px solid #a855f7; }
 .stat-accent-amber  { border-left: 3px solid #f59e0b; }
-.stat-accent-orange { border-left: 3px solid #f97316; }
-
-/* Subtle inset glow for active sidebar item */
-.nav-active {
-  background: linear-gradient(90deg, hsl(142 71% 45% / 0.15) 0%, hsl(142 71% 45% / 0.05) 100%);
-  border-left: 2px solid hsl(142 71% 45%);
-}
-
-/* Glass sidebar surface */
-.sidebar-surface {
-  background: hsl(240 9% 4.2%);
-  border-right: 1px solid hsl(240 5% 9%);
-}

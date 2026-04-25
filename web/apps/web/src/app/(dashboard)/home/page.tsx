@@ -57,26 +57,26 @@ function StatCard({
   value,
   sub,
   iconColor = 'text-primary',
-  accent = 'green',
 }: {
   icon: React.ElementType;
   label: string;
   value: string | number;
   sub?: string;
   iconColor?: string;
-  accent?: 'green' | 'blue' | 'purple' | 'amber';
 }) {
   return (
-    <Card className={cn('overflow-hidden', `stat-accent-${accent}`)}>
-      <CardContent className="px-4 pt-4 pb-4">
-        <div className="flex items-center justify-between gap-2 mb-2">
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-            {label}
-          </p>
-          <Icon className={cn('h-3.5 w-3.5 shrink-0 opacity-40', iconColor)} />
+    <Card>
+      <CardHeader className="pb-2 pt-4 px-4">
+        <div className="flex items-center gap-2">
+          <div className="rounded-md bg-muted p-1.5">
+            <Icon className={`h-4 w-4 ${iconColor}`} />
+          </div>
+          <p className="text-xs text-muted-foreground font-medium">{label}</p>
         </div>
-        <p className="text-3xl font-bold tracking-tight font-data leading-none">{value}</p>
-        {sub && <p className="text-xs text-muted-foreground mt-1.5">{sub}</p>}
+      </CardHeader>
+      <CardContent className="px-4 pb-4">
+        <p className="text-2xl font-bold tracking-tight font-data">{value}</p>
+        {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
       </CardContent>
     </Card>
   );
@@ -215,28 +215,24 @@ export default function DashboardPage() {
           icon={FolderOpen}
           label="Proyectos"
           value={loading ? '—' : projects.length}
-          accent="green"
           iconColor="text-primary"
         />
         <StatCard
           icon={Layers}
           label="Estaciones"
           value={dataLoading ? '—' : stations.length}
-          accent="blue"
           iconColor="text-blue-400"
         />
         <StatCard
           icon={Drill}
           label="Sondajes"
           value={dataLoading ? '—' : drillHoles.length}
-          accent="purple"
           iconColor="text-purple-400"
         />
         <StatCard
           icon={FlaskConical}
           label="Muestras"
           value={dataLoading ? '—' : samples.length}
-          accent="amber"
           iconColor="text-amber-400"
         />
       </div>

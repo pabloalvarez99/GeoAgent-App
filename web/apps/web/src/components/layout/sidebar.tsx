@@ -4,7 +4,6 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  Mountain,
   FolderOpen,
   Settings,
   ChevronLeft,
@@ -22,6 +21,22 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+
+// Custom GeoAgent triangle logo mark
+function GeoMark({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 512 512" fill="none" aria-hidden>
+      <polygon
+        points="256,88 420,348 92,348"
+        stroke="#22c55e"
+        strokeWidth="52"
+        strokeLinejoin="round"
+        fill="rgba(34,197,94,0.07)"
+      />
+      <circle cx="256" cy="88" r="36" fill="#22c55e" />
+    </svg>
+  );
+}
 
 const navItems = [
   { href: '/home', label: 'Inicio', icon: LayoutDashboard },
@@ -56,31 +71,29 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          'flex flex-col transition-all duration-200 z-50 sidebar-surface relative',
+          'flex flex-col border-r border-border bg-background transition-all duration-200 z-50 relative',
           'hidden md:flex',
-          collapsed ? 'md:w-[52px]' : 'md:w-[220px]',
+          collapsed ? 'md:w-14' : 'md:w-56',
           mobileOpen && 'fixed inset-y-0 left-0 flex w-64 md:relative md:w-auto',
         )}
       >
         {/* Logo */}
         <div
           className={cn(
-            'flex h-14 items-center border-b border-border/50 shrink-0',
-            collapsed && !mobileOpen ? 'justify-center' : 'px-4 gap-3',
+            'flex h-14 items-center border-b border-border shrink-0',
+            collapsed && !mobileOpen ? 'justify-center' : 'px-3 gap-2.5',
           )}
         >
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/15 ring-1 ring-primary/25">
-            <Mountain className="h-4 w-4 text-primary" />
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+            <GeoMark size={18} />
           </div>
           {(!collapsed || mobileOpen) && (
-            <span className="font-semibold text-sm tracking-tight flex-1 text-foreground">
-              GeoAgent
-            </span>
+            <span className="font-semibold tracking-tight text-sm flex-1">GeoAgent</span>
           )}
           {mobileOpen && (
             <button
               onClick={onMobileClose}
-              className="md:hidden p-1 rounded text-muted-foreground hover:text-foreground transition-colors"
+              className="md:hidden p-1 rounded hover:bg-accent text-muted-foreground"
             >
               <X className="h-4 w-4" />
             </button>
@@ -88,7 +101,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
         </div>
 
         {/* Nav items */}
-        <nav className="flex-1 p-2 space-y-0.5">
+        <nav className="flex-1 space-y-0.5 p-2">
           {navItems.map(({ href, label, icon: Icon }) => {
             const active = isActive(href);
             const item = (
@@ -97,11 +110,11 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
                 href={href}
                 onClick={mobileOpen ? onMobileClose : undefined}
                 className={cn(
-                  'flex items-center gap-2.5 rounded-md text-sm font-medium transition-all duration-150 relative',
-                  collapsed && !mobileOpen ? 'justify-center px-0 py-2.5' : 'px-2.5 py-2',
+                  'flex items-center gap-2.5 rounded-md px-2 py-2 text-sm font-medium transition-colors',
                   active
-                    ? 'nav-active text-primary'
-                    : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+                  collapsed && !mobileOpen && 'justify-center',
                 )}
               >
                 <Icon className="h-4 w-4 shrink-0" />
@@ -122,7 +135,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
         </nav>
 
         {/* User + sign out */}
-        <div className="border-t border-border/50 p-2 space-y-1">
+        <div className="border-t border-border p-2 space-y-1">
           {(!collapsed || mobileOpen) && user?.email && (
             <div className="flex items-center gap-2.5 px-2 py-1.5">
               <UserAvatar email={user.email} />
@@ -141,7 +154,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
                 size="sm"
                 onClick={() => signOut()}
                 className={cn(
-                  'w-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors',
+                  'w-full text-muted-foreground hover:text-destructive hover:bg-destructive/10',
                   collapsed && !mobileOpen ? 'justify-center px-0' : 'justify-start gap-2.5',
                 )}
               >
@@ -158,7 +171,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
         {/* Collapse toggle — desktop only */}
         <button
           onClick={() => setCollapsed((v) => !v)}
-          className="absolute -right-3 top-[18px] hidden md:flex h-6 w-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:text-foreground hover:border-border/80 transition-all z-20"
+          className="absolute -right-3 top-16 hidden md:flex h-6 w-6 items-center justify-center rounded-full border border-border bg-background text-muted-foreground hover:text-foreground transition-colors z-10"
         >
           {collapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}
         </button>
