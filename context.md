@@ -1,9 +1,9 @@
 # GeoAgent-App — Contexto de Herramientas y Entorno
 
 > **Para el agente que retome esta sesión:** Este archivo documenta todo lo disponible en este equipo para trabajar con Claude Code. Actualizar cuando se instale algo nuevo.
-> Última actualización: 2026-04-15 (sesión 2)
+> Última actualización: 2026-04-25 (máquina Administrator)
 
-## Estado Actual del Proyecto (2026-04-15)
+## Estado Actual del Proyecto (2026-04-25)
 
 **Qué funciona — TODO COMPLETADO:**
 - ✅ App Android completa (NO tocar `app/`)
@@ -36,10 +36,10 @@
 
 ## 1. Sistema Operativo y Entorno
 
-- **OS:** Windows 11 Pro (Build 26200.8037)
+- **OS:** Windows 11 Pro (Build 26100)
 - **Shell en Claude Code:** bash (Git Bash / MinGW64) — usar sintaxis Unix, **no** PowerShell/cmd
-- **Usuario Windows:** Pablo
-- **Directorio del repo:** `C:\Users\Pablo\Documents\GitHub\GeoAgent-App`
+- **Usuario Windows:** Administrator
+- **Directorio del repo:** `C:\Users\Administrator\Documents\GitHub\GeoAgent-App`
 
 ---
 
@@ -47,27 +47,21 @@
 
 | CLI | Versión | Ubicación | Uso |
 |-----|---------|-----------|-----|
-| `gcloud` | SDK 563.0.0 | `C:\Program Files (x86)\Google\Cloud SDK\...` | Firestore REST API, Firebase auth token |
-| `firebase` | 15.12.0 | npm global | Deploy reglas, índices Firestore, hosting |
-| `vercel` | 50.13.1 | npm global | Deploy web, ver logs, gestionar env vars |
-| `node` | v24.13.0 | `C:\Program Files\nodejs\` | Runtime JS |
-| `npm` | 11.6.2 | `C:\Program Files\nodejs\` | Package manager |
-| `pnpm` | 10.32.1 | npm global | Package manager del monorepo web/ |
-| `cargo` | 1.93.0 | `~/.cargo/bin/` | Compilar/correr API Rust |
-| `rustup` | 1.28.2 | `~/.cargo/bin/` | Gestión toolchain Rust |
-| `git` | 2.53.0 | MinGW64 | Control de versiones |
-| `docker` | 29.2.1 | `C:\Program Files\Docker\Docker\...` | Contenedores (para Rust API Dockerfile) |
-| `kubectl` | (incluido con Docker) | Docker bin | Kubernetes (disponible pero no usado) |
+| `firebase` | 15.15.0 | npm global | Deploy reglas, índices Firestore, hosting — **⚠️ necesita `firebase login`** |
+| `vercel` | 52.0.0 | npm global | Deploy web — autenticado como `timadapa-6315` |
+| `node` | v24.15.0 | `C:\Program Files\nodejs\` | Runtime JS |
+| `npm` | 11.12.1 | `C:\Program Files\nodejs\` | Package manager |
+| `git` | 2.54.0 | MinGW64 | Control de versiones |
+| `gh` | 2.91.0 | `C:\Program Files\GitHub CLI\` — agregar al PATH: `export PATH="$PATH:/c/Program Files/GitHub CLI"` (ya en `~/.bashrc`) | GitHub CLI — **⚠️ necesita `gh auth login`** |
 | `curl` | MinGW64 | MinGW64 | HTTP requests desde bash |
 
 ### CLIs NO en PATH de bash por defecto (agregar manualmente)
-- `gh` (GitHub CLI) v2.89.0 — instalado en `C:\Program Files\GitHub CLI\gh.exe`. **Agregar al PATH:** `export PATH="$PATH:/c/Program Files/GitHub CLI"` (ya en `~/.bashrc` y `~/.bash_profile`). Autenticado como `pabloalvarez99`.
-- `flyctl` — **no en PATH de bash**. Disponible en Windows pero no encontrado. Para fly.io usar `flyctl` desde cmd/PowerShell o instalarlo globalmente
+- `gh` — PATH ya agregado en `~/.bashrc`: `export PATH="$PATH:/c/Program Files/GitHub CLI"`. **Pendiente: `gh auth login`**
 
 ### Cuentas autenticadas
-- **gcloud:** `timadapa@gmail.com` — tiene acceso al proyecto Firebase `geoagent-app`
-- **firebase:** autenticado (mismo proyecto `geoagent-app`)
-- **vercel:** autenticado — proyecto `web-taupe-three-27.vercel.app`
+- **vercel:** `timadapa-6315` ✅ (autenticado 2026-04-25)
+- **firebase:** ⚠️ NO autenticado — correr `firebase login`
+- **gh:** ⚠️ NO autenticado — correr `gh auth login`
 
 ---
 
