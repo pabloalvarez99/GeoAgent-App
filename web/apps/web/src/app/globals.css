@@ -4,28 +4,32 @@
 
 @layer base {
   :root {
-    /* Dark mode by default — zinc palette */
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
+    /* Dark mode by default — zinc/slate palette with real depth */
+    --background: 240 10% 2.4%;      /* near-black base */
+    --foreground: 0 0% 96%;
+    --card: 240 9% 5.5%;             /* cards visually lift off background */
+    --card-foreground: 0 0% 96%;
+    --popover: 240 8% 8%;
+    --popover-foreground: 0 0% 96%;
     /* Primary = geo green #22c55e */
     --primary: 142 71% 45%;
     --primary-foreground: 144 100% 5%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
+    --secondary: 240 5% 13%;
+    --secondary-foreground: 0 0% 96%;
+    --muted: 240 5% 11%;
+    --muted-foreground: 240 4% 58%;
+    --accent: 240 5% 13%;
+    --accent-foreground: 0 0% 96%;
+    --destructive: 0 62.8% 38%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
+    --border: 240 5% 10%;
+    --input: 240 5% 10%;
     --ring: 142 71% 45%;
     --radius: 0.5rem;
+    /* Elevation tokens — surfaces stack predictably */
+    --surface-1: 240 9% 5.5%;       /* cards */
+    --surface-2: 240 8% 8%;         /* dialogs, dropdowns */
+    --surface-3: 240 7% 11%;        /* hover states, selected rows */
   }
 }
 
@@ -45,8 +49,8 @@
 
 /* Scrollbar styling */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -56,4 +60,32 @@
 }
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-muted-foreground;
+}
+
+/* Card lift animation */
+.card-lift {
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+.card-lift:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.5);
+}
+
+/* Stat accent borders */
+.stat-accent-green  { border-left: 3px solid #22c55e; }
+.stat-accent-blue   { border-left: 3px solid #3b82f6; }
+.stat-accent-purple { border-left: 3px solid #a855f7; }
+.stat-accent-amber  { border-left: 3px solid #f59e0b; }
+.stat-accent-orange { border-left: 3px solid #f97316; }
+
+/* Subtle inset glow for active sidebar item */
+.nav-active {
+  background: linear-gradient(90deg, hsl(142 71% 45% / 0.15) 0%, hsl(142 71% 45% / 0.05) 100%);
+  border-left: 2px solid hsl(142 71% 45%);
+}
+
+/* Glass sidebar surface */
+.sidebar-surface {
+  background: hsl(240 9% 4.2%);
+  border-right: 1px solid hsl(240 5% 9%);
 }

@@ -29,6 +29,15 @@ const navItems = [
   { href: '/settings', label: 'Configuración', icon: Settings },
 ];
 
+function UserAvatar({ email }: { email?: string | null }) {
+  const initial = email ? email[0].toUpperCase() : '?';
+  return (
+    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/20 text-primary text-xs font-bold ring-1 ring-primary/30 select-none">
+      {initial}
+    </div>
+  );
+}
+
 interface SidebarProps {
   mobileOpen?: boolean;
   onMobileClose?: () => void;
@@ -39,8 +48,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
   const { signOut, user } = useAuth();
 
-  function isActive(href: string, exact?: boolean) {
-    if (exact) return pathname === href;
+  function isActive(href: string) {
     return pathname === href || pathname.startsWith(href + '/');
   }
 
@@ -48,28 +56,31 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          // Base styles
-          'flex flex-col border-r border-border bg-card transition-all duration-200 z-50',
-          // Desktop: static in layout flow
+          'flex flex-col transition-all duration-200 z-50 sidebar-surface relative',
           'hidden md:flex',
-          collapsed ? 'md:w-14' : 'md:w-56',
-          // Mobile: fixed overlay, slides in from left
+          collapsed ? 'md:w-[52px]' : 'md:w-[220px]',
           mobileOpen && 'fixed inset-y-0 left-0 flex w-64 md:relative md:w-auto',
         )}
       >
-        {/* Logo + mobile close */}
-        <div className="flex h-14 items-center border-b border-border px-3 gap-2">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-            <Mountain className="h-5 w-5 text-primary" />
+        {/* Logo */}
+        <div
+          className={cn(
+            'flex h-14 items-center border-b border-border/50 shrink-0',
+            collapsed && !mobileOpen ? 'justify-center' : 'px-4 gap-3',
+          )}
+        >
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/15 ring-1 ring-primary/25">
+            <Mountain className="h-4 w-4 text-primary" />
           </div>
           {(!collapsed || mobileOpen) && (
-            <span className="font-semibold tracking-tight text-sm flex-1">GeoAgent</span>
+            <span className="font-semibold text-sm tracking-tight flex-1 text-foreground">
+              GeoAgent
+            </span>
           )}
-          {/* Mobile close button */}
           {mobileOpen && (
             <button
               onClick={onMobileClose}
-              className="md:hidden p-1 rounded hover:bg-accent text-muted-foreground"
+              className="md:hidden p-1 rounded text-muted-foreground hover:text-foreground transition-colors"
             >
               <X className="h-4 w-4" />
             </button>
@@ -77,25 +88,27 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
         </div>
 
         {/* Nav items */}
-        <nav className="flex-1 space-y-0.5 p-2">
+        <nav className="flex-1 p-2 space-y-0.5">
           {navItems.map(({ href, label, icon: Icon }) => {
             const active = isActive(href);
             const item = (
               <Link
                 key={href}
                 href={href}
+                onClick={mobileOpen ? onMobileClose : undefined}
                 className={cn(
-                  'flex items-center gap-3 rounded-md px-2 py-2 text-sm font-medium transition-colors',
+                  'flex items-center gap-2.5 rounded-md text-sm font-medium transition-all duration-150 relative',
+                  collapsed && !mobileOpen ? 'justify-center px-0 py-2.5' : 'px-2.5 py-2',
                   active
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:bg-accent hover:text-foreground',
-                  collapsed && !mobileOpen && 'justify-center',
+                    ? 'nav-active text-primary'
+                    : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',
                 )}
               >
                 <Icon className="h-4 w-4 shrink-0" />
                 {(!collapsed || mobileOpen) && <span>{label}</span>}
               </Link>
             );
+
             if (collapsed && !mobileOpen) {
               return (
                 <Tooltip key={href}>
@@ -109,11 +122,17 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
         </nav>
 
         {/* User + sign out */}
-        <div className="border-t border-border p-2 space-y-1">
+        <div className="border-t border-border/50 p-2 space-y-1">
           {(!collapsed || mobileOpen) && user?.email && (
-            <p className="px-2 py-1 text-xs text-muted-foreground truncate">
-              {user.email}
-            </p>
+            <div className="flex items-center gap-2.5 px-2 py-1.5">
+              <UserAvatar email={user.email} />
+              <p className="text-xs text-muted-foreground truncate flex-1">{user.email}</p>
+            </div>
+          )}
+          {collapsed && !mobileOpen && (
+            <div className="flex justify-center py-1">
+              <UserAvatar email={user?.email} />
+            </div>
           )}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -122,12 +141,12 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
                 size="sm"
                 onClick={() => signOut()}
                 className={cn(
-                  'w-full text-muted-foreground hover:text-destructive hover:bg-destructive/10',
-                  collapsed && !mobileOpen ? 'justify-center px-0' : 'justify-start',
+                  'w-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors',
+                  collapsed && !mobileOpen ? 'justify-center px-0' : 'justify-start gap-2.5',
                 )}
               >
                 <LogOut className="h-4 w-4 shrink-0" />
-                {(!collapsed || mobileOpen) && <span className="ml-2">Cerrar sesión</span>}
+                {(!collapsed || mobileOpen) && <span>Cerrar sesión</span>}
               </Button>
             </TooltipTrigger>
             {collapsed && !mobileOpen && (
@@ -139,13 +158,9 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
         {/* Collapse toggle — desktop only */}
         <button
           onClick={() => setCollapsed((v) => !v)}
-          className="absolute -right-3 top-16 hidden md:flex h-6 w-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:text-foreground transition-colors"
+          className="absolute -right-3 top-[18px] hidden md:flex h-6 w-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:text-foreground hover:border-border/80 transition-all z-20"
         >
-          {collapsed ? (
-            <ChevronRight className="h-3 w-3" />
-          ) : (
-            <ChevronLeft className="h-3 w-3" />
-          )}
+          {collapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}
         </button>
       </aside>
     </TooltipProvider>

@@ -42,10 +42,29 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ProjectForm } from '@/components/forms/project-form';
+import { cn } from '@/lib/utils';
 import type { GeoProject } from '@geoagent/geo-shared/types';
 import type { ProjectFormData } from '@geoagent/geo-shared/validation';
 import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
+
+// Deterministic accent color based on project name hash
+const PROJECT_ACCENTS = [
+  { bg: 'bg-emerald-500/15', text: 'text-emerald-400', ring: 'ring-emerald-500/25' },
+  { bg: 'bg-blue-500/15',    text: 'text-blue-400',    ring: 'ring-blue-500/25'    },
+  { bg: 'bg-violet-500/15',  text: 'text-violet-400',  ring: 'ring-violet-500/25'  },
+  { bg: 'bg-amber-500/15',   text: 'text-amber-400',   ring: 'ring-amber-500/25'   },
+  { bg: 'bg-rose-500/15',    text: 'text-rose-400',    ring: 'ring-rose-500/25'    },
+  { bg: 'bg-cyan-500/15',    text: 'text-cyan-400',    ring: 'ring-cyan-500/25'    },
+  { bg: 'bg-orange-500/15',  text: 'text-orange-400',  ring: 'ring-orange-500/25'  },
+  { bg: 'bg-pink-500/15',    text: 'text-pink-400',    ring: 'ring-pink-500/25'    },
+];
+
+function getProjectAccent(name: string) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return PROJECT_ACCENTS[Math.abs(hash) % PROJECT_ACCENTS.length];
+}
 
 // Mini counter hook that doesn't require parent to pass down IDs
 function ProjectStats({ projectId }: { projectId: string }) {
@@ -144,64 +163,72 @@ export default function ProjectsPage() {
       {/* Project grid */}
       {!loading && projects.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {projects.map((project) => (
-            <Card
-              key={project.id}
-              className="group relative hover:border-primary/50 transition-colors"
-            >
-              {/* Context menu */}
-              <div className="absolute top-3 right-3 z-10">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setEditTarget(project)}>
-                      <Pencil className="h-4 w-4 mr-2" />
-                      Editar
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      className="text-destructive focus:text-destructive"
-                      onClick={() => setDeleteTarget(project)}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Eliminar
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+          {projects.map((project) => {
+            const accent = getProjectAccent(project.name);
+            const initials = project.name.slice(0, 2).toUpperCase();
+            return (
+              <Card
+                key={project.id}
+                className="group relative hover:border-border card-lift transition-all"
+              >
+                {/* Context menu */}
+                <div className="absolute top-3 right-3 z-10">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setEditTarget(project)}>
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Editar
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => setDeleteTarget(project)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Eliminar
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
 
-              <Link href={`/projects/${project.id}`}>
-                <CardHeader className="pb-2">
-                  <div className="flex items-start gap-3">
-                    <div className="rounded-lg bg-primary/10 p-2 shrink-0">
-                      <FolderOpen className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="min-w-0">
-                      <CardTitle className="text-base truncate">{project.name}</CardTitle>
-                      <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
-                        <MapPin className="h-3 w-3 shrink-0" />
-                        <span className="truncate">{project.location}</span>
+                <Link href={`/projects/${project.id}`}>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start gap-3">
+                      {/* Color-hashed project avatar */}
+                      <div className={cn(
+                        'flex h-9 w-9 rounded-lg items-center justify-center shrink-0 ring-1 text-sm font-bold select-none',
+                        accent.bg, accent.text, accent.ring,
+                      )}>
+                        {initials}
+                      </div>
+                      <div className="min-w-0 pr-6">
+                        <CardTitle className="text-base truncate">{project.name}</CardTitle>
+                        <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground">
+                          <MapPin className="h-3 w-3 shrink-0" />
+                          <span className="truncate">{project.location}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="line-clamp-2 text-xs mb-3">
-                    {project.description}
-                  </CardDescription>
-                  <ProjectStats projectId={project.id} />
-                </CardContent>
-              </Link>
-            </Card>
-          ))}
+                  </CardHeader>
+                  <CardContent>
+                    <CardDescription className="line-clamp-2 text-xs mb-3">
+                      {project.description}
+                    </CardDescription>
+                    <ProjectStats projectId={project.id} />
+                  </CardContent>
+                </Link>
+              </Card>
+            );
+          })}
         </div>
       )}
 

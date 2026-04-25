@@ -56,12 +56,12 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 const subNavItems = [
-  { href: 'stations', label: 'Estaciones', icon: Layers },
-  { href: 'drillholes', label: 'Sondajes', icon: Drill },
-  { href: 'map', label: 'Mapa', icon: Map },
-  { href: 'photos', label: 'Fotos', icon: Camera },
-  { href: 'export', label: 'Exportar', icon: Download },
-  { href: 'import', label: 'Importar', icon: Upload },
+  { href: 'stations',  label: 'Estaciones', icon: Layers,   desc: 'Puntos de muestreo'     },
+  { href: 'drillholes',label: 'Sondajes',   icon: Drill,    desc: 'Perforaciones y logs'   },
+  { href: 'map',       label: 'Mapa',       icon: Map,      desc: 'Vista georreferenciada' },
+  { href: 'photos',    label: 'Fotos',      icon: Camera,   desc: 'Galería del proyecto'   },
+  { href: 'export',    label: 'Exportar',   icon: Download, desc: 'PDF, Excel, GeoJSON'    },
+  { href: 'import',    label: 'Importar',   icon: Upload,   desc: 'CSV y Excel masivo'     },
 ];
 
 export default function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -268,15 +268,20 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         </div>
       )}
 
-      {/* Sub navigation */}
-      <div className="flex flex-wrap gap-2">
-        {subNavItems.map(({ href, label, icon: Icon }) => (
-          <Button key={href} variant="outline" asChild>
-            <Link href={`/projects/${id}/${href}`}>
-              <Icon className="h-4 w-4 mr-2" />
-              {label}
-            </Link>
-          </Button>
+      {/* Sub navigation — icon grid cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+        {subNavItems.map(({ href, label, icon: Icon, desc }) => (
+          <Link key={href} href={`/projects/${id}/${href}`}>
+            <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-3 hover:border-primary/30 hover:bg-primary/5 transition-all duration-150 card-lift group">
+              <div className="rounded-md bg-muted p-1.5 shrink-0 group-hover:bg-primary/10 transition-colors">
+                <Icon className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium leading-none">{label}</p>
+                <p className="text-[11px] text-muted-foreground mt-1 truncate">{desc}</p>
+              </div>
+            </div>
+          </Link>
         ))}
       </div>
 
