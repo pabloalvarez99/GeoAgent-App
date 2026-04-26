@@ -28,9 +28,15 @@
 2. **NO usar `orderBy('updatedAt')` en Firestore** — excluye silenciosamente docs de Android
 3. **AdvancedMarker requiere `mapId`** — sin él, los marcadores del mapa no renderizan
 
+**⚠️ PRIORIDAD: WEB PRIMERO**
+- Todo trabajo nuevo va en `web/`. Android (`app/`) solo si el usuario lo pide explícitamente.
+- Si el usuario no especifica plataforma → asumir web.
+
 **Próximos pasos sugeridos:**
-1. Agregar secretos GitHub faltantes (ver arriba)
-2. Verificar Google Search Console una vez agregada la env var
+1. Verificar web funciona end-to-end (auth → datos → exportaciones → fotos)
+2. Agregar secretos GitHub faltantes (`FIREBASE_ANDROID_APP_ID`, `FIREBASE_TOKEN`)
+3. Verificar Google Search Console una vez agregada la env var
+4. Fase 8: Electron Desktop (si el usuario lo prioriza)
 
 ---
 

@@ -67,7 +67,7 @@ export function ProjectForm({
         {errors.location && <p className="text-xs text-destructive">{errors.location.message}</p>}
       </div>
 
-      <div className="flex justify-end gap-2 pt-2">
+      <div className="flex justify-end gap-2 pt-2 border-t border-border">
         <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
           Cancelar
         </Button>

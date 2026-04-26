@@ -1,3 +1,14 @@
+## ⚠️ PRIORIDAD DEL PROYECTO — LEER PRIMERO
+
+**WEB PRIMERO.** El trabajo activo es la plataforma web (`web/`).
+
+- Tareas en `app/` (Android) → **SOLO si el usuario pide explícitamente algo de Android**.
+- `app/` tiene código completo y funcional. No tocar salvo instrucción directa.
+- Toda nueva funcionalidad va en `web/apps/web/` o `web/packages/`.
+- Si el usuario no especifica plataforma → asumir web.
+
+---
+
 ## Bitácora — Regla Obligatoria
 
 **SIEMPRE actualiza `bitacora.md` al final de cada sesión, después de cada deploy y después de cualquier cambio significativo.**

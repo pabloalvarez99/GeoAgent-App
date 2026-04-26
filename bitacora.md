@@ -12,7 +12,9 @@
 
 **Repo:** `C:\Users\Admin\Documents\GitHub\GeoAgent-App`
 **Backend:** Firebase (Firestore + Auth + Storage) — proyecto ID: `geoagent-app`
-**Estado Android:** Completo y funcional. NO modificar el directorio `app/`.
+**Estado Android:** Completo y funcional. NO modificar el directorio `app/` salvo instrucción explícita del usuario.
+
+> ⚠️ **PRIORIDAD: WEB PRIMERO.** Todo trabajo activo va en `web/`. Android solo cuando el usuario lo solicita directamente.
 
 ### Objetivo de esta tarea
 Crear una **plataforma web + app Windows (Electron)** que use el **mismo Firebase** que la app Android, logrando sincronización en tiempo real automática entre Android y Web/Desktop.
