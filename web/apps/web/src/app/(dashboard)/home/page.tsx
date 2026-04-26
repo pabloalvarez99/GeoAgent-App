@@ -11,7 +11,6 @@ import {
   ArrowRight,
   Plus,
   MapPin,
-  Mountain,
   Download,
   Smartphone,
   Monitor,
@@ -468,8 +467,11 @@ export default function DashboardPage() {
         {!loading && projects.length === 0 && (
           <Card className="border-dashed">
             <CardContent className="flex flex-col items-center justify-center py-12 gap-4 text-center">
-              <div className="rounded-full bg-muted p-5">
-                <Mountain className="h-8 w-8 text-muted-foreground" />
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 ring-1 ring-primary/20">
+                <svg width={36} height={36} viewBox="0 0 512 512" fill="none" aria-hidden>
+                  <polygon points="256,88 420,348 92,348" stroke="#22c55e" strokeWidth="52" strokeLinejoin="round" fill="rgba(34,197,94,0.07)" />
+                  <circle cx="256" cy="88" r="36" fill="#22c55e" />
+                </svg>
               </div>
               <div>
                 <p className="font-medium">Sin proyectos todavía</p>
