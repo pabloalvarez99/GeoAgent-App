@@ -45,11 +45,12 @@ interface ExportCardProps {
   status: ExportStatus;
   onExport: () => void;
   accent: string;
+  accentBorder?: string;
 }
 
-function ExportCard({ icon: Icon, title, description, formats, status, onExport, accent }: ExportCardProps) {
+function ExportCard({ icon: Icon, title, description, formats, status, onExport, accent, accentBorder }: ExportCardProps) {
   return (
-    <Card className="hover:border-border/80 transition-colors card-lift">
+    <Card className={`hover:border-border/80 transition-colors card-lift ${accentBorder ?? ''}`}>
       <CardHeader className="pb-3">
         <div className="flex items-center gap-3">
           <div className={`p-2.5 rounded-lg ${accent}`}>
@@ -286,6 +287,7 @@ export default function ExportPage({ params }: { params: Promise<{ id: string }>
       status: pdfStatus,
       onExport: handlePDF,
       accent: 'bg-red-500/20',
+      accentBorder: 'stat-accent-rose',
     },
     {
       icon: Sheet,
@@ -295,6 +297,7 @@ export default function ExportPage({ params }: { params: Promise<{ id: string }>
       status: excelStatus,
       onExport: handleExcel,
       accent: 'bg-green-600/20',
+      accentBorder: 'stat-accent-green',
     },
     {
       icon: Map,
@@ -304,6 +307,7 @@ export default function ExportPage({ params }: { params: Promise<{ id: string }>
       status: geojsonStatus,
       onExport: handleGeoJSON,
       accent: 'bg-blue-500/20',
+      accentBorder: 'stat-accent-blue',
     },
     {
       icon: FileSpreadsheet,
@@ -313,6 +317,7 @@ export default function ExportPage({ params }: { params: Promise<{ id: string }>
       status: csvStatus,
       onExport: handleCSV,
       accent: 'bg-amber-500/20',
+      accentBorder: 'stat-accent-amber',
     },
   ];
 
