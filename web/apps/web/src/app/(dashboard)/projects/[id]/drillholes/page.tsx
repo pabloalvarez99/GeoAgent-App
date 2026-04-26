@@ -226,7 +226,8 @@ export default function DrillHolesPage({ params }: { params: Promise<{ id: strin
                   <th>Estado</th>
                   <th className="hidden md:table-cell">Profundidad</th>
                   <th className="hidden lg:table-cell">Progreso</th>
-                  <th className="hidden xl:table-cell">Az / Inc</th>
+                  <th className="hidden xl:table-cell">Geólogo</th>
+                  <th className="hidden 2xl:table-cell">Az / Inc</th>
                   <th className="text-right w-16"></th>
                 </tr>
               </thead>
@@ -279,7 +280,10 @@ export default function DrillHolesPage({ params }: { params: Promise<{ id: strin
                           <span className="text-xs text-muted-foreground">—</span>
                         )}
                       </td>
-                      <td className="hidden xl:table-cell font-mono text-xs text-muted-foreground">
+                      <td className="hidden xl:table-cell text-xs text-muted-foreground">
+                        {dh.geologist}
+                      </td>
+                      <td className="hidden 2xl:table-cell font-mono text-xs text-muted-foreground">
                         {dh.azimuth}° / {dh.inclination}°
                       </td>
                       <td className="text-right" onClick={(e) => e.stopPropagation()}>
