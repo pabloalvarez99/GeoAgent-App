@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 import { Loader2, MapPin } from 'lucide-react';
 import { useState } from 'react';
 
@@ -79,34 +80,39 @@ export function DrillHoleForm({ defaultValues, onSubmit, onCancel }: DrillHoleFo
 
   return (
     <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <Label>ID del sondaje *</Label>
-          <Input placeholder="SDH-001" {...register('holeId')} />
-          {errors.holeId && <p className="text-xs text-destructive">{errors.holeId.message}</p>}
+      {/* Identificación */}
+      <div className="space-y-4">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Identificación</p>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label>ID del sondaje *</Label>
+            <Input placeholder="SDH-001" {...register('holeId')} />
+            {errors.holeId && <p className="text-xs text-destructive">{errors.holeId.message}</p>}
+          </div>
+          <div className="space-y-1.5">
+            <Label>Tipo *</Label>
+            <Select onValueChange={(v) => setValue('type', v)} value={watch('type')}>
+              <SelectTrigger><SelectValue placeholder="Seleccionar tipo" /></SelectTrigger>
+              <SelectContent>
+                {DRILL_HOLE_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {errors.type && <p className="text-xs text-destructive">{errors.type.message}</p>}
+          </div>
         </div>
         <div className="space-y-1.5">
-          <Label>Tipo *</Label>
-          <Select onValueChange={(v) => setValue('type', v)} value={watch('type')}>
-            <SelectTrigger><SelectValue placeholder="Seleccionar tipo" /></SelectTrigger>
-            <SelectContent>
-              {DRILL_HOLE_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          {errors.type && <p className="text-xs text-destructive">{errors.type.message}</p>}
+          <Label>Geólogo *</Label>
+          <Input placeholder="Nombre del geólogo" {...register('geologist')} />
+          {errors.geologist && <p className="text-xs text-destructive">{errors.geologist.message}</p>}
         </div>
       </div>
 
-      <div className="space-y-1.5">
-        <Label>Geólogo *</Label>
-        <Input placeholder="Nombre del geólogo" {...register('geologist')} />
-        {errors.geologist && <p className="text-xs text-destructive">{errors.geologist.message}</p>}
-      </div>
+      <Separator />
 
-      {/* GPS */}
-      <div className="space-y-2">
+      {/* Ubicación GPS */}
+      <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <Label>Collar GPS *</Label>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Collar GPS</p>
           <Button type="button" variant="outline" size="sm" onClick={handleGetLocation} disabled={gettingLocation}>
             {gettingLocation ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <MapPin className="h-3.5 w-3.5 mr-1.5" />}
             Capturar GPS
@@ -127,67 +133,73 @@ export function DrillHoleForm({ defaultValues, onSubmit, onCancel }: DrillHoleFo
           </div>
         </div>
         {hasCoords && (
-          <p className="text-xs text-muted-foreground font-mono">{latitude.toFixed(6)}, {longitude.toFixed(6)}</p>
+          <p className="text-xs text-muted-foreground font-mono bg-muted/30 rounded px-2 py-1">{latitude.toFixed(6)}, {longitude.toFixed(6)}</p>
         )}
         {errors.latitude && <p className="text-xs text-destructive">{errors.latitude.message}</p>}
       </div>
 
-      {/* Orientation */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <Label>Azimut (°) *</Label>
-          <Input type="number" min="0" max="360" step="0.1" placeholder="0–360" {...register('azimuth', { valueAsNumber: true })} />
-          {errors.azimuth && <p className="text-xs text-destructive">{errors.azimuth.message}</p>}
+      <Separator />
+
+      {/* Geometría y profundidad */}
+      <div className="space-y-4">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Geometría y profundidad</p>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label>Azimut (°) *</Label>
+            <Input type="number" min="0" max="360" step="0.1" placeholder="0–360" {...register('azimuth', { valueAsNumber: true })} />
+            {errors.azimuth && <p className="text-xs text-destructive">{errors.azimuth.message}</p>}
+          </div>
+          <div className="space-y-1.5">
+            <Label>Inclinación (°) *</Label>
+            <Input type="number" min="-90" max="0" step="0.1" placeholder="-90 a 0" {...register('inclination', { valueAsNumber: true })} />
+            {errors.inclination && <p className="text-xs text-destructive">{errors.inclination.message}</p>}
+          </div>
         </div>
-        <div className="space-y-1.5">
-          <Label>Inclinación (°) *</Label>
-          <Input type="number" min="-90" max="0" step="0.1" placeholder="-90 a 0" {...register('inclination', { valueAsNumber: true })} />
-          {errors.inclination && <p className="text-xs text-destructive">{errors.inclination.message}</p>}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label>Prof. planeada (m) *</Label>
+            <Input type="number" min="0" step="0.1" placeholder="0.0" {...register('plannedDepth', { valueAsNumber: true })} />
+            {errors.plannedDepth && <p className="text-xs text-destructive">{errors.plannedDepth.message}</p>}
+          </div>
+          <div className="space-y-1.5">
+            <Label>Prof. real (m)</Label>
+            <Input type="number" min="0" step="0.1" placeholder="—" {...register('actualDepth', { valueAsNumber: true, setValueAs: (v) => v === '' ? null : Number(v) })} />
+          </div>
         </div>
       </div>
 
-      {/* Depth */}
-      <div className="grid grid-cols-2 gap-4">
+      <Separator />
+
+      {/* Estado y fechas */}
+      <div className="space-y-4">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Estado y fechas</p>
         <div className="space-y-1.5">
-          <Label>Prof. planeada (m) *</Label>
-          <Input type="number" min="0" step="0.1" placeholder="0.0" {...register('plannedDepth', { valueAsNumber: true })} />
-          {errors.plannedDepth && <p className="text-xs text-destructive">{errors.plannedDepth.message}</p>}
+          <Label>Estado *</Label>
+          <Select onValueChange={(v) => setValue('status', v)} value={watch('status')}>
+            <SelectTrigger><SelectValue placeholder="Seleccionar estado" /></SelectTrigger>
+            <SelectContent>
+              {DRILL_HOLE_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          {errors.status && <p className="text-xs text-destructive">{errors.status.message}</p>}
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label>Fecha inicio</Label>
+            <Input type="date" {...register('startDate')} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Fecha fin</Label>
+            <Input type="date" {...register('endDate')} />
+          </div>
         </div>
         <div className="space-y-1.5">
-          <Label>Prof. real (m)</Label>
-          <Input type="number" min="0" step="0.1" placeholder="—" {...register('actualDepth', { valueAsNumber: true, setValueAs: (v) => v === '' ? null : Number(v) })} />
+          <Label>Notas</Label>
+          <Textarea rows={2} placeholder="Observaciones adicionales..." {...register('notes')} />
         </div>
       </div>
 
-      {/* Dates */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <Label>Fecha inicio</Label>
-          <Input type="date" {...register('startDate')} />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Fecha fin</Label>
-          <Input type="date" {...register('endDate')} />
-        </div>
-      </div>
-
-      <div className="space-y-1.5">
-        <Label>Estado *</Label>
-        <Select onValueChange={(v) => setValue('status', v)} value={watch('status')}>
-          <SelectTrigger><SelectValue placeholder="Seleccionar estado" /></SelectTrigger>
-          <SelectContent>
-            {DRILL_HOLE_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        {errors.status && <p className="text-xs text-destructive">{errors.status.message}</p>}
-      </div>
-
-      <div className="space-y-1.5">
-        <Label>Notas</Label>
-        <Textarea rows={2} placeholder="Observaciones adicionales..." {...register('notes')} />
-      </div>
-
-      <div className="flex justify-end gap-2 pt-2">
+      <div className="flex justify-end gap-2 pt-2 border-t border-border">
         <Button type="button" variant="outline" onClick={onCancel} disabled={submitting}>Cancelar</Button>
         <Button type="submit" disabled={submitting}>
           {submitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
