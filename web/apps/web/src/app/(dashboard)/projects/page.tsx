@@ -11,7 +11,6 @@ import {
   MoreVertical,
   Pencil,
   Trash2,
-  Mountain,
 } from 'lucide-react';
 import { useProjects } from '@/lib/hooks/use-projects';
 import { useStations } from '@/lib/hooks/use-stations';
@@ -153,18 +152,21 @@ export default function ProjectsPage() {
       {/* Empty state */}
       {!loading && projects.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
-          <div className="rounded-full bg-muted p-6">
-            <Mountain className="h-10 w-10 text-muted-foreground" />
+          <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10 ring-1 ring-primary/20">
+            <svg width={44} height={44} viewBox="0 0 512 512" fill="none" aria-hidden>
+              <polygon points="256,88 420,348 92,348" stroke="#22c55e" strokeWidth="52" strokeLinejoin="round" fill="rgba(34,197,94,0.07)" />
+              <circle cx="256" cy="88" r="36" fill="#22c55e" />
+            </svg>
           </div>
           <div>
-            <p className="font-medium">Sin proyectos todavía</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Crea tu primer proyecto de geología de campo
+            <p className="font-medium text-lg">Sin proyectos todavía</p>
+            <p className="text-sm text-muted-foreground mt-1 max-w-xs">
+              Crea tu primer proyecto para comenzar a registrar datos de geología de campo
             </p>
           </div>
-          <Button onClick={() => setCreateOpen(true)}>
+          <Button onClick={() => setCreateOpen(true)} size="lg">
             <Plus className="h-4 w-4 mr-2" />
-            Crear proyecto
+            Crear primer proyecto
           </Button>
         </div>
       )}
