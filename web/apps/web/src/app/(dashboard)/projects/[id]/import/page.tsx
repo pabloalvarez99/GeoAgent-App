@@ -3,7 +3,7 @@
 import { use, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { read, utils } from 'xlsx';
-import { ArrowLeft, Upload, FileSpreadsheet, CheckCircle2, XCircle, Loader2, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Upload, FileSpreadsheet, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/lib/firebase/auth';
 import { createStation, createDrillHole } from '@/lib/firebase/firestore';
 import { Button } from '@/components/ui/button';
@@ -232,7 +232,7 @@ export default function ImportPage({ params }: { params: Promise<{ id: string }>
               />
               {status === 'parsing' ? (
                 <div className="flex flex-col items-center gap-3">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  <div className="skeleton h-12 w-12 rounded-full" />
                   <p className="text-sm text-muted-foreground">Procesando archivo...</p>
                 </div>
               ) : (
@@ -334,12 +334,29 @@ export default function ImportPage({ params }: { params: Promise<{ id: string }>
           {/* Progreso de importación */}
           {status === 'importing' && (
             <Card>
-              <CardContent className="flex flex-col items-center gap-3 py-10">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-sm font-medium">
-                  Importando... {importedCount} / {parseResult?.valid.length}
-                </p>
-                <p className="text-xs text-muted-foreground">No cierres esta ventana</p>
+              <CardContent className="flex flex-col items-center gap-4 py-10">
+                {(() => {
+                  const total = parseResult?.valid.length ?? 0;
+                  const pct = total > 0 ? Math.round((importedCount / total) * 100) : 0;
+                  return (
+                    <>
+                      <div className="w-full max-w-xs space-y-2">
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>Importando registros...</span>
+                          <span className="font-mono">{importedCount} / {total}</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-muted overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-primary transition-all duration-300"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <p className="text-center text-xs text-muted-foreground font-mono">{pct}%</p>
+                      </div>
+                      <p className="text-xs text-muted-foreground">No cierres esta ventana</p>
+                    </>
+                  );
+                })()}
               </CardContent>
             </Card>
           )}
