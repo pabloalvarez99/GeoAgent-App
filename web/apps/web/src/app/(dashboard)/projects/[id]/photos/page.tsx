@@ -59,11 +59,11 @@ function formatDate(value: string | null | undefined): string {
 // Skeleton card shown while photos are loading
 function SkeletonCard() {
   return (
-    <div className="rounded-lg border border-border bg-card overflow-hidden animate-pulse">
-      <div className="aspect-square bg-muted" />
+    <div className="rounded-lg border border-border overflow-hidden">
+      <div className="skeleton aspect-square" />
       <div className="p-3 space-y-2">
-        <div className="h-3 bg-muted rounded w-3/4" />
-        <div className="h-3 bg-muted rounded w-1/2" />
+        <div className="skeleton h-3 w-3/4 rounded" />
+        <div className="skeleton h-3 w-1/2 rounded" />
       </div>
     </div>
   );
