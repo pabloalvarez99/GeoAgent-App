@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import type { GeoDrillInterval } from '@geoagent/geo-shared/types';
 
 // Rock group → hue for SVG fill
@@ -35,6 +36,8 @@ interface StratigraphicColumnProps {
 }
 
 export function StratigraphicColumn({ intervals, totalDepth }: StratigraphicColumnProps) {
+  const [tooltip, setTooltip] = useState<{ interval: GeoDrillInterval; x: number; y: number } | null>(null);
+
   if (intervals.length === 0 || totalDepth <= 0) return null;
 
   const sorted = [...intervals].sort((a, b) => a.fromDepth - b.fromDepth);
@@ -60,7 +63,7 @@ export function StratigraphicColumn({ intervals, totalDepth }: StratigraphicColu
   const svgW = depthLabelW + colW + rqdW + recW + labelW + 12;
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto relative">
       <div className="text-xs text-muted-foreground mb-2 flex items-center gap-4">
         <span className="flex items-center gap-1.5">
           <span className="inline-block w-3 h-3 rounded-sm" style={{ background: '#f97316' }} /> Ignea
@@ -78,6 +81,7 @@ export function StratigraphicColumn({ intervals, totalDepth }: StratigraphicColu
         className="font-mono select-none"
         style={{ fontSize: 10 }}
         aria-label="Columna estratigráfica"
+        onMouseLeave={() => setTooltip(null)}
       >
         {/* Column header */}
         <text x={depthLabelW + colW / 2} y={10} textAnchor="middle" className="fill-muted-foreground" style={{ fontSize: 9 }}>Litología</text>
@@ -107,7 +111,19 @@ export function StratigraphicColumn({ intervals, totalDepth }: StratigraphicColu
           const midY = (y1 + y2) / 2;
 
           return (
-            <g key={interval.id}>
+            <g
+              key={interval.id}
+              onMouseEnter={(e) => {
+                const svgRect = (e.currentTarget.closest('svg') as SVGSVGElement).getBoundingClientRect();
+                const containerRect = (e.currentTarget.closest('.overflow-x-auto') as HTMLElement).getBoundingClientRect();
+                setTooltip({ interval, x: e.clientX - containerRect.left + 8, y: e.clientY - containerRect.top - 8 });
+              }}
+              onMouseMove={(e) => {
+                const containerRect = (e.currentTarget.closest('.overflow-x-auto') as HTMLElement).getBoundingClientRect();
+                setTooltip((t) => t ? { ...t, x: e.clientX - containerRect.left + 8, y: e.clientY - containerRect.top - 8 } : null);
+              }}
+              style={{ cursor: 'pointer' }}
+            >
               {/* Rock type fill */}
               <rect x={depthLabelW} y={y1} width={colW} height={h} fill={color} fillOpacity={0.7} stroke="#18181b" strokeWidth={0.5} />
 
@@ -162,6 +178,25 @@ export function StratigraphicColumn({ intervals, totalDepth }: StratigraphicColu
         {/* Depth label at bottom */}
         <text x={depthLabelW - 6} y={yOf(totalDepth) + 3} textAnchor="end" fill="#71717a" style={{ fontSize: 9 }}>{totalDepth}</text>
       </svg>
+
+      {/* Tooltip */}
+      {tooltip && (
+        <div
+          className="absolute z-50 pointer-events-none rounded-md border border-border bg-popover shadow-lg px-3 py-2 text-xs max-w-[200px]"
+          style={{ left: tooltip.x, top: tooltip.y }}
+        >
+          <p className="font-semibold text-foreground">{tooltip.interval.fromDepth.toFixed(1)}–{tooltip.interval.toDepth.toFixed(1)} m</p>
+          <p className="text-muted-foreground mt-0.5">{tooltip.interval.rockType}</p>
+          <p className="text-muted-foreground">{tooltip.interval.color} · {tooltip.interval.texture}</p>
+          {tooltip.interval.alteration && <p className="text-muted-foreground">{tooltip.interval.alteration}</p>}
+          {tooltip.interval.rqd != null && (
+            <p className="text-blue-400 font-mono mt-1">RQD: {tooltip.interval.rqd}%</p>
+          )}
+          {tooltip.interval.recovery != null && (
+            <p className="text-green-400 font-mono">Rec: {tooltip.interval.recovery}%</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
