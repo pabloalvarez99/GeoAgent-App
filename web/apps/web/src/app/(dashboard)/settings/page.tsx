@@ -1,6 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt(): void;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
@@ -13,6 +18,8 @@ import {
   RefreshCw,
   CheckCircle2,
   Download,
+  Smartphone,
+  Keyboard,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/firebase/auth';
@@ -286,7 +293,7 @@ export default function SettingsPage() {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
-            <Shield className="h-4 w-4 text-muted-foreground" />
+            <Keyboard className="h-4 w-4 text-muted-foreground" />
             <CardTitle className="text-base">Atajos de teclado</CardTitle>
           </div>
           <CardDescription>Accesos rápidos disponibles en toda la aplicación</CardDescription>
@@ -313,6 +320,40 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Section 5: Instalar aplicación */}
+      {!isStandalone && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Smartphone className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-base">Instalar GeoAgent</CardTitle>
+            </div>
+            <CardDescription>
+              Instala GeoAgent como aplicación de escritorio para acceso rápido sin navegador
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-start gap-2.5 rounded-md bg-muted/50 p-3 text-sm">
+              <Download className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+              <p className="text-muted-foreground leading-relaxed">
+                GeoAgent es una Progressive Web App (PWA). Instálala para acceder sin
+                conexión, con un ícono en el escritorio y experiencia de app nativa.
+              </p>
+            </div>
+            {deferredPrompt ? (
+              <Button onClick={handleInstall} className="gap-2">
+                <Download className="h-4 w-4" />
+                Instalar GeoAgent
+              </Button>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                La instalación no está disponible en este navegador o ya está instalada.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

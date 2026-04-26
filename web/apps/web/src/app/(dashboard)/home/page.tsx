@@ -220,6 +220,30 @@ export default function DashboardPage() {
 
   const hasAnalyticsData = lithologies.length > 0 || drillHoles.length > 0 || stations.length > 0 || structuralData.length > 0;
 
+  // ── Actividad reciente: últimas 8 entradas (estaciones + sondajes) ──────────
+  const recentActivity = useMemo(() => {
+    const toSeconds = (v: any): number => {
+      if (!v) return 0;
+      if (typeof v === 'object' && 'seconds' in v) return v.seconds;
+      if (typeof v === 'string') return new Date(v).getTime() / 1000;
+      return 0;
+    };
+    const items = [
+      ...stations.map((s) => ({ type: 'station' as const, id: s.id, label: s.code, projectId: s.projectId, ts: toSeconds(s.updatedAt) })),
+      ...drillHoles.map((d) => ({ type: 'drillhole' as const, id: d.id, label: d.holeId, projectId: d.projectId, ts: toSeconds(d.updatedAt) })),
+    ];
+    return items.sort((a, b) => b.ts - a.ts).slice(0, 8);
+  }, [stations, drillHoles]);
+
+  function timeAgo(seconds: number): string {
+    if (!seconds) return '—';
+    const diff = Math.floor(Date.now() / 1000) - seconds;
+    if (diff < 60) return 'hace un momento';
+    if (diff < 3600) return `hace ${Math.floor(diff / 60)} min`;
+    if (diff < 86400) return `hace ${Math.floor(diff / 3600)} h`;
+    return `hace ${Math.floor(diff / 86400)} día${Math.floor(diff / 86400) !== 1 ? 's' : ''}`;
+  }
+
   return (
     <div className="space-y-8">
       {/* Welcome header */}
@@ -441,6 +465,48 @@ export default function DashboardPage() {
               </Card>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Recent activity */}
+      {!dataLoading && recentActivity.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-base font-semibold">Actividad reciente</h2>
+          </div>
+          <Card>
+            <CardContent className="p-0 divide-y divide-border">
+              {recentActivity.map((item) => {
+                const project = projects.find((p) => p.id === item.projectId);
+                return (
+                  <Link
+                    key={`${item.type}-${item.id}`}
+                    href={item.type === 'station'
+                      ? `/projects/${item.projectId}/stations/${item.id}`
+                      : `/projects/${item.projectId}/drillholes/${item.id}`}
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors"
+                  >
+                    <div className="rounded-md bg-muted p-1.5 shrink-0">
+                      {item.type === 'station'
+                        ? <Layers className="h-3.5 w-3.5 text-blue-400" />
+                        : <Drill className="h-3.5 w-3.5 text-purple-400" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate font-mono">{item.label}</p>
+                      {project && (
+                        <p className="text-xs text-muted-foreground truncate">{project.name}</p>
+                      )}
+                    </div>
+                    <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
+                      {timeAgo(item.ts)}
+                    </span>
+                    <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
+                  </Link>
+                );
+              })}
+            </CardContent>
+          </Card>
         </div>
       )}
 

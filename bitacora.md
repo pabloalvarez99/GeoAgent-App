@@ -1132,3 +1132,50 @@ Todos los formularios ahora tienen secciones visualmente separadas con `<Separat
 
 **Archivos creados:** `projects/[id]/analytics/page.tsx`
 **Archivos modificados:** `projects/[id]/page.tsx`, `projects/[id]/import/page.tsx`, `projects/[id]/map/page.tsx`, `components/drillhole/stratigraphic-column.tsx`, `drillholes/[dhId]/page.tsx`, `web/apps/desktop/package.json`
+
+---
+
+## 2026-04-26 — 5 mejoras web ronda 2 (sesión continuada)
+
+### Feature 1: Status filter pills en lista de sondajes
+- **Modificado:** `projects/[id]/drillholes/page.tsx`
+- Pills clickeables para filtrar por estado (En Progreso / Completado / Abandonado / Suspendido)
+- URL param `?status=` — synced con router, persistente en navegación
+- Pill "Todos" + una pill por estado único con conteo
+- Filter se combina (AND) con búsqueda por texto existente
+- Contador inferior muestra "N de M sondajes" cuando hay filtro activo
+
+### Feature 2: Settings — PWA install card + Keyboard icon fix
+- **Modificado:** `settings/page.tsx`
+- Nueva Card (Sección 5): "Instalar GeoAgent" — usa `deferredPrompt` y `handleInstall` ya definidos pero sin UI
+- Muestra botón "Instalar GeoAgent" cuando `deferredPrompt` disponible, mensaje fallback si no
+- Card se oculta si app ya está instalada como standalone (`isStandalone`)
+- Fix: ícono de Atajos de teclado cambiado de `Shield` a `Keyboard` (correcto semánticamente)
+- `BeforeInstallPromptEvent` interface declarada explícitamente (fix pre-existente)
+
+### Feature 3: Feed de actividad reciente en Home
+- **Modificado:** `home/page.tsx`
+- `recentActivity` useMemo: merge de `stations` + `drillHoles` ordenados por `updatedAt` desc, slice 8
+- Helper `timeAgo(seconds)`: formato relativo en español (hace X min/h/día)
+- Sección "Actividad reciente" antes de "Proyectos recientes": lista card con ícono de tipo, label monospace, nombre de proyecto, tiempo relativo, flecha
+- Solo renderiza si `!dataLoading && recentActivity.length > 0`
+
+### Feature 4: Lightbox de fotos — navegación por teclado + flechas + descarga
+- **Modificado:** `projects/[id]/photos/page.tsx`
+- `useEffect` con listener `keydown` para `ArrowLeft`/`ArrowRight` — cicla entre fotos con URL cargada
+- `handleDownload()`: descarga via `<a download>` con nombre del archivo
+- Botón "Descargar" en footer del lightbox (junto a "Eliminar")
+- Flechas `ChevronLeft`/`ChevronRight` superpuestas en la imagen (solo visibles con 2+ fotos cargadas)
+- Escape ya manejado por `onOpenChange` del Dialog
+
+### Feature 5: Geologist filter pills en lista de estaciones
+- **Modificado:** `projects/[id]/stations/page.tsx`
+- Pills clickeables por geólogo único con conteo, URL param `?geologist=`
+- Pill "Todos" + pill por geólogo (con ícono `User`)
+- Filter AND-combinado con búsqueda por texto
+- Contador inferior muestra "N de M estaciones" cuando hay filtro activo
+- Solo visible si hay 2+ geólogos distintos en el proyecto
+
+**Archivos modificados:** `drillholes/page.tsx`, `settings/page.tsx`, `home/page.tsx`, `photos/page.tsx`, `stations/page.tsx`
+
+*Última actualización: 2026-04-26 — 10 features web completados en esta sesión. Stack completo y funcional.*

@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -59,6 +59,12 @@ export default function DrillHolesPage({ params }: { params: Promise<{ id: strin
 
   const search = searchParams.get('q') ?? '';
   const sort = (searchParams.get('sort') as SortKey) ?? 'holeId';
+  const statusFilter = searchParams.get('status') ?? '';
+
+  const allStatuses = useMemo(
+    () => [...new Set(drillHoles.map((d) => d.status))].sort(),
+    [drillHoles],
+  );
 
   const [editTarget, setEditTarget] = useState<GeoDrillHole | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<GeoDrillHole | null>(null);
@@ -72,10 +78,11 @@ export default function DrillHolesPage({ params }: { params: Promise<{ id: strin
   const filtered = drillHoles
     .filter(
       (d) =>
-        !search ||
-        d.holeId.toLowerCase().includes(search.toLowerCase()) ||
-        d.geologist.toLowerCase().includes(search.toLowerCase()) ||
-        d.type.toLowerCase().includes(search.toLowerCase()),
+        (!search ||
+          d.holeId.toLowerCase().includes(search.toLowerCase()) ||
+          d.geologist.toLowerCase().includes(search.toLowerCase()) ||
+          d.type.toLowerCase().includes(search.toLowerCase())) &&
+        (!statusFilter || d.status === statusFilter),
     )
     .sort((a, b) => {
       if (sort === 'depth_desc') return (b.actualDepth ?? b.plannedDepth) - (a.actualDepth ?? a.plannedDepth);
@@ -159,6 +166,46 @@ export default function DrillHolesPage({ params }: { params: Promise<{ id: strin
         );
       })()}
 
+      {/* Status filter pills */}
+      {!loading && allStatuses.length > 1 && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => updateParam('status', '')}
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
+              !statusFilter
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'bg-transparent text-muted-foreground border-border hover:border-primary/50 hover:text-foreground'
+            }`}
+          >
+            Todos
+            <span className="font-mono">{drillHoles.length}</span>
+          </button>
+          {allStatuses.map((st) => {
+            const count = drillHoles.filter((d) => d.status === st).length;
+            const active = statusFilter === st;
+            return (
+              <button
+                key={st}
+                onClick={() => updateParam('status', active ? '' : st)}
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
+                  active
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-transparent text-muted-foreground border-border hover:border-primary/50 hover:text-foreground'
+                }`}
+              >
+                <StatusBadge
+                  variant={getDrillStatusVariant(st)}
+                  label={st}
+                  pulse={st === 'En Progreso'}
+                  size="sm"
+                />
+                <span className="font-mono">{count}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Search + Sort */}
       <div className="flex gap-2">
         <div className="relative flex-1">
@@ -205,7 +252,7 @@ export default function DrillHolesPage({ params }: { params: Promise<{ id: strin
         <div className="flex flex-col items-center gap-3 py-16 text-center">
           <Drill className="h-10 w-10 text-muted-foreground/40" />
           <p className="text-muted-foreground">
-            {search ? 'Sin resultados para la búsqueda' : 'No hay sondajes registrados'}
+            {search || statusFilter ? 'Sin resultados para los filtros aplicados' : 'No hay sondajes registrados'}
           </p>
           {!search && (
             <Button asChild size="sm">
@@ -314,7 +361,9 @@ export default function DrillHolesPage({ params }: { params: Promise<{ id: strin
             </table>
           </div>
           <p className="text-xs text-muted-foreground text-right">
-            {filtered.length} sondaje{filtered.length !== 1 ? 's' : ''}
+            {filtered.length === drillHoles.length
+              ? `${filtered.length} sondaje${filtered.length !== 1 ? 's' : ''}`
+              : `${filtered.length} de ${drillHoles.length} sondaje${drillHoles.length !== 1 ? 's' : ''}`}
           </p>
         </div>
       )}

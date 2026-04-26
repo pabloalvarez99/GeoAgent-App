@@ -1,8 +1,9 @@
 {
   "name": "GeoAgent",
   "short_name": "GeoAgent",
-  "description": "Plataforma de administración geológica de campo",
-  "start_url": "/home",
+  "description": "Plataforma profesional de gestión de datos geológicos de campo",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#09090b",
   "theme_color": "#22c55e",

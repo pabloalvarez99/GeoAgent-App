@@ -20,6 +20,9 @@ import {
   MapPin,
   CalendarDays,
   Upload,
+  Download,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -170,6 +173,24 @@ export default function ProjectPhotosPage({ params }: { params: Promise<{ id: st
     return () => { cancelled = true; };
   }, [photos]);
 
+  // Keyboard navigation in lightbox
+  useEffect(() => {
+    if (!lightboxPhoto) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+        const visiblePhotos = photos.filter((p) => photoUrls[p.id]);
+        const idx = visiblePhotos.findIndex((p) => p.id === lightboxPhoto.id);
+        if (idx === -1) return;
+        const nextIdx = e.key === 'ArrowRight'
+          ? (idx + 1) % visiblePhotos.length
+          : (idx - 1 + visiblePhotos.length) % visiblePhotos.length;
+        setLightboxPhoto(visiblePhotos[nextIdx]);
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [lightboxPhoto, photos, photoUrls]);
+
   async function handleDelete() {
     if (!deleteTarget) return;
     setDeleting(true);
@@ -196,6 +217,18 @@ export default function ProjectPhotosPage({ params }: { params: Promise<{ id: st
       setDeleting(false);
       setDeleteTarget(null);
     }
+  }
+
+  function handleDownload() {
+    if (!lightboxUrl || !lightboxPhoto) return;
+    const a = document.createElement('a');
+    a.href = lightboxUrl;
+    a.download = lightboxPhoto.fileName || `foto_${lightboxPhoto.id}.jpg`;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   }
 
   const lightboxUrl = lightboxPhoto ? photoUrls[lightboxPhoto.id] : undefined;
@@ -370,6 +403,35 @@ export default function ProjectPhotosPage({ params }: { params: Promise<{ id: st
 
           {/* Full-size image */}
           <div className="relative w-full" style={{ minHeight: '60vh' }}>
+            {/* Nav arrows — only shown when multiple photos have loaded URLs */}
+            {photos.filter((p) => photoUrls[p.id]).length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const visible = photos.filter((p) => photoUrls[p.id]);
+                    const idx = visible.findIndex((p) => p.id === lightboxPhoto?.id);
+                    setLightboxPhoto(visible[(idx - 1 + visible.length) % visible.length]);
+                  }}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 z-10 rounded-full bg-black/60 backdrop-blur-sm p-2 text-white hover:bg-black/80 transition-colors"
+                  aria-label="Foto anterior"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const visible = photos.filter((p) => photoUrls[p.id]);
+                    const idx = visible.findIndex((p) => p.id === lightboxPhoto?.id);
+                    setLightboxPhoto(visible[(idx + 1) % visible.length]);
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 z-10 rounded-full bg-black/60 backdrop-blur-sm p-2 text-white hover:bg-black/80 transition-colors"
+                  aria-label="Foto siguiente"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </>
+            )}
             {lightboxUrl ? (
               <Image
                 src={lightboxUrl}
@@ -401,17 +463,29 @@ export default function ProjectPhotosPage({ params }: { params: Promise<{ id: st
                   </span>
                 )}
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-destructive hover:bg-destructive hover:text-destructive-foreground h-7 shrink-0"
-                onClick={() => {
-                  setDeleteTarget(lightboxPhoto);
-                }}
-              >
-                <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-                Eliminar
-              </Button>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7"
+                  onClick={handleDownload}
+                  disabled={!lightboxUrl}
+                >
+                  <Download className="h-3.5 w-3.5 mr-1.5" />
+                  Descargar
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:bg-destructive hover:text-destructive-foreground h-7"
+                  onClick={() => {
+                    setDeleteTarget(lightboxPhoto);
+                  }}
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                  Eliminar
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>

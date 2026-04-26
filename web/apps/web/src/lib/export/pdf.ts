@@ -81,30 +81,26 @@ function rockTypeColor(rockType: string | null | undefined): RGB {
   return [34, 197, 94]; // default green
 }
 
-// ── Image helper: fetch URL → canvas resize → base64 ─────────────────────────
+// ── Image helper: fetch URL → base64 (avoids canvas CORS taint) ──────────────
 
 async function fetchPhoto(
   url: string,
-): Promise<{ data: string; format: 'JPEG' } | null> {
+): Promise<{ data: string; format: 'JPEG' | 'PNG' } | null> {
   if (typeof window === 'undefined') return null;
   try {
-    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const el = new Image();
-      el.crossOrigin = 'anonymous';
-      el.onload = () => resolve(el);
-      el.onerror = () => reject(new Error('load'));
-      el.src = url;
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
     });
-    const MAX = 1024;
-    const scale = Math.min(MAX / img.naturalWidth, MAX / img.naturalHeight, 1);
-    const w = Math.round(img.naturalWidth * scale);
-    const h = Math.round(img.naturalHeight * scale);
-    const canvas = document.createElement('canvas');
-    canvas.width = w;
-    canvas.height = h;
-    canvas.getContext('2d')!.drawImage(img, 0, 0, w, h);
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.72);
-    return { data: dataUrl.split(',')[1], format: 'JPEG' };
+    const base64 = dataUrl.split(',')[1];
+    if (!base64) return null;
+    const format: 'JPEG' | 'PNG' = blob.type === 'image/png' ? 'PNG' : 'JPEG';
+    return { data: base64, format };
   } catch {
     return null;
   }

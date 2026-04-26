@@ -16,7 +16,7 @@ import * as fs from 'fs';
 // Must be called before app.whenReady() — registers app:// as a standard, secure origin
 // so Firebase Auth / fetch / localStorage work identically to a real https:// page.
 protocol.registerSchemesAsPrivileged([
-  { scheme: 'app', privileges: { secure: true, standard: true, supportFetchAPI: true } },
+  { scheme: 'app', privileges: { secure: true, standard: true, supportFetchAPI: true, corsEnabled: true } },
 ]);
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
@@ -227,6 +227,9 @@ function setupAutoUpdater() {
 
 // ── App lifecycle ────────────────────────────────────────────────────────────
 app.whenReady().then(() => {
+  // Windows taskbar grouping
+  if (process.platform === 'win32') app.setAppUserModelId('com.geoagent.app');
+
   // Serve the static Next.js export from resources/web-out via app://
   // Resolution order for a request like app://./projects:
   //   1. web-out/projects           (exact file — e.g. app://./favicon.ico)

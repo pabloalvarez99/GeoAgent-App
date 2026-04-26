@@ -1,0 +1,38 @@
+appId: com.geoagent.app
+productName: GeoAgent
+copyright: GeoAgent
+asar: true
+
+directories:
+  output: dist-electron
+  buildResources: resources
+
+# Compiled Electron main/preload JS
+files:
+  - dist/**/*
+
+# Next.js static export — copied to resources/web-out inside the package
+# main.ts reads from process.resourcesPath + '/web-out'
+extraResources:
+  - from: ../web/out
+    to: web-out
+    filter:
+      - "**/*"
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: GeoAgent
+
+publish:
+  provider: github
+  owner: pabloalvarez99
+  repo: GeoAgent-App

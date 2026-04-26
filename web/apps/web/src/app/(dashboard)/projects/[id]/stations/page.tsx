@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -59,10 +59,16 @@ export default function StationsPage({ params }: { params: Promise<{ id: string 
 
   const search = searchParams.get('q') ?? '';
   const sort = (searchParams.get('sort') as SortKey) ?? 'code';
+  const geologistFilter = searchParams.get('geologist') ?? '';
 
   const [editTarget, setEditTarget] = useState<GeoStation | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<GeoStation | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+
+  const allGeologists = useMemo(
+    () => [...new Set(stations.map((s) => s.geologist).filter(Boolean))].sort(),
+    [stations],
+  );
 
   function updateParam(key: string, value: string) {
     const p = new URLSearchParams(searchParams.toString());
@@ -73,10 +79,11 @@ export default function StationsPage({ params }: { params: Promise<{ id: string 
   const filtered = stations
     .filter(
       (s) =>
-        !search ||
-        s.code.toLowerCase().includes(search.toLowerCase()) ||
-        s.geologist.toLowerCase().includes(search.toLowerCase()) ||
-        s.description.toLowerCase().includes(search.toLowerCase()),
+        (!search ||
+          s.code.toLowerCase().includes(search.toLowerCase()) ||
+          s.geologist.toLowerCase().includes(search.toLowerCase()) ||
+          s.description.toLowerCase().includes(search.toLowerCase())) &&
+        (!geologistFilter || s.geologist === geologistFilter),
     )
     .sort((a, b) => {
       if (sort === 'date_desc') return b.date.localeCompare(a.date);
@@ -157,6 +164,43 @@ export default function StationsPage({ params }: { params: Promise<{ id: string 
         );
       })()}
 
+      {/* Geologist filter pills */}
+      {!loading && allGeologists.length > 1 && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => updateParam('geologist', '')}
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
+              !geologistFilter
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'bg-transparent text-muted-foreground border-border hover:border-primary/50 hover:text-foreground'
+            }`}
+          >
+            <User className="h-3 w-3" />
+            Todos
+            <span className="font-mono">{stations.length}</span>
+          </button>
+          {allGeologists.map((geo) => {
+            const count = stations.filter((s) => s.geologist === geo).length;
+            const active = geologistFilter === geo;
+            return (
+              <button
+                key={geo}
+                onClick={() => updateParam('geologist', active ? '' : geo)}
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
+                  active
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-transparent text-muted-foreground border-border hover:border-primary/50 hover:text-foreground'
+                }`}
+              >
+                <User className="h-3 w-3" />
+                <span className="truncate max-w-[120px]">{geo}</span>
+                <span className="font-mono">{count}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Search + Sort */}
       <div className="flex gap-2">
         <div className="relative flex-1">
@@ -203,7 +247,7 @@ export default function StationsPage({ params }: { params: Promise<{ id: string 
         <div className="flex flex-col items-center gap-3 py-16 text-center">
           <Layers className="h-10 w-10 text-muted-foreground/40" />
           <p className="text-muted-foreground">
-            {search ? 'Sin resultados para la búsqueda' : 'No hay estaciones registradas'}
+            {search || geologistFilter ? 'Sin resultados para los filtros aplicados' : 'No hay estaciones registradas'}
           </p>
           {!search && (
             <Button asChild size="sm">
@@ -284,7 +328,9 @@ export default function StationsPage({ params }: { params: Promise<{ id: string 
             </table>
           </div>
           <p className="text-xs text-muted-foreground text-right">
-            {filtered.length} estación{filtered.length !== 1 ? 'es' : ''}
+            {filtered.length === stations.length
+              ? `${filtered.length} estación${filtered.length !== 1 ? 'es' : ''}`
+              : `${filtered.length} de ${stations.length} estación${stations.length !== 1 ? 'es' : ''}`}
           </p>
         </div>
       )}
