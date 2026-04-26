@@ -240,7 +240,7 @@ export default function SettingsPage() {
         <CardContent className="space-y-4">
           <div className="divide-y divide-border">
             <InfoRow label="Versión web" value="1.0.0" />
-            <InfoRow label="Plataforma" value="Next.js 15 + Firebase Firestore" />
+            <InfoRow label="Plataforma" value="Next.js 16 + Firebase Firestore" />
             <InfoRow label="UI" value="shadcn/ui + Tailwind CSS" />
           </div>
 
