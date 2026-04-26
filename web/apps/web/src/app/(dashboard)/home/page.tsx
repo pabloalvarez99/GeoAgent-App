@@ -155,6 +155,9 @@ export default function DashboardPage() {
 
   const today = format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es });
 
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Buenos días' : hour < 18 ? 'Buenas tardes' : 'Buenas noches';
+
   const recentProjects = projects.slice(0, 3);
 
   // ── Gráfico 1: distribución de tipos de roca (lithologies) ──────────────
@@ -222,8 +225,8 @@ export default function DashboardPage() {
     <div className="space-y-8">
       {/* Welcome header */}
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight capitalize">
-          Bienvenido, {displayName}
+        <h1 className="text-2xl font-bold tracking-tight">
+          {greeting}, {displayName}
         </h1>
         <p className="text-sm text-muted-foreground capitalize">{today}</p>
       </div>

@@ -256,6 +256,38 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Section 4: Atajos de teclado */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Shield className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-base">Atajos de teclado</CardTitle>
+          </div>
+          <CardDescription>Accesos rápidos disponibles en toda la aplicación</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="divide-y divide-border">
+            {[
+              { keys: ['⌃', 'K'], label: 'Abrir búsqueda rápida' },
+              { keys: ['⌃', 'N'], label: 'Ir a Proyectos' },
+              { keys: ['⌃', 'E'], label: 'Exportar (proyecto activo)' },
+              { keys: ['Esc'], label: 'Cerrar diálogos y paleta de comandos' },
+              { keys: ['↑', '↓'], label: 'Navegar resultados en paleta' },
+              { keys: ['↵'], label: 'Ejecutar acción seleccionada' },
+            ].map(({ keys, label }) => (
+              <div key={label} className="flex items-center justify-between py-2.5">
+                <span className="text-sm text-muted-foreground">{label}</span>
+                <div className="flex items-center gap-1">
+                  {keys.map((k) => (
+                    <kbd key={k} className="text-xs border border-border rounded px-1.5 py-0.5 font-mono bg-muted/50">{k}</kbd>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
