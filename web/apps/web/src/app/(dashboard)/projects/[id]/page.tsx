@@ -225,7 +225,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                     <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                     <YAxis tick={{ fontSize: 11 }} />
                     <Tooltip
-                      contentStyle={{ background: '#18181b', border: '1px solid #3f3f46', fontSize: 12 }}
+                      contentStyle={{ background: '#0d0d11', border: '1px solid #27272a', fontSize: 12, borderRadius: 6 }}
                     />
                     <Bar dataKey="Planificada" fill="#6366f1" radius={[3, 3, 0, 0]} />
                     <Bar dataKey="Real" fill="#22c55e" radius={[3, 3, 0, 0]} />
@@ -267,7 +267,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                         ))}
                       </Pie>
                       <Tooltip
-                        contentStyle={{ background: '#18181b', border: '1px solid #3f3f46', fontSize: 12 }}
+                        contentStyle={{ background: '#0d0d11', border: '1px solid #27272a', fontSize: 12, borderRadius: 6 }}
                       />
                       <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
                     </PieChart>
