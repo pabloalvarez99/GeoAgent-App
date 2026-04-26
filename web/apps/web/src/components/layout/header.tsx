@@ -1,8 +1,10 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { ChevronRight, Menu, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 const ROUTE_LABELS: Record<string, string> = {
   home: 'Inicio',
@@ -35,6 +37,15 @@ interface HeaderProps {
 export function Header({ title, onMenuClick, onCommandOpen }: HeaderProps) {
   const pathname = usePathname();
   const segments = pathname.split('/').filter(Boolean);
+  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+
+  useEffect(() => {
+    const on = () => setIsOnline(true);
+    const off = () => setIsOnline(false);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
+  }, []);
 
   return (
     <header className="flex h-14 items-center border-b border-border bg-card px-4 gap-3">
@@ -72,6 +83,15 @@ export function Header({ title, onMenuClick, onCommandOpen }: HeaderProps) {
           {title}
         </div>
       )}
+
+      {/* Online indicator */}
+      <div
+        title={isOnline ? 'Firebase conectado' : 'Sin conexión'}
+        className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground shrink-0"
+      >
+        <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', isOnline ? 'bg-green-500 animate-pulse' : 'bg-yellow-500')} />
+        <span className="hidden md:inline">{isOnline ? 'Conectado' : 'Sin conexión'}</span>
+      </div>
 
       {/* Search / Command Palette button */}
       <Button

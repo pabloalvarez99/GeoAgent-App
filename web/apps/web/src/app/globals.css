@@ -4,12 +4,12 @@
 
 @layer base {
   :root {
-    /* Dark mode by default — zinc-950 base, flat surfaces, borders for depth */
-    --background: 240 10% 3.9%;      /* #09090b zinc-950 */
+    /* Dark mode by default — zinc-950 base, surfaces layered by lightness */
+    --background: 240 10% 2.4%;      /* #050507 — deepest layer */
     --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;            /* flat — same as bg, borders do the work */
+    --card: 240 10% 5.5%;            /* #0d0d11 — cards sit above bg */
     --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
+    --popover: 240 10% 7%;           /* popovers float highest */
     --popover-foreground: 0 0% 98%;
     /* Primary = geo green #22c55e */
     --primary: 142 71% 45%;
@@ -77,6 +77,15 @@
 .stat-accent-blue   { border-left: 3px solid #3b82f6; }
 .stat-accent-purple { border-left: 3px solid #a855f7; }
 .stat-accent-amber  { border-left: 3px solid #f59e0b; }
+.stat-accent-rose   { border-left: 3px solid #f43f5e; }
+
+/* Sidebar nav active — sharper than bg-primary/10 */
+.nav-active {
+  background: rgba(34,197,94,0.12);
+  color: #22c55e;
+  border-left: 2px solid #22c55e;
+  padding-left: calc(0.5rem - 2px);
+}
 
 /* Sidebar surface — very slightly lighter than bg to separate from content */
 .sidebar-surface {

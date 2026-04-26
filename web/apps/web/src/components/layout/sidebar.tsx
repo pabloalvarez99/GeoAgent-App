@@ -112,7 +112,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
                 className={cn(
                   'flex items-center gap-2.5 rounded-md px-2 py-2 text-sm font-medium transition-colors',
                   active
-                    ? 'bg-primary/10 text-primary'
+                    ? 'nav-active'
                     : 'text-muted-foreground hover:bg-accent hover:text-foreground',
                   collapsed && !mobileOpen && 'justify-center',
                 )}
