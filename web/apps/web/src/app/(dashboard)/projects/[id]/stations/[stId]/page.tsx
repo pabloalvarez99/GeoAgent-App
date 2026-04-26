@@ -201,6 +201,22 @@ export default function StationDetailPage({
 
       <Separator />
 
+      {/* Quick stats */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="stat-accent-blue rounded-lg border border-border bg-card px-4 py-3">
+          <p className="text-xs text-muted-foreground">Litologías</p>
+          <p className="text-xl font-bold text-blue-400 font-data mt-0.5">{lithologies.length || '—'}</p>
+        </div>
+        <div className="stat-accent-amber rounded-lg border border-border bg-card px-4 py-3">
+          <p className="text-xs text-muted-foreground">Estructural</p>
+          <p className="text-xl font-bold text-orange-400 font-data mt-0.5">{structural.length || '—'}</p>
+        </div>
+        <div className="stat-accent-green rounded-lg border border-border bg-card px-4 py-3">
+          <p className="text-xs text-muted-foreground">Muestras</p>
+          <p className="text-xl font-bold text-green-400 font-data mt-0.5">{samples.length || '—'}</p>
+        </div>
+      </div>
+
       {/* Tabs */}
       <Tabs defaultValue="lithology">
         <TabsList className="w-full sm:w-auto">
