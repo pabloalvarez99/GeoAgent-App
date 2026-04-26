@@ -116,22 +116,22 @@ export function IntervalForm({ defaultValues, fromDepthMin = 0, onSubmit, onCanc
   return (
     <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
       {/* Section: Profundidad */}
-      <div>
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">Profundidad</p>
+      <div className="space-y-3">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Profundidad</p>
         <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <Label>Desde (m) *</Label>
-          <Input type="number" step="0.1" min="0" placeholder="0.0" {...register('fromDepth', { valueAsNumber: true })} className="font-mono" />
-          {errors.fromDepth && <p className="text-xs text-destructive">{errors.fromDepth.message}</p>}
+          <div className="space-y-1.5">
+            <Label>Desde (m) *</Label>
+            <Input type="number" step="0.1" min="0" placeholder="0.0" {...register('fromDepth', { valueAsNumber: true })} className="font-mono" />
+            {errors.fromDepth && <p className="text-xs text-destructive">{errors.fromDepth.message}</p>}
+          </div>
+          <div className="space-y-1.5">
+            <Label>Hasta (m) *</Label>
+            <Input type="number" step="0.1" min="0" placeholder="1.0" {...register('toDepth', { valueAsNumber: true })} className="font-mono" />
+            {errors.toDepth && <p className="text-xs text-destructive">{errors.toDepth.message}</p>}
+          </div>
         </div>
-        <div className="space-y-1.5">
-          <Label>Hasta (m) *</Label>
-          <Input type="number" step="0.1" min="0" placeholder="1.0" {...register('toDepth', { valueAsNumber: true })} className="font-mono" />
-          {errors.toDepth && <p className="text-xs text-destructive">{errors.toDepth.message}</p>}
-        </div>
-      </div>
         {depthInvalid && (
-          <p className="text-xs text-amber-500 bg-amber-500/10 rounded px-2 py-1 mt-2">
+          <p className="text-xs text-amber-500 bg-amber-500/10 rounded px-2 py-1">
             ⚠ La profundidad &ldquo;hasta&rdquo; debe ser mayor que &ldquo;desde&rdquo; ({fromDepth} m).
           </p>
         )}
