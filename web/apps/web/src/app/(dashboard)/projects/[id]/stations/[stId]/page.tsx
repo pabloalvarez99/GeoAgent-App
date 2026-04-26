@@ -246,9 +246,13 @@ export default function StationDetailPage({
               {[...Array(3)].map((_, i) => <div key={i} className="skeleton h-16 rounded-lg" />)}
             </div>
           ) : lithologies.length === 0 ? (
-            <p className="text-muted-foreground text-sm text-center py-8">
-              No hay registros de litología
-            </p>
+            <div className="flex flex-col items-center gap-2 py-10 text-center">
+              <Layers className="h-8 w-8 text-muted-foreground/30" />
+              <p className="text-sm text-muted-foreground">No hay registros de litología</p>
+              <Button size="sm" variant="outline" onClick={() => { setLithoEdit(null); setLithoOpen(true); }}>
+                <Plus className="h-3.5 w-3.5 mr-1.5" /> Agregar litología
+              </Button>
+            </div>
           ) : (
             <div className="rounded-lg border border-border overflow-hidden">
               <table className="data-table">
@@ -319,9 +323,13 @@ export default function StationDetailPage({
               ))}
             </div>
           ) : structural.length === 0 ? (
-            <p className="text-muted-foreground text-sm text-center py-8">
-              No hay datos estructurales
-            </p>
+            <div className="flex flex-col items-center gap-2 py-10 text-center">
+              <TrendingUp className="h-8 w-8 text-muted-foreground/30" />
+              <p className="text-sm text-muted-foreground">No hay datos estructurales</p>
+              <Button size="sm" variant="outline" onClick={() => { setStructEdit(null); setStructOpen(true); }}>
+                <Plus className="h-3.5 w-3.5 mr-1.5" /> Agregar estructura
+              </Button>
+            </div>
           ) : (
             <div className="rounded-lg border border-border overflow-hidden">
               <table className="data-table">
@@ -388,9 +396,13 @@ export default function StationDetailPage({
               ))}
             </div>
           ) : samples.length === 0 ? (
-            <p className="text-muted-foreground text-sm text-center py-8">
-              No hay muestras registradas
-            </p>
+            <div className="flex flex-col items-center gap-2 py-10 text-center">
+              <FlaskConical className="h-8 w-8 text-muted-foreground/30" />
+              <p className="text-sm text-muted-foreground">No hay muestras registradas</p>
+              <Button size="sm" variant="outline" onClick={() => { setSampleEdit(null); setSampleOpen(true); }}>
+                <Plus className="h-3.5 w-3.5 mr-1.5" /> Agregar muestra
+              </Button>
+            </div>
           ) : (
             <div className="rounded-lg border border-border overflow-hidden">
               <table className="data-table">
