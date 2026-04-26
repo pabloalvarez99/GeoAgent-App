@@ -281,19 +281,27 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
       {/* Sub navigation — icon grid cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-        {subNavItems.map(({ href, label, icon: Icon, desc }) => (
-          <Link key={href} href={`/projects/${id}/${href}`}>
-            <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-3 hover:border-primary/30 hover:bg-primary/5 transition-all duration-150 card-lift group">
-              <div className="rounded-md bg-muted p-1.5 shrink-0 group-hover:bg-primary/10 transition-colors">
-                <Icon className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+        {subNavItems.map(({ href, label, icon: Icon, desc }) => {
+          const count = href === 'stations' ? stations.length : href === 'drillholes' ? drillHoles.length : null;
+          return (
+            <Link key={href} href={`/projects/${id}/${href}`}>
+              <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-3 hover:border-primary/30 hover:bg-primary/5 transition-all duration-150 card-lift group">
+                <div className="rounded-md bg-muted p-1.5 shrink-0 group-hover:bg-primary/10 transition-colors">
+                  <Icon className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium leading-none">{label}</p>
+                    {count !== null && count > 0 && (
+                      <span className="text-[10px] font-mono bg-muted rounded px-1 py-0.5 text-muted-foreground">{count}</span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-1 truncate">{desc}</p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className="text-sm font-medium leading-none">{label}</p>
-                <p className="text-[11px] text-muted-foreground mt-1 truncate">{desc}</p>
-              </div>
-            </div>
-          </Link>
-        ))}
+            </Link>
+          );
+        })}
       </div>
 
       {/* Edit dialog */}
