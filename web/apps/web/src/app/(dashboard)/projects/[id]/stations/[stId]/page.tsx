@@ -5,6 +5,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import {
   ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
   MapPin,
   Calendar,
   User,
@@ -17,6 +19,9 @@ import {
   FlaskConical,
   ExternalLink,
   Camera,
+  Map as MapViewIcon,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
 import { ref as storageRef, getDownloadURL } from 'firebase/storage';
@@ -66,6 +71,10 @@ export default function StationDetailPage({
   const { stations, loading: stationsLoading, editStation } = useStations(projectId);
   const station = stations.find((s) => s.id === stId);
 
+  const currentStIdx = stations.findIndex((s) => s.id === stId);
+  const prevStation = currentStIdx > 0 ? stations[currentStIdx - 1] : null;
+  const nextStation = currentStIdx < stations.length - 1 ? stations[currentStIdx + 1] : null;
+
   const { lithologies, loading: lithoLoading, addOrUpdateLithology, removeLithology } = useLithologies(stId);
   const { structural, loading: structLoading, addOrUpdateStructural, removeStructural } = useStructural(stId);
   const { samples, loading: sampleLoading, addOrUpdateSample, removeSample } = useSamples(stId);
@@ -95,6 +104,18 @@ export default function StationDetailPage({
   }, [photos]);
 
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
+
+  // Tab navigation (controlled)
+  const [activeTab, setActiveTab] = useState<'lithology' | 'structural' | 'samples'>('lithology');
+
+  // Copy coords state
+  const [coordsCopied, setCoordsCopied] = useState(false);
+  function copyCoords() {
+    if (!station) return;
+    navigator.clipboard.writeText(`${station.latitude.toFixed(6)}, ${station.longitude.toFixed(6)}`);
+    setCoordsCopied(true);
+    setTimeout(() => setCoordsCopied(false), 2000);
+  }
 
   // Station edit state
   const [stationEditOpen, setStationEditOpen] = useState(false);
@@ -215,6 +236,41 @@ export default function StationDetailPage({
             >
               <Pencil className="h-3.5 w-3.5" />
             </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 ml-1 text-xs text-muted-foreground hover:text-primary"
+              asChild
+            >
+              <Link href={`/projects/${projectId}/map?center_lat=${station.latitude}&center_lng=${station.longitude}&center_zoom=16`}>
+                <MapViewIcon className="h-3.5 w-3.5 mr-1" />
+                Ver en mapa
+              </Link>
+            </Button>
+            <div className="flex items-center gap-0.5 ml-2">
+              {prevStation ? (
+                <Button variant="ghost" size="icon" className="h-6 w-6" asChild>
+                  <Link href={`/projects/${projectId}/stations/${prevStation.id}`} title={`Anterior: ${prevStation.code}`}>
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </Link>
+                </Button>
+              ) : (
+                <Button variant="ghost" size="icon" className="h-6 w-6" disabled>
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </Button>
+              )}
+              {nextStation ? (
+                <Button variant="ghost" size="icon" className="h-6 w-6" asChild>
+                  <Link href={`/projects/${projectId}/stations/${nextStation.id}`} title={`Siguiente: ${nextStation.code}`}>
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </Link>
+                </Button>
+              ) : (
+                <Button variant="ghost" size="icon" className="h-6 w-6" disabled>
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
           </div>
           <p className="text-sm text-muted-foreground mt-1">{station.description}</p>
           <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
@@ -228,6 +284,15 @@ export default function StationDetailPage({
               <MapPin className="h-3 w-3" />
               {station.latitude.toFixed(6)}, {station.longitude.toFixed(6)}
               {station.altitude ? ` · ${station.altitude.toFixed(0)} m` : ''}
+              <button
+                onClick={copyCoords}
+                className="ml-1 text-muted-foreground hover:text-foreground transition-colors"
+                title="Copiar coordenadas"
+              >
+                {coordsCopied
+                  ? <Check className="h-3 w-3 text-green-400" />
+                  : <Copy className="h-3 w-3" />}
+              </button>
             </span>
           </div>
         </div>
@@ -235,24 +300,33 @@ export default function StationDetailPage({
 
       <Separator />
 
-      {/* Quick stats */}
+      {/* Quick stats — clickable → navigate to tab */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="stat-accent-blue rounded-lg border border-border bg-card px-4 py-3">
+        <button
+          onClick={() => setActiveTab('lithology')}
+          className="stat-accent-blue rounded-lg border border-border bg-card px-4 py-3 text-left hover:border-blue-500/40 transition-colors"
+        >
           <p className="text-xs text-muted-foreground">Litologías</p>
           <p className="text-xl font-bold text-blue-400 font-data mt-0.5">{lithologies.length || '—'}</p>
-        </div>
-        <div className="stat-accent-amber rounded-lg border border-border bg-card px-4 py-3">
+        </button>
+        <button
+          onClick={() => setActiveTab('structural')}
+          className="stat-accent-amber rounded-lg border border-border bg-card px-4 py-3 text-left hover:border-amber-500/40 transition-colors"
+        >
           <p className="text-xs text-muted-foreground">Estructural</p>
           <p className="text-xl font-bold text-orange-400 font-data mt-0.5">{structural.length || '—'}</p>
-        </div>
-        <div className="stat-accent-green rounded-lg border border-border bg-card px-4 py-3">
+        </button>
+        <button
+          onClick={() => setActiveTab('samples')}
+          className="stat-accent-green rounded-lg border border-border bg-card px-4 py-3 text-left hover:border-green-500/40 transition-colors"
+        >
           <p className="text-xs text-muted-foreground">Muestras</p>
           <p className="text-xl font-bold text-green-400 font-data mt-0.5">{samples.length || '—'}</p>
-        </div>
+        </button>
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="lithology">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
         <TabsList className="w-full sm:w-auto">
           <TabsTrigger value="lithology" className="flex-1 sm:flex-none">
             <Layers className="h-4 w-4 mr-1.5" />

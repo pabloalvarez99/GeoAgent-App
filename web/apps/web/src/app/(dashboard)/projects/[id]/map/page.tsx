@@ -2,6 +2,7 @@
 
 import { use, useState, useMemo } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { APIProvider, Map, AdvancedMarker, Pin, Polyline, useMap } from '@vis.gl/react-google-maps';
 import {
   ArrowLeft,
@@ -20,6 +21,7 @@ import {
   ExternalLink,
   Copy,
   Ruler,
+  Plus,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStations } from '@/lib/hooks/use-stations';
@@ -309,6 +311,11 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
   const loading = loadingStations || loadingDrillHoles;
 
+  const searchParams = useSearchParams();
+  const urlLat = searchParams.get('center_lat');
+  const urlLng = searchParams.get('center_lng');
+  const urlZoom = searchParams.get('center_zoom');
+
   const center = useMemo(
     () => computeCenter(stations, drillHoles),
     // Only recompute when data finishes loading to avoid map jumping
@@ -318,6 +325,11 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
 
   const defaultZoom =
     stations.length === 0 && drillHoles.length === 0 ? NO_DATA_ZOOM : DEFAULT_ZOOM;
+
+  const initialCenter = urlLat && urlLng
+    ? { lat: parseFloat(urlLat), lng: parseFloat(urlLng) }
+    : center;
+  const initialZoom = urlZoom ? parseInt(urlZoom, 10) : defaultZoom;
 
   const hasNoApiKey = !apiKey;
 
@@ -492,8 +504,8 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
           ) : (
             <APIProvider apiKey={apiKey}>
               <Map
-                defaultCenter={center}
-                defaultZoom={defaultZoom}
+                defaultCenter={initialCenter}
+                defaultZoom={initialZoom}
                 mapTypeId={mapTypeId}
                 mapId="geoagent-map"
                 disableDefaultUI={false}
@@ -578,6 +590,13 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
                 <Copy className="h-3 w-3" />
                 Copiar
               </button>
+              <Link
+                href={`/projects/${projectId}/stations/new?lat=${mapClick.lat.toFixed(6)}&lng=${mapClick.lng.toFixed(6)}`}
+                className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 px-1.5 py-0.5 rounded hover:bg-primary/10 transition-colors"
+              >
+                <Plus className="h-3 w-3" />
+                Crear estación
+              </Link>
               <button
                 className="text-muted-foreground hover:text-foreground p-0.5 rounded hover:bg-muted transition-colors"
                 onClick={() => setMapClick(null)}

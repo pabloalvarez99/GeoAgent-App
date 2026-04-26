@@ -13,6 +13,7 @@ import {
   ArrowDown,
   ArrowUpDown,
   X,
+  User,
 } from 'lucide-react';
 import { useDrillHoles } from '@/lib/hooks/use-drillholes';
 import { useProject } from '@/lib/hooks/use-projects';
@@ -60,9 +61,15 @@ export default function DrillHolesPage({ params }: { params: Promise<{ id: strin
   const search = searchParams.get('q') ?? '';
   const sort = (searchParams.get('sort') as SortKey) ?? 'holeId';
   const statusFilter = searchParams.get('status') ?? '';
+  const geologistFilter = searchParams.get('geologist') ?? '';
 
   const allStatuses = useMemo(
     () => [...new Set(drillHoles.map((d) => d.status))].sort(),
+    [drillHoles],
+  );
+
+  const allGeologists = useMemo(
+    () => [...new Set(drillHoles.map((d) => d.geologist).filter(Boolean))].sort(),
     [drillHoles],
   );
 
@@ -82,7 +89,8 @@ export default function DrillHolesPage({ params }: { params: Promise<{ id: strin
           d.holeId.toLowerCase().includes(search.toLowerCase()) ||
           d.geologist.toLowerCase().includes(search.toLowerCase()) ||
           d.type.toLowerCase().includes(search.toLowerCase())) &&
-        (!statusFilter || d.status === statusFilter),
+        (!statusFilter || d.status === statusFilter) &&
+        (!geologistFilter || d.geologist === geologistFilter),
     )
     .sort((a, b) => {
       if (sort === 'depth_desc') return (b.actualDepth ?? b.plannedDepth) - (a.actualDepth ?? a.plannedDepth);
@@ -206,6 +214,43 @@ export default function DrillHolesPage({ params }: { params: Promise<{ id: strin
         </div>
       )}
 
+      {/* Geologist filter pills */}
+      {!loading && allGeologists.length > 1 && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => updateParam('geologist', '')}
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
+              !geologistFilter
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'bg-transparent text-muted-foreground border-border hover:border-primary/50 hover:text-foreground'
+            }`}
+          >
+            <User className="h-3 w-3" />
+            Todos
+            <span className="font-mono">{drillHoles.length}</span>
+          </button>
+          {allGeologists.map((geo) => {
+            const count = drillHoles.filter((d) => d.geologist === geo).length;
+            const active = geologistFilter === geo;
+            return (
+              <button
+                key={geo}
+                onClick={() => updateParam('geologist', active ? '' : geo)}
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
+                  active
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-transparent text-muted-foreground border-border hover:border-primary/50 hover:text-foreground'
+                }`}
+              >
+                <User className="h-3 w-3" />
+                <span className="truncate max-w-[120px]">{geo}</span>
+                <span className="font-mono">{count}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Search + Sort */}
       <div className="flex gap-2">
         <div className="relative flex-1">
@@ -252,7 +297,7 @@ export default function DrillHolesPage({ params }: { params: Promise<{ id: strin
         <div className="flex flex-col items-center gap-3 py-16 text-center">
           <Drill className="h-10 w-10 text-muted-foreground/40" />
           <p className="text-muted-foreground">
-            {search || statusFilter ? 'Sin resultados para los filtros aplicados' : 'No hay sondajes registrados'}
+            {search || statusFilter || geologistFilter ? 'Sin resultados para los filtros aplicados' : 'No hay sondajes registrados'}
           </p>
           {!search && (
             <Button asChild size="sm">

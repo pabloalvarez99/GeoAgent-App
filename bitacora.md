@@ -1179,3 +1179,109 @@ Todos los formularios ahora tienen secciones visualmente separadas con `<Separat
 **Archivos modificados:** `drillholes/page.tsx`, `settings/page.tsx`, `home/page.tsx`, `photos/page.tsx`, `stations/page.tsx`
 
 *Última actualización: 2026-04-26 — 10 features web completados en esta sesión. Stack completo y funcional.*
+
+---
+
+## 2026-04-26 — Fix: fotos no visibles en reportes PDF web
+
+**Problema raíz:** `fetchPhoto()` en `web/apps/web/src/lib/export/pdf.ts` usaba `new Image()` con `crossOrigin = 'anonymous'` + canvas para obtener base64. Firebase Storage no tiene CORS configurado → `onerror` silencioso → `imgData = null` → "Imagen no disponible".
+
+**Fix:** Reemplazado approach `Image + canvas` por `fetch() + FileReader`:
+- `fetch(url)` descarga la imagen como blob
+- `FileReader.readAsDataURL()` convierte a base64
+- Detecta formato `JPEG` vs `PNG` via `blob.type`
+- Sin canvas → sin CORS taint issue
+
+**Archivo modificado:** `web/apps/web/src/lib/export/pdf.ts` — función `fetchPhoto()`
+
+**Nota:** Si Firebase Storage CORS tampoco permite `fetch()`, configurar con `gsutil cors set cors.json gs://geoagent-app.firebasestorage.app`.
+
+---
+
+## 2026-04-26 — 5 mejoras web ronda 3 (sesión continuada)
+
+### Feature 1: Búsqueda y ordenamiento en lista de proyectos
+- **Modificado:** `projects/page.tsx`
+- `useState` para `search` (string) y `sort` ('date_desc' | 'date_asc' | 'name_asc' | 'name_desc')
+- `filteredProjects` useMemo: filtra por nombre/ubicación (case-insensitive) + ordena
+- Input con ícono `Search` + Select de 4 opciones (Más recientes / Más antiguos / Nombre A→Z / Z→A)
+- Solo visible cuando hay proyectos (`!loading && projects.length > 0`)
+- Estado "sin resultados" con botón "Limpiar búsqueda" cuando filtro no retorna nada
+- La grid cambia de `projects.map` a `filteredProjects.map`
+
+### Feature 2: "Crear estación aquí" en overlay de mapa + GPS pre-fill en nueva estación
+- **Modificado:** `projects/[id]/map/page.tsx`
+  - Añadido `Plus` a imports lucide
+  - Link "Crear estación" en el overlay de coordenadas (entre Copiar y ×)
+  - URL: `/projects/${projectId}/stations/new?lat=X&lng=Y`
+- **Modificado:** `projects/[id]/stations/new/page.tsx`
+  - Añadido `useSearchParams` desde `next/navigation`
+  - Lee `?lat=` y `?lng=` → `gpsDefaults` object
+  - Pasa `defaultValues={gpsDefaults as any}` a `<StationForm>` para pre-fill de coordenadas
+
+### Feature 3: Botón "Ver en mapa" en detalle de estación y sondaje
+- **Modificado:** `projects/[id]/stations/[stId]/page.tsx`
+  - Añadido `Map as MapViewIcon` a imports lucide
+  - Botón ghost "Ver en mapa" después del Pencil en el header
+  - URL: `/projects/${projectId}/map?center_lat=${station.latitude}&center_lng=${station.longitude}&center_zoom=16`
+- **Modificado:** `projects/[id]/drillholes/[dhId]/page.tsx`
+  - Mismo patrón con las coordenadas del sondaje
+
+### Feature 4: Tabs de filtro en galería de fotos (Todas / Estaciones / Sondajes)
+- **Modificado:** `projects/[id]/photos/page.tsx`
+- `filterTab` useState: 'all' | 'stations' | 'drillholes'
+- `visiblePhotos` derived: filtra por `photo.stationId` / `photo.drillHoleId`
+- 3 botones pill debajo del header (solo cuando hay fotos)
+- Grid renderiza `visiblePhotos.map` en lugar de `photos.map`
+- Lightbox nav arrows y keyboard nav respetan el filtro activo
+- Estado "filtrado vacío" si tab activo no tiene fotos pero sí hay otras
+
+### Feature 5: Panel "En perforación" en dashboard
+- **Modificado:** `home/page.tsx`
+- `activeDrillHoles` useMemo: filtra `drillHoles` por `status === 'En Progreso'`, calcula `pct`, ordena desc por progreso
+- Sección insertada antes de "Actividad reciente"
+- Lista compacta (máx 5): ícono Drill morado, holeId mono, nombre de proyecto, barra de progreso morada, `actual/plannedm`, `%` completado
+- Cada fila linkea a `/projects/${dh.projectId}/drillholes/${dh.id}`
+- Solo visible cuando `!dataLoading && activeDrillHoles.length > 0`
+
+**Archivos modificados:** `projects/page.tsx`, `projects/[id]/map/page.tsx`, `projects/[id]/stations/new/page.tsx`, `projects/[id]/stations/[stId]/page.tsx`, `projects/[id]/drillholes/[dhId]/page.tsx`, `projects/[id]/photos/page.tsx`, `home/page.tsx`
+
+*Última actualización: 2026-04-26 — 15 features web completados en total en esta sesión (3 rondas de 5 agentes paralelos).*
+
+---
+
+## 2026-04-26 — 5 mejoras web ronda 4 (sesión continuada)
+
+### Feature 1: Mapa respeta URL params de foco (`?center_lat&center_lng&center_zoom`)
+- **Modificado:** `projects/[id]/map/page.tsx`
+- Añadido `useSearchParams` desde `next/navigation`
+- Lee `?center_lat=`, `?center_lng=`, `?center_zoom=`
+- `initialCenter` y `initialZoom` prefieren URL params sobre valores computados de los datos
+- Hace que los botones "Ver en mapa" (en estación y sondaje detail) funcionen end-to-end
+
+### Feature 2: Geologist filter pills en lista de sondajes
+- **Modificado:** `projects/[id]/drillholes/page.tsx`
+- `allGeologists` useMemo: geólogos únicos ordenados
+- URL param `?geologist=` combinado con `?status=` y `?q=`
+- Pills clickeables por geólogo con conteo (solo visible con 2+ geólogos)
+- Parity completa con la lista de estaciones
+
+### Feature 3: Copy coords en estación detail
+- **Ya estaba implementado** — el agente detectó que ya existía (con `Copy`/`Check` icons y estado `coordsCopied` con feedback visual verde). Sin cambios.
+
+### Feature 4: Copy coords + prev/next navigation en sondaje detail
+- **Modificado:** `projects/[id]/drillholes/[dhId]/page.tsx`
+- Botón Copy junto a coordenadas → clipboard + toast
+- `currentDhIdx`, `prevDrillHole`, `nextDrillHole` derivados del array `drillHoles`
+- Botones ChevronLeft/ChevronRight en header: navegan al sondaje anterior/siguiente del mismo proyecto
+- Bordes deshabilitados cuando es el primero/último
+
+### Feature 5: "Actualizado hace X" en detalle de proyecto
+- **Modificado:** `projects/[id]/page.tsx`
+- Clock icon + `formatDistanceToNow` (date-fns/es) debajo de la ubicación del proyecto
+- Solo visible cuando `project.updatedAt` existe
+- Formato: "Actualizado hace X días/horas/minutos"
+
+**Archivos modificados:** `projects/[id]/map/page.tsx`, `drillholes/page.tsx`, `drillholes/[dhId]/page.tsx`, `projects/[id]/page.tsx`
+
+*Última actualización: 2026-04-26 — 19 features web completados (4 rondas × 5 agentes). "Ver en mapa" ahora funciona end-to-end completo.*

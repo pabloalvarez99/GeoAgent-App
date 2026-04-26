@@ -2,7 +2,7 @@
 
 import { use } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { useStations } from '@/lib/hooks/use-stations';
 import { useProject } from '@/lib/hooks/use-projects';
@@ -16,6 +16,13 @@ export default function NewStationPage({ params }: { params: Promise<{ id: strin
   const router = useRouter();
   const { project } = useProject(projectId);
   const { addStation } = useStations(projectId);
+
+  const searchParams = useSearchParams();
+  const latParam = searchParams.get('lat');
+  const lngParam = searchParams.get('lng');
+  const gpsDefaults = latParam && lngParam
+    ? { latitude: parseFloat(latParam), longitude: parseFloat(lngParam) }
+    : undefined;
 
   async function handleSubmit(data: StationFormData) {
     try {
@@ -44,6 +51,7 @@ export default function NewStationPage({ params }: { params: Promise<{ id: strin
       </div>
 
       <StationForm
+        defaultValues={gpsDefaults as any}
         onSubmit={handleSubmit}
         onCancel={() => router.push(`/projects/${projectId}/stations`)}
       />

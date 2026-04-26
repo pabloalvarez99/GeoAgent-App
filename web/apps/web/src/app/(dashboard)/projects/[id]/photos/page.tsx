@@ -178,18 +178,20 @@ export default function ProjectPhotosPage({ params }: { params: Promise<{ id: st
     if (!lightboxPhoto) return;
     function onKey(e: KeyboardEvent) {
       if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
-        const visiblePhotos = photos.filter((p) => photoUrls[p.id]);
-        const idx = visiblePhotos.findIndex((p) => p.id === lightboxPhoto.id);
+        const loaded = photos
+          .filter((p) => filterTab === 'stations' ? p.stationId : filterTab === 'drillholes' ? p.drillHoleId : true)
+          .filter((p) => photoUrls[p.id]);
+        const idx = loaded.findIndex((p) => p.id === lightboxPhoto.id);
         if (idx === -1) return;
         const nextIdx = e.key === 'ArrowRight'
-          ? (idx + 1) % visiblePhotos.length
-          : (idx - 1 + visiblePhotos.length) % visiblePhotos.length;
-        setLightboxPhoto(visiblePhotos[nextIdx]);
+          ? (idx + 1) % loaded.length
+          : (idx - 1 + loaded.length) % loaded.length;
+        setLightboxPhoto(loaded[nextIdx]);
       }
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [lightboxPhoto, photos, photoUrls]);
+  }, [lightboxPhoto, photos, photoUrls, filterTab]);
 
   async function handleDelete() {
     if (!deleteTarget) return;
@@ -232,6 +234,14 @@ export default function ProjectPhotosPage({ params }: { params: Promise<{ id: st
   }
 
   const lightboxUrl = lightboxPhoto ? photoUrls[lightboxPhoto.id] : undefined;
+
+  const [filterTab, setFilterTab] = useState<'all' | 'stations' | 'drillholes'>('all');
+
+  const visiblePhotos = filterTab === 'stations'
+    ? photos.filter((p) => p.stationId)
+    : filterTab === 'drillholes'
+      ? photos.filter((p) => p.drillHoleId)
+      : photos;
 
   return (
     <div
@@ -299,6 +309,30 @@ export default function ProjectPhotosPage({ params }: { params: Promise<{ id: st
         </div>
       </div>
 
+      {/* Filter tabs */}
+      {!loading && photos.length > 0 && (
+        <div className="flex items-center gap-1">
+          {([
+            { key: 'all', label: 'Todas', count: photos.length },
+            { key: 'stations', label: 'Estaciones', count: photos.filter((p) => p.stationId).length },
+            { key: 'drillholes', label: 'Sondajes', count: photos.filter((p) => p.drillHoleId).length },
+          ] as const).map(({ key, label, count }) => (
+            <button
+              key={key}
+              onClick={() => setFilterTab(key)}
+              className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                filterTab === key
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+              }`}
+            >
+              {label}
+              <span className="ml-1.5 font-mono opacity-70">{count}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Content */}
       {loading ? (
         // Loading skeleton grid
@@ -327,10 +361,16 @@ export default function ProjectPhotosPage({ params }: { params: Promise<{ id: st
             Seleccionar fotos
           </Button>
         </div>
+      ) : visiblePhotos.length === 0 ? (
+        // Filtered empty state
+        <div className="flex flex-col items-center gap-3 py-20 text-center">
+          <Camera className="h-8 w-8 text-muted-foreground/30" />
+          <p className="text-sm text-muted-foreground">No hay fotos de {filterTab === 'stations' ? 'estaciones' : 'sondajes'}</p>
+        </div>
       ) : (
         // Photo grid — masonry-like uniform tiles with overlay caption
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5">
-          {photos.map((photo) => {
+          {visiblePhotos.map((photo) => {
             const url = photoUrls[photo.id];
             return (
               <div
@@ -404,12 +444,12 @@ export default function ProjectPhotosPage({ params }: { params: Promise<{ id: st
           {/* Full-size image */}
           <div className="relative w-full" style={{ minHeight: '60vh' }}>
             {/* Nav arrows — only shown when multiple photos have loaded URLs */}
-            {photos.filter((p) => photoUrls[p.id]).length > 1 && (
+            {visiblePhotos.filter((p) => photoUrls[p.id]).length > 1 && (
               <>
                 <button
                   type="button"
                   onClick={() => {
-                    const visible = photos.filter((p) => photoUrls[p.id]);
+                    const visible = visiblePhotos.filter((p) => photoUrls[p.id]);
                     const idx = visible.findIndex((p) => p.id === lightboxPhoto?.id);
                     setLightboxPhoto(visible[(idx - 1 + visible.length) % visible.length]);
                   }}
@@ -421,7 +461,7 @@ export default function ProjectPhotosPage({ params }: { params: Promise<{ id: st
                 <button
                   type="button"
                   onClick={() => {
-                    const visible = photos.filter((p) => photoUrls[p.id]);
+                    const visible = visiblePhotos.filter((p) => photoUrls[p.id]);
                     const idx = visible.findIndex((p) => p.id === lightboxPhoto?.id);
                     setLightboxPhoto(visible[(idx + 1) % visible.length]);
                   }}

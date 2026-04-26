@@ -235,6 +235,18 @@ export default function DashboardPage() {
     return items.sort((a, b) => b.ts - a.ts).slice(0, 8);
   }, [stations, drillHoles]);
 
+  const activeDrillHoles = useMemo(() => {
+    return drillHoles
+      .filter((d) => d.status === 'En Progreso')
+      .map((d) => {
+        const actual = Number(d.actualDepth) || 0;
+        const planned = Number(d.plannedDepth) || 1;
+        const pct = Math.min(100, (actual / planned) * 100);
+        return { ...d, actual, planned, pct };
+      })
+      .sort((a, b) => b.pct - a.pct);
+  }, [drillHoles]);
+
   function timeAgo(seconds: number): string {
     if (!seconds) return '—';
     const diff = Math.floor(Date.now() / 1000) - seconds;
@@ -465,6 +477,58 @@ export default function DashboardPage() {
               </Card>
             )}
           </div>
+        </div>
+      )}
+
+      {/* En perforación */}
+      {!dataLoading && activeDrillHoles.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Drill className="h-4 w-4 text-purple-400" />
+              <h2 className="text-base font-semibold">En perforación</h2>
+            </div>
+            <span className="text-xs text-muted-foreground font-mono">{activeDrillHoles.length} activo{activeDrillHoles.length !== 1 ? 's' : ''}</span>
+          </div>
+          <Card>
+            <CardContent className="p-0 divide-y divide-border">
+              {activeDrillHoles.slice(0, 5).map((dh) => {
+                const project = projects.find((p) => p.id === dh.projectId);
+                return (
+                  <Link
+                    key={dh.id}
+                    href={`/projects/${dh.projectId}/drillholes/${dh.id}`}
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors"
+                  >
+                    <div className="rounded-md bg-muted p-1.5 shrink-0">
+                      <Drill className="h-3.5 w-3.5 text-purple-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate font-mono">{dh.holeId}</p>
+                      {project && (
+                        <p className="text-xs text-muted-foreground truncate">{project.name}</p>
+                      )}
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="flex-1 h-1 rounded-full bg-muted overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-purple-500 transition-all"
+                            style={{ width: `${dh.pct}%` }}
+                          />
+                        </div>
+                        <span className="text-[10px] text-muted-foreground font-mono shrink-0">
+                          {dh.actual}/{dh.planned}m
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground font-mono shrink-0">
+                      {dh.pct.toFixed(0)}%
+                    </span>
+                    <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
+                  </Link>
+                );
+              })}
+            </CardContent>
+          </Card>
         </div>
       )}
 

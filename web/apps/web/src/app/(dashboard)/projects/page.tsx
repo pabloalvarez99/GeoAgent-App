@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Link from 'next/link';
@@ -17,6 +17,8 @@ import { useProjects } from '@/lib/hooks/use-projects';
 import { useStations } from '@/lib/hooks/use-stations';
 import { useDrillHoles } from '@/lib/hooks/use-drillholes';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
@@ -92,6 +94,23 @@ export default function ProjectsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<GeoProject | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<GeoProject | null>(null);
+  const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<'date_desc' | 'date_asc' | 'name_asc' | 'name_desc'>('date_desc');
+
+  const filteredProjects = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    let result = q
+      ? projects.filter((p) => p.name.toLowerCase().includes(q) || p.location?.toLowerCase().includes(q))
+      : [...projects];
+    result.sort((a, b) => {
+      if (sort === 'name_asc') return a.name.localeCompare(b.name);
+      if (sort === 'name_desc') return b.name.localeCompare(a.name);
+      const ta = (a.updatedAt as any)?.toDate?.()?.getTime?.() ?? 0;
+      const tb = (b.updatedAt as any)?.toDate?.()?.getTime?.() ?? 0;
+      return sort === 'date_asc' ? ta - tb : tb - ta;
+    });
+    return result;
+  }, [projects, search, sort]);
 
   async function handleCreate(data: ProjectFormData) {
     try {
@@ -141,6 +160,32 @@ export default function ProjectsPage() {
         </Button>
       </div>
 
+      {/* Search + Sort bar */}
+      {!loading && projects.length > 0 && (
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 max-w-xs">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder="Buscar proyectos..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8 h-8 text-sm"
+            />
+          </div>
+          <Select value={sort} onValueChange={(v) => setSort(v as typeof sort)}>
+            <SelectTrigger className="h-8 w-[160px] text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="date_desc">Más recientes</SelectItem>
+              <SelectItem value="date_asc">Más antiguos</SelectItem>
+              <SelectItem value="name_asc">Nombre A→Z</SelectItem>
+              <SelectItem value="name_desc">Nombre Z→A</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       {/* Loading */}
       {loading && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -175,7 +220,7 @@ export default function ProjectsPage() {
       {/* Project grid */}
       {!loading && projects.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {projects.map((project) => {
+          {filteredProjects.map((project) => {
             const accent = getProjectAccent(project.name);
             const initials = project.name.slice(0, 2).toUpperCase();
             return (
@@ -248,6 +293,15 @@ export default function ProjectsPage() {
               </Card>
             );
           })}
+          {filteredProjects.length === 0 && (
+            <div className="col-span-full flex flex-col items-center gap-2 py-16 text-center">
+              <Search className="h-8 w-8 text-muted-foreground/30" />
+              <p className="text-sm text-muted-foreground">Sin resultados para &quot;{search}&quot;</p>
+              <button onClick={() => setSearch('')} className="text-xs text-primary hover:underline">
+                Limpiar búsqueda
+              </button>
+            </div>
+          )}
         </div>
       )}
 

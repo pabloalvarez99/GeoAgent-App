@@ -10,6 +10,10 @@ import {
   MapPin,
   ArrowDown,
   Compass,
+  Map as MapViewIcon,
+  Copy,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { useDrillHoles, useDrillIntervals } from '@/lib/hooks/use-drillholes';
 import { useProject } from '@/lib/hooks/use-projects';
@@ -95,6 +99,10 @@ export default function DrillHoleDetailPage({
   const pct = drillHole.plannedDepth > 0 ? Math.min(100, (actualDepth / drillHole.plannedDepth) * 100) : 0;
   const nextDepth = intervals.length > 0 ? Math.max(...intervals.map((i) => i.toDepth)) : 0;
 
+  const currentDhIdx = drillHoles.findIndex((d) => d.id === dhId);
+  const prevDrillHole = currentDhIdx > 0 ? drillHoles[currentDhIdx - 1] : null;
+  const nextDrillHole = currentDhIdx < drillHoles.length - 1 ? drillHoles[currentDhIdx + 1] : null;
+
   async function handleDrillHoleEdit(data: DrillHoleFormData) {
     try {
       await editDrillHole(dhId, { ...data, projectId });
@@ -143,11 +151,57 @@ export default function DrillHoleDetailPage({
             >
               <Pencil className="h-3.5 w-3.5" />
             </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs text-muted-foreground hover:text-primary"
+              asChild
+            >
+              <Link href={`/projects/${projectId}/map?center_lat=${drillHole.latitude}&center_lng=${drillHole.longitude}&center_zoom=16`}>
+                <MapViewIcon className="h-3.5 w-3.5 mr-1" />
+                Ver en mapa
+              </Link>
+            </Button>
+            <div className="flex items-center gap-0.5 ml-2">
+              {prevDrillHole ? (
+                <Button variant="ghost" size="icon" className="h-6 w-6" asChild>
+                  <Link href={`/projects/${projectId}/drillholes/${prevDrillHole.id}`} title={`Anterior: ${prevDrillHole.holeId}`}>
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </Link>
+                </Button>
+              ) : (
+                <Button variant="ghost" size="icon" className="h-6 w-6" disabled>
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </Button>
+              )}
+              {nextDrillHole ? (
+                <Button variant="ghost" size="icon" className="h-6 w-6" asChild>
+                  <Link href={`/projects/${projectId}/drillholes/${nextDrillHole.id}`} title={`Siguiente: ${nextDrillHole.holeId}`}>
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </Link>
+                </Button>
+              ) : (
+                <Button variant="ghost" size="icon" className="h-6 w-6" disabled>
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
               <MapPin className="h-3 w-3" />
               <span className="font-mono">{drillHole.latitude.toFixed(6)}, {drillHole.longitude.toFixed(6)}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(`${drillHole.latitude.toFixed(6)}, ${drillHole.longitude.toFixed(6)}`);
+                  toast.success('Coordenadas copiadas');
+                }}
+                className="ml-0.5 text-muted-foreground hover:text-foreground p-0.5 rounded hover:bg-muted transition-colors"
+                title="Copiar coordenadas"
+              >
+                <Copy className="h-3 w-3" />
+              </button>
             </span>
             <span className="flex items-center gap-1">
               <Compass className="h-3 w-3" />

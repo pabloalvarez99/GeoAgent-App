@@ -14,6 +14,7 @@ import {
   Calendar,
   User,
   ArrowUpDown,
+  Map as MapViewIcon,
 } from 'lucide-react';
 import { useStations } from '@/lib/hooks/use-stations';
 import { useProject } from '@/lib/hooks/use-projects';
@@ -304,6 +305,11 @@ export default function StationsPage({ params }: { params: Promise<{ id: string 
                     </td>
                     <td className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary" asChild>
+                          <Link href={`/projects/${projectId}/map?center_lat=${station.latitude}&center_lng=${station.longitude}&center_zoom=16`}>
+                            <MapViewIcon className="h-3.5 w-3.5" />
+                          </Link>
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"

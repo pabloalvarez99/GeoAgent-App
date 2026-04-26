@@ -15,6 +15,7 @@ import {
   Pencil,
   Trash2,
   BarChart3,
+  Clock,
 } from 'lucide-react';
 import {
   BarChart,
@@ -54,6 +55,8 @@ import { ProjectForm } from '@/components/forms/project-form';
 import type { ProjectFormData } from '@geoagent/geo-shared/validation';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { formatDistanceToNow } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 const subNavItems = [
   { href: 'stations',  label: 'Estaciones', icon: Layers,    desc: 'Puntos de muestreo'     },
@@ -141,6 +144,18 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               <MapPin className="h-3.5 w-3.5 shrink-0" />
               <span>{project.location}</span>
             </div>
+            {project.updatedAt && (
+              <div className="flex items-center gap-1.5 mt-0.5 text-xs text-muted-foreground">
+                <Clock className="h-3 w-3 shrink-0" />
+                <span>
+                  Actualizado{' '}
+                  {formatDistanceToNow(
+                    (project.updatedAt as any).toDate?.() ?? new Date(project.updatedAt as any),
+                    { addSuffix: true, locale: es },
+                  )}
+                </span>
+              </div>
+            )}
           </div>
         </div>
         <div className="flex gap-2 shrink-0">
