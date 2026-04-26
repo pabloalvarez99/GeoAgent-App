@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { formatDistanceToNow } from 'date-fns';
+import { es } from 'date-fns/locale';
 import Link from 'next/link';
 import {
   Plus,
@@ -223,7 +225,14 @@ export default function ProjectsPage() {
                     <CardDescription className="line-clamp-2 text-xs mb-3">
                       {project.description}
                     </CardDescription>
-                    <ProjectStats projectId={project.id} />
+                    <div className="flex items-center justify-between mt-2">
+                      <ProjectStats projectId={project.id} />
+                      {project.updatedAt && (
+                        <span className="text-[10px] text-muted-foreground/60 shrink-0 ml-2">
+                          {formatDistanceToNow((project.updatedAt as any).toDate?.() ?? project.updatedAt, { addSuffix: true, locale: es })}
+                        </span>
+                      )}
+                    </div>
                   </CardContent>
                 </Link>
               </Card>
