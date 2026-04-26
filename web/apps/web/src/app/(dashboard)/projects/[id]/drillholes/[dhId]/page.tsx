@@ -238,9 +238,13 @@ export default function DrillHoleDetailPage({
             ))}
           </div>
         ) : intervals.length === 0 ? (
-          <p className="text-muted-foreground text-sm text-center py-8">
-            No hay intervalos registrados. Agrega el primer intervalo litológico.
-          </p>
+          <div className="flex flex-col items-center gap-2 py-10 text-center">
+            <ArrowDown className="h-8 w-8 text-muted-foreground/30" />
+            <p className="text-sm text-muted-foreground">No hay intervalos registrados</p>
+            <Button size="sm" variant="outline" onClick={() => { setEditInterval(null); setIntervalOpen(true); }}>
+              <Plus className="h-3.5 w-3.5 mr-1.5" /> Agregar intervalo
+            </Button>
+          </div>
         ) : (
           <div className="space-y-3">
             {/* Desktop table */}
