@@ -14,6 +14,7 @@ import {
   Upload,
   Pencil,
   Trash2,
+  BarChart3,
 } from 'lucide-react';
 import {
   BarChart,
@@ -55,12 +56,13 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 const subNavItems = [
-  { href: 'stations',  label: 'Estaciones', icon: Layers,   desc: 'Puntos de muestreo'     },
-  { href: 'drillholes',label: 'Sondajes',   icon: Drill,    desc: 'Perforaciones y logs'   },
-  { href: 'map',       label: 'Mapa',       icon: Map,      desc: 'Vista georreferenciada' },
-  { href: 'photos',    label: 'Fotos',      icon: Camera,   desc: 'Galería del proyecto'   },
-  { href: 'export',    label: 'Exportar',   icon: Download, desc: 'PDF, Excel, GeoJSON'    },
-  { href: 'import',    label: 'Importar',   icon: Upload,   desc: 'CSV y Excel masivo'     },
+  { href: 'stations',  label: 'Estaciones', icon: Layers,    desc: 'Puntos de muestreo'     },
+  { href: 'drillholes',label: 'Sondajes',   icon: Drill,     desc: 'Perforaciones y logs'   },
+  { href: 'map',       label: 'Mapa',       icon: Map,       desc: 'Vista georreferenciada' },
+  { href: 'photos',    label: 'Fotos',      icon: Camera,    desc: 'Galería del proyecto'   },
+  { href: 'analytics', label: 'Analítica',  icon: BarChart3, desc: 'Gráficos y estadísticas'},
+  { href: 'export',    label: 'Exportar',   icon: Download,  desc: 'PDF, Excel, GeoJSON'    },
+  { href: 'import',    label: 'Importar',   icon: Upload,    desc: 'CSV y Excel masivo'     },
 ];
 
 export default function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {

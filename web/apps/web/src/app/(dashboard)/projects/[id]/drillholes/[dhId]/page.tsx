@@ -210,7 +210,7 @@ export default function DrillHoleDetailPage({
             <CardTitle className="text-sm">Columna estratigráfica</CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4">
-            <StratigraphicColumn intervals={intervals} totalDepth={drillHole.actualDepth ?? drillHole.plannedDepth} />
+            <StratigraphicColumn intervals={intervals} totalDepth={drillHole.actualDepth ?? drillHole.plannedDepth} holeId={drillHole.holeId} />
           </CardContent>
         </Card>
       )}

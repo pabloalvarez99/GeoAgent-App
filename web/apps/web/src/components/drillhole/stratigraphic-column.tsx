@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
+import { Download } from 'lucide-react';
 import type { GeoDrillInterval } from '@geoagent/geo-shared/types';
 
 // Rock group → hue for SVG fill
@@ -33,10 +34,24 @@ function colorForInterval(interval: GeoDrillInterval): string {
 interface StratigraphicColumnProps {
   intervals: GeoDrillInterval[];
   totalDepth: number;
+  holeId?: string;
 }
 
-export function StratigraphicColumn({ intervals, totalDepth }: StratigraphicColumnProps) {
+export function StratigraphicColumn({ intervals, totalDepth, holeId }: StratigraphicColumnProps) {
   const [tooltip, setTooltip] = useState<{ interval: GeoDrillInterval; x: number; y: number } | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  const downloadSvg = useCallback(() => {
+    if (!svgRef.current) return;
+    const xml = '<?xml version="1.0" encoding="UTF-8"?>\n' + svgRef.current.outerHTML;
+    const blob = new Blob([xml], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `columna_${holeId ?? 'sondaje'}.svg`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [holeId]);
 
   if (intervals.length === 0 || totalDepth <= 0) return null;
 
@@ -64,7 +79,7 @@ export function StratigraphicColumn({ intervals, totalDepth }: StratigraphicColu
 
   return (
     <div className="overflow-x-auto relative">
-      <div className="text-xs text-muted-foreground mb-2 flex items-center gap-4">
+      <div className="text-xs text-muted-foreground mb-2 flex items-center gap-4 flex-wrap">
         <span className="flex items-center gap-1.5">
           <span className="inline-block w-3 h-3 rounded-sm" style={{ background: '#f97316' }} /> Ignea
         </span>
@@ -74,8 +89,16 @@ export function StratigraphicColumn({ intervals, totalDepth }: StratigraphicColu
         <span className="flex items-center gap-1.5">
           <span className="inline-block w-3 h-3 rounded-sm" style={{ background: '#a855f7' }} /> Metamorfica
         </span>
+        <button
+          onClick={downloadSvg}
+          className="ml-auto flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground px-2 py-0.5 rounded border border-border hover:bg-muted transition-colors"
+        >
+          <Download className="h-3 w-3" />
+          SVG
+        </button>
       </div>
       <svg
+        ref={svgRef}
         width={svgW}
         height={svgH}
         className="font-mono select-none"

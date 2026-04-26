@@ -18,7 +18,9 @@ import {
   Map as MapIcon,
   List,
   ExternalLink,
+  Copy,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useStations } from '@/lib/hooks/use-stations';
 import { useDrillHoles } from '@/lib/hooks/use-drillholes';
 import { Button } from '@/components/ui/button';
@@ -300,9 +302,8 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
 
   const [selected, setSelected] = useState<SelectedFeature | null>(null);
   const [showList, setShowList] = useState(false);
-  const [mapTypeId, setMapTypeId] = useState<'roadmap' | 'satellite' | 'hybrid' | 'terrain'>(
-    'roadmap',
-  );
+  const [mapTypeId, setMapTypeId] = useState<'roadmap' | 'satellite' | 'hybrid' | 'terrain'>('roadmap');
+  const [mapClick, setMapClick] = useState<{ lat: number; lng: number } | null>(null);
 
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
   const loading = loadingStations || loadingDrillHoles;
@@ -500,7 +501,11 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
                 streetViewControl={false}
                 zoomControl
                 style={{ width: '100%', height: '100%' }}
-                onClick={() => setSelected(null)}
+                onClick={(e) => {
+                  setSelected(null);
+                  const ll = e.detail?.latLng;
+                  if (ll) setMapClick({ lat: ll.lat, lng: ll.lng });
+                }}
               >
                 {/* Station markers — blue */}
                 {stations.map((station) => (
@@ -545,13 +550,39 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
             </APIProvider>
           )}
 
-          {/* Empty state — shown inside map area when no API key issue but no data */}
+          {/* Empty state */}
           {!hasNoApiKey && !loading && stations.length === 0 && drillHoles.length === 0 && (
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
               <div className="bg-background/90 backdrop-blur-sm border border-border rounded-lg px-4 py-2.5 flex items-center gap-2 text-sm text-muted-foreground shadow-lg">
                 <MapPin className="h-4 w-4 shrink-0" />
                 <span>No hay estaciones ni sondajes con coordenadas registradas</span>
               </div>
+            </div>
+          )}
+
+          {/* Coordinate click overlay */}
+          {mapClick && (
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-background/95 backdrop-blur-sm border border-border rounded-lg pl-3 pr-1.5 py-1.5 shadow-lg">
+              <MapPin className="h-3.5 w-3.5 text-primary shrink-0" />
+              <span className="font-mono text-xs text-foreground">
+                {mapClick.lat.toFixed(6)}, {mapClick.lng.toFixed(6)}
+              </span>
+              <button
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded hover:bg-muted transition-colors"
+                onClick={() => {
+                  navigator.clipboard.writeText(`${mapClick.lat.toFixed(6)}, ${mapClick.lng.toFixed(6)}`);
+                  toast.success('Coordenadas copiadas');
+                }}
+              >
+                <Copy className="h-3 w-3" />
+                Copiar
+              </button>
+              <button
+                className="text-muted-foreground hover:text-foreground p-0.5 rounded hover:bg-muted transition-colors"
+                onClick={() => setMapClick(null)}
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
             </div>
           )}
         </div>

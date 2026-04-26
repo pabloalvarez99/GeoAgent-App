@@ -1,7 +1,8 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   ArrowLeft,
   MapPin,
@@ -14,15 +15,22 @@ import {
   Layers,
   TrendingUp,
   FlaskConical,
+  ExternalLink,
+  Camera,
 } from 'lucide-react';
+import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
+import { ref as storageRef, getDownloadURL } from 'firebase/storage';
+import { storage } from '@/lib/firebase/client';
 import { useStations } from '@/lib/hooks/use-stations';
 import { useLithologies } from '@/lib/hooks/use-lithologies';
 import { useStructural } from '@/lib/hooks/use-structural';
 import { useSamples } from '@/lib/hooks/use-samples';
 import { useProject } from '@/lib/hooks/use-projects';
+import { usePhotos } from '@/lib/hooks/use-photos';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
@@ -61,6 +69,32 @@ export default function StationDetailPage({
   const { lithologies, loading: lithoLoading, addOrUpdateLithology, removeLithology } = useLithologies(stId);
   const { structural, loading: structLoading, addOrUpdateStructural, removeStructural } = useStructural(stId);
   const { samples, loading: sampleLoading, addOrUpdateSample, removeSample } = useSamples(stId);
+  const { photos, loading: photosLoading } = usePhotos({ stationId: stId });
+
+  // Resolve download URLs for up to 4 photos
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const [photoUrlsLoading, setPhotoUrlsLoading] = useState(false);
+
+  useEffect(() => {
+    if (photos.length === 0) {
+      setPhotoUrls([]);
+      return;
+    }
+    let cancelled = false;
+    setPhotoUrlsLoading(true);
+    const slice = photos.filter((p) => p.storagePath).slice(0, 4);
+    Promise.all(
+      slice.map((p) => getDownloadURL(storageRef(storage, p.storagePath!)).catch(() => null)),
+    ).then((urls) => {
+      if (!cancelled) {
+        setPhotoUrls(urls.filter(Boolean) as string[]);
+        setPhotoUrlsLoading(false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [photos]);
+
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
 
   // Station edit state
   const [stationEditOpen, setStationEditOpen] = useState(false);

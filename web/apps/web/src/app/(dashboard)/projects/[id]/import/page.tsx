@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { read, utils } from 'xlsx';
 import { ArrowLeft, Upload, FileSpreadsheet, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/lib/firebase/auth';
-import { createStation, createDrillHole } from '@/lib/firebase/firestore';
+import { useDrillHoles } from '@/lib/hooks/use-drillholes';
+import { createStation, createDrillHole, saveDrillInterval } from '@/lib/firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -68,6 +69,59 @@ function validateDrillHoleRow(row: any, index: number): { data: any } | { error:
   };
 }
 
+function validateIntervalRow(
+  row: any,
+  index: number,
+  holeIdToDocId: Record<string, string>,
+): { data: any } | { error: string } {
+  const rawHoleId = String(
+    row['HoleID'] ?? row['holeId'] ?? row['hole_id'] ?? row['SondajeID'] ?? row['sondaje'] ?? '',
+  ).trim();
+  if (!rawHoleId) return { error: `Fila ${index + 2}: falta campo "HoleID"` };
+  const drillHoleId = holeIdToDocId[rawHoleId];
+  if (!drillHoleId) return { error: `Fila ${index + 2}: sondaje "${rawHoleId}" no existe en este proyecto` };
+
+  const fromDepth = parseFloat(row['From'] ?? row['from'] ?? row['Desde'] ?? row['desde'] ?? '');
+  const toDepth = parseFloat(row['To'] ?? row['to'] ?? row['Hasta'] ?? row['hasta'] ?? '');
+  if (isNaN(fromDepth) || fromDepth < 0) return { error: `Fila ${index + 2}: profundidad inicial inválida` };
+  if (isNaN(toDepth)) return { error: `Fila ${index + 2}: profundidad final inválida` };
+  if (fromDepth >= toDepth) return { error: `Fila ${index + 2}: "Desde" (${fromDepth}) debe ser menor que "Hasta" (${toDepth})` };
+
+  const rockType = String(row['RockType'] ?? row['TipoRoca'] ?? row['rockType'] ?? row['tipo_roca'] ?? '').trim();
+  const rockGroup = String(row['RockGroup'] ?? row['GrupoRoca'] ?? row['rockGroup'] ?? row['grupo_roca'] ?? '').trim();
+  if (!rockType) return { error: `Fila ${index + 2}: falta campo "RockType"` };
+  if (!rockGroup) return { error: `Fila ${index + 2}: falta campo "RockGroup"` };
+
+  const color = String(row['Color'] ?? row['color'] ?? '').trim();
+  const texture = String(row['Texture'] ?? row['Textura'] ?? row['texture'] ?? '').trim();
+  const grainSize = String(row['GrainSize'] ?? row['Tamano'] ?? row['Tamaño'] ?? row['grainSize'] ?? '').trim();
+  const mineralogy = String(row['Mineralogy'] ?? row['Mineralogia'] ?? row['Mineralogía'] ?? row['mineralogy'] ?? '').trim();
+
+  const rqd = parseFloat(row['RQD'] ?? row['rqd'] ?? '');
+  const recovery = parseFloat(row['Recovery'] ?? row['Recuperacion'] ?? row['Recuperación'] ?? row['recovery'] ?? '');
+
+  return {
+    data: {
+      drillHoleId,
+      fromDepth,
+      toDepth,
+      rockType,
+      rockGroup,
+      color: color || 'Sin color',
+      texture: texture || 'Sin textura',
+      grainSize: grainSize || 'Media',
+      mineralogy: mineralogy || '',
+      alteration: String(row['Alteration'] ?? row['Alteracion'] ?? row['Alteración'] ?? row['alteration'] ?? '').trim() || undefined,
+      alterationIntensity: String(row['AlterationIntensity'] ?? row['IntensidadAlteracion'] ?? row['alterationIntensity'] ?? '').trim() || undefined,
+      mineralization: String(row['Mineralization'] ?? row['Mineralizacion'] ?? row['Mineralización'] ?? row['mineralization'] ?? '').trim() || undefined,
+      mineralizationPercent: isNaN(parseFloat(row['MineralizationPercent'] ?? row['PorcMineralizacion'] ?? '')) ? undefined : parseFloat(row['MineralizationPercent'] ?? row['PorcMineralizacion'] ?? ''),
+      rqd: isNaN(rqd) ? undefined : rqd,
+      recovery: isNaN(recovery) ? undefined : recovery,
+      notes: String(row['Notes'] ?? row['Notas'] ?? row['notes'] ?? '').trim() || undefined,
+    },
+  };
+}
+
 function parseFile(file: File, type: 'stations' | 'drillholes'): Promise<ParseResult> {
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -98,12 +152,40 @@ function parseFile(file: File, type: 'stations' | 'drillholes'): Promise<ParseRe
   });
 }
 
+function parseIntervalFile(file: File, holeIdToDocId: Record<string, string>): Promise<ParseResult> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target!.result as ArrayBuffer);
+        const workbook = read(data, { type: 'array' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows: any[] = utils.sheet_to_json(sheet);
+        const valid: any[] = [];
+        const errors: { row: number; message: string }[] = [];
+        rows.forEach((row, i) => {
+          const result = validateIntervalRow(row, i, holeIdToDocId);
+          if ('data' in result) valid.push(result.data);
+          else errors.push({ row: i + 2, message: result.error });
+        });
+        resolve({ valid, errors });
+      } catch {
+        resolve({ valid: [], errors: [{ row: 0, message: 'No se pudo leer el archivo. Verifica que sea .xlsx o .csv válido.' }] });
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
 // ── Componente principal ─────────────────────────────────────────────────────
 export default function ImportPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: projectId } = use(params);
   const { user } = useAuth();
+  const { drillHoles } = useDrillHoles(projectId);
 
-  const [tab, setTab] = useState<'stations' | 'drillholes'>('stations');
+  const holeIdToDocId = Object.fromEntries(drillHoles.map((d) => [d.holeId, d.id]));
+
+  const [tab, setTab] = useState<'stations' | 'drillholes' | 'intervals'>('stations');
   const [file, setFile] = useState<File | null>(null);
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
   const [status, setStatus] = useState<'idle' | 'parsing' | 'ready' | 'importing' | 'done' | 'error'>('idle');
@@ -114,10 +196,12 @@ export default function ImportPage({ params }: { params: Promise<{ id: string }>
     setFile(f);
     setStatus('parsing');
     setParseResult(null);
-    const result = await parseFile(f, tab);
+    const result = tab === 'intervals'
+      ? await parseIntervalFile(f, holeIdToDocId)
+      : await parseFile(f, tab);
     setParseResult(result);
     setStatus('ready');
-  }, [tab]);
+  }, [tab, holeIdToDocId]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -132,7 +216,7 @@ export default function ImportPage({ params }: { params: Promise<{ id: string }>
   };
 
   const handleTabChange = (t: string) => {
-    setTab(t as 'stations' | 'drillholes');
+    setTab(t as 'stations' | 'drillholes' | 'intervals');
     setFile(null);
     setParseResult(null);
     setStatus('idle');
@@ -150,9 +234,9 @@ export default function ImportPage({ params }: { params: Promise<{ id: string }>
         const chunk = items.slice(i, i + BATCH);
         await Promise.all(
           chunk.map(async (item) => {
-            const record = { ...item, projectId };
-            if (tab === 'stations') await createStation(user.uid, record);
-            else await createDrillHole(user.uid, record);
+            if (tab === 'stations') await createStation(user.uid, { ...item, projectId });
+            else if (tab === 'drillholes') await createDrillHole(user.uid, { ...item, projectId });
+            else await saveDrillInterval(user.uid, item);
           }),
         );
         count += chunk.length;
@@ -191,6 +275,7 @@ export default function ImportPage({ params }: { params: Promise<{ id: string }>
         <TabsList>
           <TabsTrigger value="stations">Estaciones</TabsTrigger>
           <TabsTrigger value="drillholes">Sondajes</TabsTrigger>
+          <TabsTrigger value="intervals">Intervalos</TabsTrigger>
         </TabsList>
 
         {/* Plantilla de columnas */}
@@ -202,10 +287,16 @@ export default function ImportPage({ params }: { params: Promise<{ id: string }>
                 <span className="text-foreground">code</span>, <span className="text-foreground">latitude</span>, <span className="text-foreground">longitude</span>
                 {' '}— opcionales: altitude, date, geologist, description, weatherConditions
               </p>
-            ) : (
+            ) : tab === 'drillholes' ? (
               <p className="text-xs font-mono text-muted-foreground">
                 <span className="text-foreground">holeId</span>, <span className="text-foreground">latitude</span>, <span className="text-foreground">longitude</span>, <span className="text-foreground">plannedDepth</span>
                 {' '}— opcionales: azimuth, inclination, actualDepth, type, status, geologist, startDate, endDate, notes
+              </p>
+            ) : (
+              <p className="text-xs font-mono text-muted-foreground">
+                <span className="text-foreground">HoleID</span>, <span className="text-foreground">From</span>, <span className="text-foreground">To</span>, <span className="text-foreground">RockType</span>, <span className="text-foreground">RockGroup</span>
+                {' '}— opcionales: Color, Texture, GrainSize, Mineralogy, Alteration, RQD, Recovery, Notes
+                {drillHoles.length === 0 && <span className="text-amber-400 ml-1">— (crea sondajes primero)</span>}
               </p>
             )}
             <p className="text-xs text-muted-foreground mt-1">Acepta nombres en español e inglés. Formatos: .xlsx, .xls, .csv</p>
@@ -324,7 +415,7 @@ export default function ImportPage({ params }: { params: Promise<{ id: string }>
                     onClick={handleImport}
                     disabled={parseResult.valid.length === 0}
                   >
-                    Importar {parseResult.valid.length} {tab === 'stations' ? 'estaciones' : 'sondajes'}
+                    Importar {parseResult.valid.length} {tab === 'stations' ? 'estaciones' : tab === 'drillholes' ? 'sondajes' : 'intervalos'}
                   </Button>
                 </div>
               </CardContent>
@@ -369,7 +460,7 @@ export default function ImportPage({ params }: { params: Promise<{ id: string }>
                 <div>
                   <p className="font-semibold">¡Importación completada!</p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Se importaron {importedCount} {tab === 'stations' ? 'estaciones' : 'sondajes'} exitosamente
+                    Se importaron {importedCount} {tab === 'stations' ? 'estaciones' : tab === 'drillholes' ? 'sondajes' : 'intervalos'} exitosamente
                   </p>
                 </div>
                 <div className="flex gap-2">

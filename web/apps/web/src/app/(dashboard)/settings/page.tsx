@@ -12,7 +12,9 @@ import {
   Shield,
   RefreshCw,
   CheckCircle2,
+  Download,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useAuth } from '@/lib/firebase/auth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -75,6 +77,19 @@ export default function SettingsPage() {
   const [isOnline, setIsOnline] = useState(
     typeof navigator !== 'undefined' ? navigator.onLine : true,
   );
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isStandalone, setIsStandalone] = useState(false);
+
+  useEffect(() => {
+    setIsStandalone(window.matchMedia('(display-mode: standalone)').matches);
+
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
 
   useEffect(() => {
     const setOnline = () => setIsOnline(true);
@@ -86,6 +101,16 @@ export default function SettingsPage() {
       window.removeEventListener('offline', setOffline);
     };
   }, []);
+
+  async function handleInstall() {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    setDeferredPrompt(null);
+    if (outcome === 'accepted') {
+      toast.success('GeoAgent instalado correctamente');
+    }
+  }
 
   async function handleSignOut() {
     await signOut();

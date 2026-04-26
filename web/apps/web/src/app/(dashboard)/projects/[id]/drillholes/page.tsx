@@ -12,6 +12,7 @@ import {
   Trash2,
   ArrowDown,
   ArrowUpDown,
+  X,
 } from 'lucide-react';
 import { useDrillHoles } from '@/lib/hooks/use-drillholes';
 import { useProject } from '@/lib/hooks/use-projects';

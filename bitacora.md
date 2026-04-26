@@ -1085,3 +1085,50 @@ Todos los formularios ahora tienen secciones visualmente separadas con `<Separat
 - `8160dd8` — feat(web): section lithology, structural, sample forms with visual separators
 
 **Estado producción:** Desplegado en `https://web-taupe-three-27.vercel.app`
+
+---
+
+## 2026-04-26 — 5 mejoras web + fix Electron
+
+### Feature 1: Página de analítica por proyecto (`/projects/[id]/analytics`)
+- **Creado:** `web/apps/web/src/app/(dashboard)/projects/[id]/analytics/page.tsx`
+- **Modificado:** `projects/[id]/page.tsx` — añadido "Analítica" con ícono `BarChart3` a `subNavItems`
+- 5 gráficos recharts (patrones idénticos a home/page.tsx):
+  - Donut: grupos litológicos (Ignea/Sedimentaria/Metamorfica)
+  - Donut: tipos de muestra
+  - BarChart horizontal: top 8 tipos de roca por frecuencia
+  - BarChart: profundidad planificada vs real por sondaje
+  - BarChart: RQD promedio por sondaje
+- Carga batched via `getLithologiesForStations`, `getSamplesForStations`, `getIntervalsForDrillHoles`
+- Skeletons durante carga, empty state si no hay datos
+
+### Feature 2: Importación de intervalos litológicos (3er tab)
+- **Modificado:** `projects/[id]/import/page.tsx`
+- Nuevo tab "Intervalos" en la página de importación
+- `validateIntervalRow(row, index, holeIdToDocId)` — valida holeId contra sondajes existentes del proyecto
+- Aliases de columnas en español e inglés (HoleID/sondaje, From/Desde, RockType/TipoRoca, etc.)
+- Importación via `saveDrillInterval` en batches de 20
+- Muestra warning si no hay sondajes creados aún
+
+### Feature 3: Overlay de coordenadas al hacer click en el mapa
+- **Modificado:** `projects/[id]/map/page.tsx`
+- Click en área vacía del mapa → badge con lat/lon a 6 decimales (Geist Mono)
+- Botón "Copiar" → clipboard + toast de confirmación
+- Botón × para cerrar overlay
+- No conflicta con clicks en marcadores (`e.stop()` en marcadores previene propagación)
+
+### Feature 4: Descarga SVG de columna estratigráfica
+- **Modificado:** `components/drillhole/stratigraphic-column.tsx`
+- Nueva prop `holeId?: string` para nombre del archivo descargado
+- Botón "SVG" en la leyenda de la columna → descarga `columna_<holeId>.svg`
+- Usa `useRef<SVGSVGElement>` + `outerHTML` + Blob URL
+- **Modificado:** `drillholes/[dhId]/page.tsx` — pasa `holeId={drillHole.holeId}`
+
+### Feature 5: Fix Electron build:web
+- **Modificado:** `web/apps/desktop/package.json`
+- `build:web` ahora usa `cross-env NEXT_EXPORT=1 npm run build` (antes no tenía NEXT_EXPORT → no generaba `/out/` → el installer quedaba vacío)
+- `cross-env ^7.0.3` añadido a devDependencies
+- Requiere `npm install` en `web/apps/desktop/` antes de usar
+
+**Archivos creados:** `projects/[id]/analytics/page.tsx`
+**Archivos modificados:** `projects/[id]/page.tsx`, `projects/[id]/import/page.tsx`, `projects/[id]/map/page.tsx`, `components/drillhole/stratigraphic-column.tsx`, `drillholes/[dhId]/page.tsx`, `web/apps/desktop/package.json`
