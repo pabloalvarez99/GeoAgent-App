@@ -128,6 +128,36 @@ export default function DrillHolesPage({ params }: { params: Promise<{ id: strin
         </Button>
       </div>
 
+      {/* Summary strip */}
+      {!loading && drillHoles.length > 0 && (() => {
+        const totalDrilled = drillHoles.reduce((s, d) => s + (d.actualDepth ?? 0), 0);
+        const inProgress = drillHoles.filter((d) => d.status === 'En Progreso').length;
+        const completed = drillHoles.filter((d) => d.status === 'Completado').length;
+        return (
+          <div className="flex flex-wrap gap-4 text-xs text-muted-foreground border-b border-border pb-4">
+            <span className="flex items-center gap-1.5">
+              <ArrowDown className="h-3 w-3 shrink-0" />
+              <span className="font-mono font-medium text-foreground">{totalDrilled.toFixed(0)} m</span>
+              <span>perforados en total</span>
+            </span>
+            {inProgress > 0 && (
+              <span className="flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse shrink-0" />
+                <span className="font-mono font-medium text-blue-400">{inProgress}</span>
+                <span>en progreso</span>
+              </span>
+            )}
+            {completed > 0 && (
+              <span className="flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-green-500 shrink-0" />
+                <span className="font-mono font-medium text-green-400">{completed}</span>
+                <span>completados</span>
+              </span>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Search + Sort */}
       <div className="flex gap-2">
         <div className="relative flex-1">
