@@ -1285,3 +1285,109 @@ Todos los formularios ahora tienen secciones visualmente separadas con `<Separat
 **Archivos modificados:** `projects/[id]/map/page.tsx`, `drillholes/page.tsx`, `drillholes/[dhId]/page.tsx`, `projects/[id]/page.tsx`
 
 *Última actualización: 2026-04-26 — 19 features web completados (4 rondas × 5 agentes). "Ver en mapa" ahora funciona end-to-end completo.*
+
+---
+
+## 2026-04-26 — Fase 8 completa + mejoras UX (ronda 5, 5 agentes paralelos)
+
+### Agente 1: Electron Desktop — Fase 8 COMPLETA ✅
+- **Creado:** `web/apps/desktop/electron-src/main.ts`
+  - `protocol.registerSchemesAsPrivileged` → `app://` como origen seguro (Firebase Auth + fetch + localStorage)
+  - Servidor de archivos estáticos `app://` con fallback: path → path/index.html → index.html
+  - Menú nativo Windows en español (Archivo/Ver/Editar/Ayuda) con atajos CmdOrCtrl
+  - IPC handlers: `save-file`, `show-save-dialog`, `open-file`, `get-version`, `check-for-updates`
+  - `electron-updater` con diálogos de actualización en español
+  - Dev mode: carga `http://localhost:3000` + DevTools; Prod: `app://./index.html`
+  - `app.setAppUserModelId('com.geoagent.app')` para agrupación en taskbar Windows
+- **Creado:** `web/apps/desktop/electron-src/preload.ts` (contextBridge, expone save-file)
+- **Creado:** `web/apps/desktop/electron-builder.yml` (NSIS x64, appId: com.geoagent.app)
+
+### Agente 2: Mapa — Map type switcher + Distance measurement
+- **Modificado:** `projects/[id]/map/page.tsx`
+- Map type switcher en top bar: Mapa / Satélite / Híbrido / Terreno (pills activos con bg-primary)
+- **Herramienta de medición de distancia:**
+  - Botón "Medir" con Ruler icon — toggle con estado amber cuando activo
+  - Click 1 → marca punto 1; Click 2 → dibuja Polyline ámbar + muestra distancia
+  - Haversine formula client-side (sin API)
+  - Overlay top-center: instrucción contextual → resultado en km o m
+  - Botón "Limpiar" para reiniciar; × cierra modo medición
+  - Cursors `crosshair` en modo medición
+
+### Agente 3: PWA manifest + Service Worker ✅ (ya completo desde sesión anterior)
+- `public/manifest.json`, `public/sw.js`, `layout.tsx` con SW registration — verificado correcto
+
+### Agente 4: GitHub Actions — Electron Release pipeline ✅
+- **Creado:** `.github/workflows/electron-release.yml`
+  - Trigger: `push tags v*.*.*` + `workflow_dispatch` con input `version`
+  - Runner: `windows-latest` (requerido para NSIS)
+  - Pasos: checkout → Node 20 → npm install monorepo → npm install desktop → build:web → tsc → electron-builder → upload .exe
+  - Todos los secrets de Firebase + Google Maps pasados como env vars al build
+  - `softprops/action-gh-release@v2` publica el .exe como GitHub Release
+  - Debug step: `ls dist-electron/` antes del upload
+
+### Agente 5: Station detail UX
+- **Modificado:** `projects/[id]/stations/[stId]/page.tsx`
+- Stat cards clickeables → navegan al tab correspondiente (Litologías/Estructural/Muestras)
+- Tabs controlados con `activeTab` state (antes `defaultValue` no controlado)
+- Botón copy coords junto a coordenadas → feedback `Check` verde 2s
+- Navegación prev/next entre estaciones del proyecto (bonus del linter)
+
+**Estado Fase 8:** Electron Desktop implementado. Para build: `npm run build:electron` en `web/apps/desktop/`.
+**Para release automático:** push tag `git tag v1.0.0 && git push origin v1.0.0`.
+
+---
+
+## 2026-04-26 — UX Round 6: 3 features completados
+
+### Feature 1: Sondajes — "Ver en mapa" por fila ✅
+- **Modificado:** `projects/[id]/drillholes/page.tsx`
+- `Map as MapViewIcon` agregado a imports lucide
+- Botón ghost `h-7 w-7 text-muted-foreground hover:text-primary` + `asChild Link` antes de Pencil en actions td
+- URL: `/projects/${projectId}/map?center_lat=${dh.latitude}&center_lng=${dh.longitude}&center_zoom=16`
+- Consistente con patrón ya existente en `stations/page.tsx`
+
+### Feature 2: Proyectos — Toggle grid/lista ✅
+- **Modificado:** `projects/page.tsx`
+- `LayoutGrid, LayoutList` imports agregados
+- `view` state: `'grid' | 'list'`, default `'grid'`
+- Toggle button group (2 botones con borde compartido) en search bar, right side
+- Vista grid: sin cambios vs. antes
+- Vista lista: `div` con filas (border-b entre items), avatar 8×8 rounded-md, nombre + location, `ProjectStats` (sm+), timestamp (md+), dropdown menu al hover
+
+### Feature 3: Estación detalle — Litología dominante ✅
+- **Modificado:** `projects/[id]/stations/[stId]/page.tsx`
+- Bloque insertado entre stats grid y Tabs
+- Solo renderiza cuando `!lithoLoading && lithologies.length > 0`
+- Computa `rockCounts` y `groupCounts` con `reduce`-style loop
+- Muestra: Layers icon + "Litología dominante:" + Badge secondary (grupo) + Badge outline (tipo)
+
+**Archivos modificados:** `drillholes/page.tsx`, `projects/page.tsx`, `stations/[stId]/page.tsx`
+
+*Última actualización: 2026-04-26 — 22 features web completados en total.*
+
+---
+
+## 2026-04-26 — 3 mejoras web (sesión continuada)
+
+### Fix: Fotos de estación — código muerto convertido en UI real
+- **Problema:** `usePhotos` + resolución de URLs (hasta 4) estaba implementado en `stations/[stId]/page.tsx` pero nunca se renderizaba. Código muerto.
+- **Fix:** Añadida sección "Photo strip" entre "Litología dominante" y los Tabs:
+  - Fila horizontal de thumbnails 80×80px con `next/image` (unoptimized para Firebase Storage URLs)
+  - Contador de fotos con ícono `Camera`
+  - Link "Ver todas" → `/projects/${projectId}/photos`
+  - Overflow chip "+N" si hay más de 4 fotos
+  - Solo renderiza cuando hay fotos cargadas (`photoUrls.length > 0`)
+- **Archivo:** `stations/[stId]/page.tsx`
+
+### Feature: "Ver detalle" en panels del mapa
+- **Problema:** Al hacer click en un marcador del mapa, el side panel mostraba toda la info pero no tenía link al detalle completo — el usuario debía cerrar el panel y navegar manualmente.
+- **Fix:** `StationPanel` y `DrillHolePanel` ahora reciben `projectId` como prop y tienen un botón al fondo del panel:
+  - Estación: "Ver detalle de estación" → `/projects/${projectId}/stations/${station.id}` (verde primario)
+  - Sondaje: "Ver detalle de sondaje" → `/projects/${projectId}/drillholes/${dh.id}` (ámbar)
+- **Archivo:** `map/page.tsx`
+
+### Feature: "Crear sondaje aquí" en click overlay del mapa + GPS pre-fill
+- **Antes:** Click en área vacía del mapa mostraba coordenadas con opción "Crear estación" pero no "Crear sondaje".
+- **Fix 1:** `map/page.tsx` — añadido link "Crear sondaje" (ámbar) junto al "Crear estación" (verde), con URL `/projects/${projectId}/drillholes/new?lat=X&lng=Y`
+- **Fix 2:** `drillholes/new/page.tsx` — añadido `useSearchParams` para leer `?lat=` y `?lng=` → `gpsDefaults` object → pasado como `defaultValues` a `DrillHoleForm` (parity con `stations/new/page.tsx` que ya tenía esto)
+- **Archivos:** `map/page.tsx`, `drillholes/new/page.tsx`

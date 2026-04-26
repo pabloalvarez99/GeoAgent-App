@@ -65,7 +65,7 @@ function formatCoord(val: number, decimals = 5) {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function StationPanel({ station, onClose }: { station: GeoStation; onClose: () => void }) {
+function StationPanel({ station, projectId, onClose }: { station: GeoStation; projectId: string; onClose: () => void }) {
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-start justify-between gap-2 mb-4">
@@ -123,11 +123,21 @@ function StationPanel({ station, onClose }: { station: GeoStation; onClose: () =
           </a>
         </div>
       </div>
+
+      <div className="pt-3 border-t border-border/50 mt-auto shrink-0">
+        <Link
+          href={`/projects/${projectId}/stations/${station.id}`}
+          className="flex items-center justify-center gap-1.5 text-xs text-primary bg-primary/10 hover:bg-primary/20 rounded-md px-3 py-2 transition-colors w-full"
+        >
+          Ver detalle de estación
+          <ExternalLink className="h-3 w-3" />
+        </Link>
+      </div>
     </div>
   );
 }
 
-function DrillHolePanel({ dh, onClose }: { dh: GeoDrillHole; onClose: () => void }) {
+function DrillHolePanel({ dh, projectId, onClose }: { dh: GeoDrillHole; projectId: string; onClose: () => void }) {
   const actualDepth = dh.actualDepth ?? 0;
   const pct =
     dh.plannedDepth > 0 ? Math.min(100, (actualDepth / dh.plannedDepth) * 100) : 0;
@@ -222,6 +232,16 @@ function DrillHolePanel({ dh, onClose }: { dh: GeoDrillHole; onClose: () => void
           </a>
         </div>
       </div>
+
+      <div className="pt-3 border-t border-border/50 mt-auto shrink-0">
+        <Link
+          href={`/projects/${projectId}/drillholes/${dh.id}`}
+          className="flex items-center justify-center gap-1.5 text-xs text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 rounded-md px-3 py-2 transition-colors w-full"
+        >
+          Ver detalle de sondaje
+          <ExternalLink className="h-3 w-3" />
+        </Link>
+      </div>
     </div>
   );
 }
@@ -308,6 +328,32 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
   const [mapTypeId, setMapTypeId] = useState<'roadmap' | 'satellite' | 'hybrid' | 'terrain'>('roadmap');
   const [mapClick, setMapClick] = useState<{ lat: number; lng: number } | null>(null);
 
+  // Distance measurement
+  const [measuring, setMeasuring] = useState(false);
+  const [measurePoints, setMeasurePoints] = useState<{ lat: number; lng: number }[]>([]);
+
+  function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371000;
+    const φ1 = lat1 * Math.PI / 180, φ2 = lat2 * Math.PI / 180;
+    const Δφ = (lat2 - lat1) * Math.PI / 180, Δλ = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  const measureDistance = measurePoints.length === 2
+    ? haversineMeters(measurePoints[0].lat, measurePoints[0].lng, measurePoints[1].lat, measurePoints[1].lng)
+    : null;
+
+  function formatDistance(m: number): string {
+    return m >= 1000 ? `${(m / 1000).toFixed(2)} km` : `${m.toFixed(0)} m`;
+  }
+
+  function toggleMeasuring() {
+    setMeasuring((v) => !v);
+    setMeasurePoints([]);
+    setMapClick(null);
+  }
+
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
   const loading = loadingStations || loadingDrillHoles;
 
@@ -386,6 +432,20 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
             {loading ? '…' : drillHoles.length} sondaje{drillHoles.length !== 1 ? 's' : ''}
           </Badge>
         </div>
+
+        {/* Measure tool */}
+        <button
+          onClick={toggleMeasuring}
+          title="Medir distancia"
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+            measuring
+              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+          }`}
+        >
+          <Ruler className="h-3.5 w-3.5" />
+          Medir
+        </button>
 
         {/* Split view toggle */}
         <button
@@ -515,10 +575,18 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
                 zoomControl
                 style={{ width: '100%', height: '100%' }}
                 onClick={(e) => {
-                  setSelected(null);
                   const ll = e.detail?.latLng;
-                  if (ll) setMapClick({ lat: ll.lat, lng: ll.lng });
+                  if (!ll) return;
+                  if (measuring) {
+                    setMeasurePoints((prev) =>
+                      prev.length >= 2 ? [{ lat: ll.lat, lng: ll.lng }] : [...prev, { lat: ll.lat, lng: ll.lng }]
+                    );
+                  } else {
+                    setSelected(null);
+                    setMapClick({ lat: ll.lat, lng: ll.lng });
+                  }
                 }}
+                cursor={measuring ? 'crosshair' : undefined}
               >
                 {/* Station markers — blue */}
                 {stations.map((station) => (
@@ -539,6 +607,21 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
                     />
                   </AdvancedMarker>
                 ))}
+
+                {/* Measurement markers + polyline */}
+                {measuring && measurePoints.map((pt, i) => (
+                  <AdvancedMarker key={`measure-${i}`} position={pt}>
+                    <div className="h-3 w-3 rounded-full bg-amber-400 border-2 border-white shadow" />
+                  </AdvancedMarker>
+                ))}
+                {measuring && measurePoints.length === 2 && (
+                  <Polyline
+                    path={measurePoints}
+                    strokeColor="#f59e0b"
+                    strokeWeight={2}
+                    strokeOpacity={0.9}
+                  />
+                )}
 
                 {/* DrillHole markers — amber */}
                 {drillHoles.map((dh) => (
@@ -573,6 +656,36 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
             </div>
           )}
 
+          {/* Measurement overlay */}
+          {measuring && (
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-background/95 backdrop-blur-sm border border-amber-500/30 rounded-lg pl-3 pr-1.5 py-1.5 shadow-lg">
+              <Ruler className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+              {measurePoints.length === 0 && (
+                <span className="text-xs text-muted-foreground">Click en el mapa para marcar punto 1</span>
+              )}
+              {measurePoints.length === 1 && (
+                <span className="text-xs text-muted-foreground">Click para marcar punto 2</span>
+              )}
+              {measurePoints.length === 2 && measureDistance !== null && (
+                <span className="font-mono text-xs font-semibold text-amber-400">{formatDistance(measureDistance)}</span>
+              )}
+              {measurePoints.length > 0 && (
+                <button
+                  onClick={() => setMeasurePoints([])}
+                  className="text-xs text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded hover:bg-muted transition-colors"
+                >
+                  Limpiar
+                </button>
+              )}
+              <button
+                onClick={toggleMeasuring}
+                className="text-muted-foreground hover:text-foreground p-0.5 rounded hover:bg-muted transition-colors"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+
           {/* Coordinate click overlay */}
           {mapClick && (
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-background/95 backdrop-blur-sm border border-border rounded-lg pl-3 pr-1.5 py-1.5 shadow-lg">
@@ -597,6 +710,13 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
                 <Plus className="h-3 w-3" />
                 Crear estación
               </Link>
+              <Link
+                href={`/projects/${projectId}/drillholes/new?lat=${mapClick.lat.toFixed(6)}&lng=${mapClick.lng.toFixed(6)}`}
+                className="flex items-center gap-1 text-xs text-amber-400 hover:text-amber-300 px-1.5 py-0.5 rounded hover:bg-amber-500/10 transition-colors"
+              >
+                <Drill className="h-3 w-3" />
+                Crear sondaje
+              </Link>
               <button
                 className="text-muted-foreground hover:text-foreground p-0.5 rounded hover:bg-muted transition-colors"
                 onClick={() => setMapClick(null)}
@@ -620,11 +740,13 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
               {selected.kind === 'station' ? (
                 <StationPanel
                   station={selected.data}
+                  projectId={projectId}
                   onClose={() => setSelected(null)}
                 />
               ) : (
                 <DrillHolePanel
                   dh={selected.data}
+                  projectId={projectId}
                   onClose={() => setSelected(null)}
                 />
               )}

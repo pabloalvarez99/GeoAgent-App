@@ -2,7 +2,7 @@
 
 import { use } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { useDrillHoles } from '@/lib/hooks/use-drillholes';
 import { useProject } from '@/lib/hooks/use-projects';
@@ -14,8 +14,15 @@ import { toast } from 'sonner';
 export default function NewDrillHolePage({ params }: { params: Promise<{ id: string }> }) {
   const { id: projectId } = use(params);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { project } = useProject(projectId);
   const { addDrillHole } = useDrillHoles(projectId);
+
+  const latParam = searchParams.get('lat');
+  const lngParam = searchParams.get('lng');
+  const gpsDefaults = latParam && lngParam
+    ? { latitude: parseFloat(latParam), longitude: parseFloat(lngParam) }
+    : undefined;
 
   async function handleSubmit(data: DrillHoleFormData) {
     try {
@@ -42,6 +49,7 @@ export default function NewDrillHolePage({ params }: { params: Promise<{ id: str
       </div>
 
       <DrillHoleForm
+        defaultValues={gpsDefaults as any}
         onSubmit={handleSubmit}
         onCancel={() => router.push(`/projects/${projectId}/drillholes`)}
       />

@@ -325,6 +325,73 @@ export default function StationDetailPage({
         </button>
       </div>
 
+      {/* Dominant lithology insight */}
+      {!lithoLoading && lithologies.length > 0 && (() => {
+        const rockCounts: Record<string, number> = {};
+        const groupCounts: Record<string, number> = {};
+        lithologies.forEach((l) => {
+          rockCounts[l.rockType] = (rockCounts[l.rockType] ?? 0) + 1;
+          groupCounts[l.rockGroup] = (groupCounts[l.rockGroup] ?? 0) + 1;
+        });
+        const dominantRock = Object.entries(rockCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
+        const dominantGroup = Object.entries(groupCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
+        return (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Layers className="h-3.5 w-3.5 shrink-0" />
+            <span>Litología dominante:</span>
+            <Badge variant="secondary" className="text-xs">{dominantGroup}</Badge>
+            <span className="text-muted-foreground/60">·</span>
+            <Badge variant="outline" className="text-xs font-normal">{dominantRock}</Badge>
+          </div>
+        );
+      })()}
+
+      {/* Photo strip */}
+      {!photosLoading && (photoUrls.length > 0 || photoUrlsLoading) && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+              <Camera className="h-3.5 w-3.5 shrink-0" />
+              {photoUrlsLoading ? 'Cargando fotos...' : `${photos.length} foto${photos.length !== 1 ? 's' : ''}`}
+            </p>
+            <Link
+              href={`/projects/${projectId}/photos`}
+              className="text-xs text-primary hover:underline"
+            >
+              Ver todas
+            </Link>
+          </div>
+          {photoUrls.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {photoUrls.map((url, i) => (
+                <Link
+                  key={i}
+                  href={`/projects/${projectId}/photos`}
+                  className="shrink-0 h-20 w-20 rounded-md overflow-hidden border border-border hover:border-primary/40 transition-colors"
+                >
+                  <Image
+                    src={url}
+                    alt={`Foto ${i + 1}`}
+                    width={80}
+                    height={80}
+                    className="w-full h-full object-cover"
+                    unoptimized
+                  />
+                </Link>
+              ))}
+              {photos.length > 4 && (
+                <Link
+                  href={`/projects/${projectId}/photos`}
+                  className="shrink-0 h-20 w-20 rounded-md border border-border bg-muted/40 flex items-center justify-center hover:border-primary/40 transition-colors"
+                >
+                  <span className="text-xs text-muted-foreground font-mono">+{photos.length - 4}</span>
+                </Link>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
         <TabsList className="w-full sm:w-auto">
