@@ -73,9 +73,16 @@ function ProjectStats({ projectId }: { projectId: string }) {
   const { drillHoles } = useDrillHoles(projectId);
   return (
     <div className="flex gap-3 text-xs text-muted-foreground">
-      <span>{stations.length} estaciones</span>
-      <span>·</span>
-      <span>{drillHoles.length} sondajes</span>
+      <span className="flex items-center gap-1">
+        <span className="h-1.5 w-1.5 rounded-full bg-blue-500 shrink-0" />
+        <span className="font-mono font-medium text-foreground">{stations.length}</span>
+        <span>est.</span>
+      </span>
+      <span className="flex items-center gap-1">
+        <span className="h-1.5 w-1.5 rounded-full bg-purple-500 shrink-0" />
+        <span className="font-mono font-medium text-foreground">{drillHoles.length}</span>
+        <span>sond.</span>
+      </span>
     </div>
   );
 }
