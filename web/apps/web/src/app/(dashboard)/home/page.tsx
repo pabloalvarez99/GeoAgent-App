@@ -263,6 +263,19 @@ export default function DashboardPage() {
         />
       </div>
 
+      {/* Analytics skeleton */}
+      {dataLoading && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <div className="skeleton h-4 w-4 rounded" />
+            <div className="skeleton h-5 w-20 rounded" />
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {[...Array(4)].map((_, i) => <div key={i} className="skeleton h-64 rounded-lg" />)}
+          </div>
+        </div>
+      )}
+
       {/* Analytics section */}
       {!dataLoading && hasAnalyticsData && (
         <div className="space-y-4">
