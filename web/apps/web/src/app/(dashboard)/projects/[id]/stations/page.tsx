@@ -133,6 +133,30 @@ export default function StationsPage({ params }: { params: Promise<{ id: string 
         </Button>
       </div>
 
+      {/* Summary strip */}
+      {!loading && stations.length > 0 && (() => {
+        const uniqueGeologists = new Set(stations.map((s) => s.geologist)).size;
+        const dates = stations.map((s) => s.date).filter(Boolean).sort();
+        const dateRange = dates.length > 0 ? (
+          dates.length === 1 ? dates[0] : `${dates[0]} → ${dates[dates.length - 1]}`
+        ) : null;
+        return (
+          <div className="flex flex-wrap gap-4 text-xs text-muted-foreground border-b border-border pb-4">
+            <span className="flex items-center gap-1.5">
+              <User className="h-3 w-3 shrink-0" />
+              <span className="font-mono font-medium text-foreground">{uniqueGeologists}</span>
+              <span>{uniqueGeologists === 1 ? 'geólogo' : 'geólogos'}</span>
+            </span>
+            {dateRange && (
+              <span className="flex items-center gap-1.5">
+                <Calendar className="h-3 w-3 shrink-0" />
+                <span className="font-mono font-medium text-foreground">{dateRange}</span>
+              </span>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Search + Sort */}
       <div className="flex gap-2">
         <div className="relative flex-1">
