@@ -10,12 +10,7 @@ import {
   Drill,
   Pencil,
   Trash2,
-  MapPin,
   ArrowDown,
-  CheckCircle2,
-  Clock,
-  XCircle,
-  PauseCircle,
   ArrowUpDown,
 } from 'lucide-react';
 import { useDrillHoles } from '@/lib/hooks/use-drillholes';
@@ -23,6 +18,7 @@ import { useProject } from '@/lib/hooks/use-projects';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { StatusBadge, getDrillStatusVariant } from '@/components/ui/status-badge';
 import {
   Dialog,
   DialogContent,
@@ -52,20 +48,6 @@ import type { GeoDrillHole } from '@geoagent/geo-shared/types';
 import { toast } from 'sonner';
 
 type SortKey = 'holeId' | 'depth_desc' | 'depth_asc' | 'status';
-
-const statusIcons: Record<string, React.ComponentType<{ className?: string }>> = {
-  'Completado': CheckCircle2,
-  'En Progreso': Clock,
-  'Abandonado': XCircle,
-  'Suspendido': PauseCircle,
-};
-
-const statusColors: Record<string, string> = {
-  'Completado': 'text-green-400',
-  'En Progreso': 'text-blue-400',
-  'Abandonado': 'text-red-400',
-  'Suspendido': 'text-yellow-400',
-};
 
 export default function DrillHolesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: projectId } = use(params);
@@ -222,8 +204,6 @@ export default function DrillHolesPage({ params }: { params: Promise<{ id: strin
                 {filtered.map((dh) => {
                   const actualDepth = dh.actualDepth ?? 0;
                   const pct = dh.plannedDepth > 0 ? Math.min(100, (actualDepth / dh.plannedDepth) * 100) : 0;
-                  const StatusIcon = statusIcons[dh.status] ?? Clock;
-                  const statusColor = statusColors[dh.status] ?? 'text-muted-foreground';
 
                   return (
                     <tr
@@ -240,10 +220,11 @@ export default function DrillHolesPage({ params }: { params: Promise<{ id: strin
                         <Badge variant="secondary" className="text-xs">{dh.type}</Badge>
                       </td>
                       <td>
-                        <span className={`flex items-center gap-1.5 text-xs ${statusColor}`}>
-                          <StatusIcon className="h-3 w-3 shrink-0" />
-                          <span className="hidden sm:inline">{dh.status}</span>
-                        </span>
+                        <StatusBadge
+                          variant={getDrillStatusVariant(dh.status)}
+                          label={dh.status}
+                          pulse={dh.status === 'En Progreso'}
+                        />
                       </td>
                       <td className="hidden md:table-cell font-mono text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">

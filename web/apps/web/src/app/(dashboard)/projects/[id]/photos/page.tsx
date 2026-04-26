@@ -17,13 +17,11 @@ import {
   Camera,
   Trash2,
   Loader2,
-  ImageIcon,
   MapPin,
   CalendarDays,
   Upload,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -277,84 +275,82 @@ export default function ProjectPhotosPage({ params }: { params: Promise<{ id: st
           ))}
         </div>
       ) : photos.length === 0 ? (
-        // Empty state
-        <div className="flex flex-col items-center gap-4 py-24 text-center">
-          <div className="rounded-full bg-muted p-6">
-            <Camera className="h-10 w-10 text-muted-foreground/50" />
+        // Empty state — drag-drop hint
+        <div
+          className="flex flex-col items-center gap-4 py-20 text-center rounded-xl border-2 border-dashed border-border hover:border-primary/30 transition-colors cursor-pointer"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <div className="rounded-2xl bg-primary/10 p-5 ring-1 ring-primary/20">
+            <Camera className="h-10 w-10 text-primary" />
           </div>
-          <div className="space-y-1">
-            <p className="font-medium text-muted-foreground">
-              No hay fotos en este proyecto
-            </p>
-            <p className="text-sm text-muted-foreground/60">
-              Arrastra imágenes aquí o usa el botón &quot;Subir fotos&quot;.
+          <div className="space-y-1.5">
+            <p className="font-semibold text-base">Aún no hay fotos</p>
+            <p className="text-sm text-muted-foreground max-w-sm">
+              Arrastra imágenes aquí o haz click para subir. JPG, PNG, WebP soportados.
             </p>
           </div>
-          <Button onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+          <Button disabled={uploading} className="mt-2">
             <Upload className="h-4 w-4 mr-2" />
-            Subir fotos
+            Seleccionar fotos
           </Button>
         </div>
       ) : (
-        // Photo grid
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+        // Photo grid — masonry-like uniform tiles with overlay caption
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5">
           {photos.map((photo) => {
             const url = photoUrls[photo.id];
             return (
-              <Card
+              <div
                 key={photo.id}
-                className="group overflow-hidden border-border hover:border-primary/40 transition-colors cursor-pointer"
+                className="group relative aspect-square overflow-hidden rounded-lg border border-border bg-muted cursor-pointer transition-all hover:border-primary/40 hover:shadow-lg hover:shadow-black/20"
                 onClick={() => url && setLightboxPhoto(photo)}
               >
-                {/* Thumbnail */}
-                <div className="relative aspect-square bg-muted overflow-hidden">
-                  {url ? (
-                    <Image
-                      src={url}
-                      alt={photo.description ?? photo.fileName}
-                      fill
-                      className="object-cover transition-transform duration-300 group-hover:scale-105"
-                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center">
-                      <ImageIcon className="h-8 w-8 text-muted-foreground/30" />
-                    </div>
-                  )}
+                {url ? (
+                  <Image
+                    src={url}
+                    alt={photo.description ?? photo.fileName}
+                    fill
+                    className="object-cover transition-transform duration-500 group-hover:scale-110"
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center">
+                    <div className="skeleton h-full w-full" />
+                  </div>
+                )}
 
-                  {/* Delete button — visible on hover */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeleteTarget(photo);
-                    }}
-                    className="absolute top-2 right-2 rounded-md bg-black/60 p-1.5 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive focus:outline-none"
-                    aria-label="Eliminar foto"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-
-                {/* Caption */}
-                <CardContent className="p-2.5 space-y-1">
-                  <p className="text-xs font-medium truncate leading-tight">
+                {/* Gradient overlay with metadata — visible on hover */}
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-2.5 pt-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <p className="text-xs font-medium text-white truncate leading-tight">
                     {photo.description ?? photo.fileName}
                   </p>
-                  <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                    <CalendarDays className="h-3 w-3 shrink-0" />
+                  <div className="flex items-center gap-1 text-[10px] text-white/70 mt-0.5">
+                    <CalendarDays className="h-2.5 w-2.5 shrink-0" />
                     <span className="truncate">{formatDate(photo.takenAt)}</span>
                   </div>
                   {photo.latitude != null && photo.longitude != null && (
-                    <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                      <MapPin className="h-3 w-3 shrink-0" />
+                    <div className="flex items-center gap-1 text-[10px] text-white/70 mt-0.5">
+                      <MapPin className="h-2.5 w-2.5 shrink-0" />
                       <span className="font-mono truncate">
-                        {photo.latitude.toFixed(5)}, {photo.longitude.toFixed(5)}
+                        {photo.latitude.toFixed(4)}, {photo.longitude.toFixed(4)}
                       </span>
                     </div>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+
+                {/* Delete button — visible on hover */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDeleteTarget(photo);
+                  }}
+                  className="absolute top-2 right-2 rounded-md bg-black/70 backdrop-blur-sm p-1.5 text-white opacity-0 group-hover:opacity-100 transition-all hover:bg-destructive focus:outline-none"
+                  aria-label="Eliminar foto"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
             );
           })}
         </div>
