@@ -16,8 +16,8 @@ import {
 import { useAuth } from '@/lib/firebase/auth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { StatusBadge } from '@/components/ui/status-badge';
 
 function UserAvatar({ user }: { user: NonNullable<ReturnType<typeof useAuth>['user']> }) {
   const initials = (
@@ -177,24 +177,13 @@ export default function SettingsPage() {
           <CardDescription>Estado de sincronización con la nube</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center gap-2">
-            {isOnline ? (
-              <Badge
-                variant="outline"
-                className="border-green-500/40 bg-green-500/10 text-green-400 gap-1.5"
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-green-400 inline-block animate-pulse" />
-                En línea
-              </Badge>
-            ) : (
-              <Badge
-                variant="outline"
-                className="border-yellow-500/40 bg-yellow-500/10 text-yellow-400 gap-1.5"
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-yellow-400 inline-block" />
-                Sin conexión
-              </Badge>
-            )}
+          <div className="flex items-center gap-3">
+            <StatusBadge
+              variant={isOnline ? 'success' : 'warning'}
+              label={isOnline ? 'En línea' : 'Sin conexión'}
+              pulse={isOnline}
+              size="md"
+            />
             <span className="text-xs text-muted-foreground">
               {isOnline ? 'Firebase Auth activo' : 'Usando caché local de Firestore'}
             </span>

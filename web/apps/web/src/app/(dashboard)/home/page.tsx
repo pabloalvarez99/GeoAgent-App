@@ -12,7 +12,6 @@ import {
   Plus,
   MapPin,
   Mountain,
-  Loader2,
   Download,
   Smartphone,
   Monitor,
@@ -443,9 +442,10 @@ export default function DashboardPage() {
         </div>
 
         {loading && (
-          <div className="flex items-center gap-2 text-muted-foreground py-6">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-sm">Cargando proyectos...</span>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="skeleton h-28 rounded-lg" />
+            ))}
           </div>
         )}
 

@@ -6,7 +6,6 @@ import {
   Plus,
   FolderOpen,
   MapPin,
-  Loader2,
   MoreVertical,
   Pencil,
   Trash2,
@@ -135,9 +134,10 @@ export default function ProjectsPage() {
 
       {/* Loading */}
       {loading && (
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span className="text-sm">Cargando proyectos...</span>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="skeleton h-36 rounded-lg" />
+          ))}
         </div>
       )}
 

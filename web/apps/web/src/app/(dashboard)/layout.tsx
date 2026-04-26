@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/lib/firebase/auth';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
@@ -51,10 +50,36 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3 text-muted-foreground">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <span className="text-sm">Cargando GeoAgent...</span>
+      <div className="flex h-screen bg-background overflow-hidden">
+        {/* Sidebar skeleton */}
+        <div className="hidden md:flex flex-col w-56 border-r border-border shrink-0" style={{ background: 'hsl(240 6% 5.2%)' }}>
+          <div className="flex h-14 items-center gap-2.5 px-3 border-b border-border">
+            <div className="skeleton h-8 w-8 rounded-lg shrink-0" />
+            <div className="skeleton h-4 w-24 rounded" />
+          </div>
+          <div className="flex-1 p-2 space-y-1">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="skeleton h-8 w-full rounded-md" />
+            ))}
+          </div>
+          <div className="border-t border-border p-2 space-y-1">
+            <div className="skeleton h-8 w-full rounded-md" />
+          </div>
+        </div>
+        {/* Main area skeleton */}
+        <div className="flex flex-1 flex-col min-w-0">
+          <div className="flex h-14 items-center border-b border-border bg-card px-4 gap-3">
+            <div className="skeleton h-4 w-32 rounded" />
+            <div className="flex-1" />
+            <div className="skeleton h-8 w-28 rounded-md hidden sm:block" />
+          </div>
+          <div className="flex-1 p-6 space-y-6">
+            <div className="skeleton h-8 w-48 rounded" />
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {[...Array(4)].map((_, i) => <div key={i} className="skeleton h-24 rounded-lg" />)}
+            </div>
+            <div className="skeleton h-48 rounded-lg" />
+          </div>
         </div>
       </div>
     );

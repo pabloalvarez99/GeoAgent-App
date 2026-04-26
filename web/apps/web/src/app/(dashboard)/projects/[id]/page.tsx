@@ -12,7 +12,6 @@ import {
   Camera,
   Download,
   Upload,
-  Loader2,
   Pencil,
   Trash2,
 } from 'lucide-react';
@@ -76,9 +75,19 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        <span className="text-sm">Cargando...</span>
+      <div className="space-y-6">
+        <div className="flex items-start gap-3">
+          <div className="skeleton h-8 w-8 rounded-md shrink-0 mt-0.5" />
+          <div className="flex-1 space-y-2">
+            <div className="skeleton h-7 w-56 rounded" />
+            <div className="skeleton h-4 w-32 rounded" />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[...Array(4)].map((_, i) => <div key={i} className="skeleton h-20 rounded-lg" />)}
+        </div>
+        <div className="skeleton h-10 w-full rounded-lg" />
+        <div className="skeleton h-48 rounded-lg" />
       </div>
     );
   }

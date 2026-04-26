@@ -11,7 +11,6 @@ import {
   Plus,
   Pencil,
   Trash2,
-  Loader2,
   Layers,
   TrendingUp,
   FlaskConical,
@@ -25,7 +24,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -85,9 +83,16 @@ export default function StationDetailPage({
 
   if (stationsLoading) {
     return (
-      <div className="flex items-center justify-center gap-2 py-20 text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin" />
-        <span className="text-sm">Cargando estación...</span>
+      <div className="space-y-6">
+        <div className="flex items-start gap-3">
+          <div className="skeleton h-8 w-8 rounded-md shrink-0 mt-0.5" />
+          <div className="flex-1 space-y-2">
+            <div className="skeleton h-7 w-40 rounded" />
+            <div className="skeleton h-4 w-64 rounded" />
+          </div>
+        </div>
+        <div className="skeleton h-9 w-full rounded-lg" />
+        <div className="skeleton h-48 rounded-lg" />
       </div>
     );
   }
@@ -221,44 +226,62 @@ export default function StationDetailPage({
             </Button>
           </div>
           {lithoLoading ? (
-            <div className="flex items-center gap-2 text-muted-foreground text-sm">
-              <Loader2 className="h-4 w-4 animate-spin" /> Cargando...
+            <div className="space-y-2">
+              {[...Array(3)].map((_, i) => <div key={i} className="skeleton h-16 rounded-lg" />)}
             </div>
           ) : lithologies.length === 0 ? (
             <p className="text-muted-foreground text-sm text-center py-8">
               No hay registros de litología
             </p>
           ) : (
-            lithologies.map((litho) => (
-              <Card key={litho.id} className="group">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="space-y-1 flex-1 min-w-0">
-                      <div className="flex flex-wrap gap-1.5">
-                        <Badge>{litho.rockGroup}</Badge>
-                        <Badge variant="outline">{litho.rockType}</Badge>
-                        <Badge variant="secondary">{litho.color}</Badge>
-                        <Badge variant="secondary">{litho.texture}</Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {[litho.mineralogy, litho.alteration, litho.structure].filter(Boolean).join(' · ')}
-                      </p>
-                      {litho.notes && (
-                        <p className="text-xs text-muted-foreground italic">{litho.notes}</p>
-                      )}
-                    </div>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setLithoEdit(litho); setLithoOpen(true); }}>
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setLithoDelete(litho)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+            <div className="rounded-lg border border-border overflow-hidden">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Grupo / Tipo</th>
+                    <th className="hidden sm:table-cell">Color · Textura</th>
+                    <th className="hidden md:table-cell">Mineralogía</th>
+                    <th className="hidden lg:table-cell">Alteración</th>
+                    <th className="hidden xl:table-cell">Notas</th>
+                    <th className="text-right w-16"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lithologies.map((litho) => (
+                    <tr key={litho.id} className="group">
+                      <td>
+                        <div className="space-y-0.5">
+                          <Badge className="text-xs">{litho.rockGroup}</Badge>
+                          <p className="text-xs text-muted-foreground">{litho.rockType}</p>
+                        </div>
+                      </td>
+                      <td className="hidden sm:table-cell text-xs text-muted-foreground">
+                        {litho.color} · {litho.texture}
+                      </td>
+                      <td className="hidden md:table-cell text-xs text-muted-foreground">
+                        {litho.mineralogy || '—'}
+                      </td>
+                      <td className="hidden lg:table-cell text-xs text-muted-foreground">
+                        {litho.alteration || '—'}
+                      </td>
+                      <td className="hidden xl:table-cell text-xs text-muted-foreground italic max-w-[160px]">
+                        <span className="block truncate">{litho.notes || '—'}</span>
+                      </td>
+                      <td className="text-right">
+                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setLithoEdit(litho); setLithoOpen(true); }}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setLithoDelete(litho)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </TabsContent>
 
@@ -270,8 +293,14 @@ export default function StationDetailPage({
             </Button>
           </div>
           {structLoading ? (
-            <div className="flex items-center gap-2 text-muted-foreground text-sm">
-              <Loader2 className="h-4 w-4 animate-spin" /> Cargando...
+            <div className="rounded-lg border border-border overflow-hidden">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="flex gap-6 px-4 py-3 border-b border-border last:border-0">
+                  <div className="skeleton h-5 w-20 rounded-full" />
+                  <div className="skeleton h-4 w-24 rounded" />
+                  <div className="skeleton h-4 w-16 rounded hidden md:block" />
+                </div>
+              ))}
             </div>
           ) : structural.length === 0 ? (
             <p className="text-muted-foreground text-sm text-center py-8">
@@ -332,8 +361,15 @@ export default function StationDetailPage({
             </Button>
           </div>
           {sampleLoading ? (
-            <div className="flex items-center gap-2 text-muted-foreground text-sm">
-              <Loader2 className="h-4 w-4 animate-spin" /> Cargando...
+            <div className="rounded-lg border border-border overflow-hidden">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="flex gap-6 px-4 py-3 border-b border-border last:border-0">
+                  <div className="skeleton h-5 w-16 rounded" />
+                  <div className="skeleton h-5 w-20 rounded-full" />
+                  <div className="skeleton h-5 w-16 rounded-full" />
+                  <div className="skeleton h-4 w-28 rounded hidden md:block" />
+                </div>
+              ))}
             </div>
           ) : samples.length === 0 ? (
             <p className="text-muted-foreground text-sm text-center py-8">

@@ -7,21 +7,16 @@ import {
   Plus,
   Pencil,
   Trash2,
-  Loader2,
   MapPin,
   ArrowDown,
   Compass,
-  CheckCircle2,
-  Clock,
-  XCircle,
-  PauseCircle,
 } from 'lucide-react';
 import { useDrillHoles, useDrillIntervals } from '@/lib/hooks/use-drillholes';
 import { useProject } from '@/lib/hooks/use-projects';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Progress } from '@/components/ui/progress';
+import { StatusBadge, getDrillStatusVariant } from '@/components/ui/status-badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
@@ -46,13 +41,6 @@ import type { DrillIntervalFormData, DrillHoleFormData } from '@geoagent/geo-sha
 import type { GeoDrillInterval } from '@geoagent/geo-shared/types';
 import { toast } from 'sonner';
 
-const statusIcons: Record<string, React.ComponentType<{ className?: string }>> = {
-  'Completado': CheckCircle2,
-  'En Progreso': Clock,
-  'Abandonado': XCircle,
-  'Suspendido': PauseCircle,
-};
-
 export default function DrillHoleDetailPage({
   params,
 }: {
@@ -72,9 +60,22 @@ export default function DrillHoleDetailPage({
 
   if (dhLoading) {
     return (
-      <div className="flex items-center justify-center gap-2 py-20 text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin" />
-        <span className="text-sm">Cargando sondaje...</span>
+      <div className="space-y-6">
+        <div className="flex items-start gap-3">
+          <div className="skeleton h-8 w-8 rounded-md shrink-0" />
+          <div className="flex-1 space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="skeleton h-7 w-24 rounded" />
+              <div className="skeleton h-5 w-16 rounded-full" />
+              <div className="skeleton h-5 w-20 rounded-full" />
+            </div>
+            <div className="skeleton h-4 w-64 rounded" />
+          </div>
+        </div>
+        <div className="skeleton h-px w-full rounded" />
+        <div className="grid grid-cols-3 gap-3">
+          {[...Array(3)].map((_, i) => <div key={i} className="skeleton h-20 rounded-lg" />)}
+        </div>
       </div>
     );
   }
@@ -93,7 +94,6 @@ export default function DrillHoleDetailPage({
   const actualDepth = drillHole.actualDepth ?? 0;
   const pct = drillHole.plannedDepth > 0 ? Math.min(100, (actualDepth / drillHole.plannedDepth) * 100) : 0;
   const nextDepth = intervals.length > 0 ? Math.max(...intervals.map((i) => i.toDepth)) : 0;
-  const StatusIcon = statusIcons[drillHole.status] ?? Clock;
 
   async function handleDrillHoleEdit(data: DrillHoleFormData) {
     try {
@@ -129,10 +129,12 @@ export default function DrillHoleDetailPage({
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-2xl font-bold tracking-tight font-mono">{drillHole.holeId}</h1>
             <Badge variant="secondary">{drillHole.type}</Badge>
-            <span className="flex items-center gap-1 text-sm text-muted-foreground">
-              <StatusIcon className="h-4 w-4" />
-              {drillHole.status}
-            </span>
+            <StatusBadge
+              variant={getDrillStatusVariant(drillHole.status)}
+              label={drillHole.status}
+              pulse={drillHole.status === 'En Progreso'}
+              size="md"
+            />
             <Button
               variant="ghost"
               size="icon"
@@ -158,7 +160,9 @@ export default function DrillHoleDetailPage({
           </div>
           {actualDepth > 0 && (
             <div className="mt-2 space-y-0.5 max-w-xs">
-              <Progress value={pct} className="h-2" />
+              <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+              </div>
               <p className="text-xs text-muted-foreground">{pct.toFixed(0)}% perforado</p>
             </div>
           )}
@@ -222,8 +226,16 @@ export default function DrillHoleDetailPage({
         </div>
 
         {loading ? (
-          <div className="flex items-center gap-2 text-muted-foreground text-sm">
-            <Loader2 className="h-4 w-4 animate-spin" /> Cargando...
+          <div className="rounded-lg border border-border overflow-hidden">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="flex items-center gap-6 px-4 py-3 border-b border-border last:border-0">
+                <div className="skeleton h-4 w-12 rounded" />
+                <div className="skeleton h-4 w-12 rounded" />
+                <div className="skeleton h-4 w-32 rounded" />
+                <div className="skeleton h-4 w-16 rounded hidden md:block" />
+                <div className="skeleton h-4 w-10 rounded" />
+              </div>
+            ))}
           </div>
         ) : intervals.length === 0 ? (
           <p className="text-muted-foreground text-sm text-center py-8">
