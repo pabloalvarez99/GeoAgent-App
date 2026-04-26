@@ -998,3 +998,88 @@ Reemplazados colores hardcodeados `bg-zinc-900/60 border-zinc-800` con tokens CS
 
 **URL producción:** `https://web-taupe-three-27.vercel.app`
 **Commits de esta sesión:** feat(web): data tables, skeletons, command palette polish, stat accents
+
+---
+
+## 2026-04-25 — Android PdfReportGenerator: Reescritura completa (fotos + diseño profesional)
+
+### Problema raíz
+Fotos no aparecían en el PDF. `decodeSampledBitmap()` solo manejaba rutas absolutas — no content URIs (MediaStore/FileProvider). Además el diseño era básico (texto plano, sin tablas, fotos en miniatura de 133×100px).
+
+### Solución: Reescritura total de `PdfReportGenerator.kt`
+
+**Fix fotos:**
+- Nuevo `loadBitmap(photo, reqW, reqH)`: detecta ruta absoluta vs `content://` URI
+- Rutas absolutas → `decodeSampledBitmap()` (existente)
+- Content URIs → `contentResolver.openInputStream(Uri.parse(path))` → `BitmapFactory.decodeStream()`
+- Fotos sin archivo local (solo en nube) → placeholder con icono ☁ y metadata
+
+**Diseño profesional:**
+- **Portada:** bloque navy 60%/blanco 40%, acento dorado lateral, caja stats (estaciones/muestras/sondajes/fotos), descripción del proyecto
+- **Cabecera/pie de página:** banda navy con acento dorado, número de página, nombre del proyecto
+- **Resumen ejecutivo:** tabla índice de estaciones + tabla índice de sondajes
+- **Estaciones:** card header navy/dorado, tablas de litología (tipo/grupo/color/textura/grano/mineralogía), tabla de alteración/mineralización (solo si tiene datos), tabla estructural completa (rumbo/manteo/mov/relleno/rugosidad), tabla de muestras (código/tipo/estado/peso/long/destino/análisis), fotos grandes (hasta 270px alto, sombra, FILTER_BITMAP_FLAG, borde, caption con fecha+GPS)
+- **Sondajes:** card header, metadata técnico (az/inc/prof/fechas), tabla de intervalos de logging (11 cols: de/a/long/tipo/grupo/color/textura/alt/mineral/RQD/rec), fotos
+- **Texto wrap:** `wrapGuard()` — textos largos (notas, descripciones) se parten en múltiples líneas con saltos de página automáticos
+- **Anti-alias:** todos los Paint con `Paint.ANTI_ALIAS_FLAG`
+- **Memoria:** `inPreferredConfig = Bitmap.Config.RGB_565` reduce uso de memoria 50%
+
+**Arquitectura:**
+- `PS` (PageState) inner class gestiona estado de página (canvas, y, sec, proj)
+- `guard(need)` auto-crea nueva página si queda menos de `need` px
+- Métodos separados: `drawCover`, `drawExecutiveSummary`, `drawStation`, `drawDrillHole`, `drawPhotoBlock`, `drawTable`, `banner`, `kvRow`, `wrapText`, `wrapGuard`
+
+**Archivo modificado:** `app/src/main/java/com/geoagent/app/util/PdfReportGenerator.kt`
+
+---
+
+## 2026-04-25 — UI ultra-profesional sesión #2 (continuación)
+
+### Completado en esta sesión
+
+**Design System — surface depth:**
+- `--background: 240 10% 2.4%` (más oscuro) vs `--card: 240 10% 5.5%` vs `--popover: 240 10% 7%`
+- Cards ahora visualmente sobre el fondo — depth real sin sombras
+- `.nav-active` class: borde izquierdo verde + bg sutil (reemplaza `bg-primary/10 text-primary` inline)
+- `.stat-accent-rose` añadido al design system
+
+**Header — indicador de conexión:**
+- Dot verde pulsante (En línea) / ámbar (Sin conexión) con texto en md+
+- `window.addEventListener('online'/'offline')` real-time
+- Conectado a Firebase → indicador de estado Firebase implícito
+
+**Sidebar:**
+- Usa `.nav-active` CSS class (borde izquierdo verde + bg correcto)
+
+**Skeleton loading:**
+- Dashboard layout loading: sidebar + header + content skeleton completo
+- Projects page loading: grid 6 tarjetas skeleton
+- Project detail loading: full page skeleton
+- Station detail loading: header + tabs skeleton
+- Drillhole detail loading: header + stats skeleton
+
+**Litología tab → data-table:**
+- Litologías de estación convertidas a `data-table` (igual que estructural/muestras)
+- Columnas: Grupo/Tipo | Color·Textura | Mineralogía | Alteración | Notas | Actions
+
+**Formularios — secciones con Separator:**
+Todos los formularios ahora tienen secciones visualmente separadas con `<Separator>` y header `text-[10px] uppercase tracking-widest`:
+- `interval-form.tsx`: Profundidad | Litología | Calidad de testigo | Alteración y mineralización
+- `drillhole-form.tsx`: Identificación | Collar GPS | Geometría y profundidad | Estado y fechas
+- `station-form.tsx`: Identificación | Coordenadas GPS | Condiciones de campo
+- `lithology-form.tsx`: Tipo de roca | Alteración y mineralización
+- `structural-form.tsx`: Tipo y orientación | Propiedades
+- `sample-form.tsx`: Identificación | Medidas y análisis | Coordenadas GPS
+
+**Inline progress bars:**
+- RQD (azul) y Recuperación (verde) en interval-form.tsx usan CSS bars en lugar de `Progress` shadcn
+- Todos los `Progress` de shadcn eliminados del código web
+
+**Commits de esta sesión:**
+- `1d5b927` — feat(web): professional UI pass — data tables, skeleton loaders, StatusBadge
+- `4f7f02b` — feat(web): surface depth, nav-active indicator, online status in header
+- `b84b405` — feat(web): section interval form with separators, inline RQD/recovery bars
+- `4a63877` — feat(web): section drillhole and station forms with visual separators
+- `8160dd8` — feat(web): section lithology, structural, sample forms with visual separators
+
+**Estado producción:** Desplegado en `https://web-taupe-three-27.vercel.app`
