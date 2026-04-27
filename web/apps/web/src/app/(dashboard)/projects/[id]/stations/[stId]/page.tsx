@@ -61,6 +61,35 @@ import type { LithologyFormData, StructuralFormData, SampleFormData, StationForm
 import type { GeoLithology, GeoStructural, GeoSample } from '@geoagent/geo-shared/types';
 import { toast } from 'sonner';
 
+function StationMiniMap({ latitude, longitude }: { latitude: number; longitude: number }) {
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+
+  if (!apiKey) {
+    return (
+      <div className="h-40 rounded-lg border border-border bg-muted/30 flex items-center justify-center">
+        <p className="text-xs text-muted-foreground">Configure NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</p>
+      </div>
+    );
+  }
+
+  return (
+    <APIProvider apiKey={apiKey}>
+      <Map
+        mapId="station-mini-map"
+        defaultCenter={{ lat: latitude, lng: longitude }}
+        defaultZoom={14}
+        gestureHandling="cooperative"
+        disableDefaultUI
+        className="h-40 w-full rounded-lg overflow-hidden border border-border"
+        colorScheme="DARK"
+        style={{ height: 160 }}
+      >
+        <AdvancedMarker position={{ lat: latitude, lng: longitude }} />
+      </Map>
+    </APIProvider>
+  );
+}
+
 export default function StationDetailPage({
   params,
 }: {
@@ -389,6 +418,21 @@ export default function StationDetailPage({
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Mini-map */}
+      {station.latitude !== 0 && station.longitude !== 0 && (
+        <div>
+          <p className="text-xs text-muted-foreground uppercase tracking-widest mb-2">Ubicación</p>
+          <StationMiniMap latitude={station.latitude} longitude={station.longitude} />
+          <Link
+            href={`/projects/${projectId}/map?center_lat=${station.latitude}&center_lng=${station.longitude}&center_zoom=16`}
+            className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+          >
+            <MapViewIcon className="h-3 w-3" />
+            Ver en mapa completo
+          </Link>
         </div>
       )}
 

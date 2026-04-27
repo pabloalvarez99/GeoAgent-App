@@ -20,6 +20,7 @@ import {
   Download,
   Smartphone,
   Keyboard,
+  Eye,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/firebase/auth';
@@ -27,6 +28,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { StatusBadge } from '@/components/ui/status-badge';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 
 function UserAvatar({ user }: { user: NonNullable<ReturnType<typeof useAuth>['user']> }) {
   const initials = (
@@ -86,6 +89,21 @@ export default function SettingsPage() {
   );
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [coordFormat, setCoordFormat] = useState<'DD' | 'DMS'>('DD');
+  const [density, setDensity] = useState<'comfortable' | 'compact'>('comfortable');
+
+  useEffect(() => {
+    const saved = localStorage.getItem('geoagent-display-prefs');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved) as { coordFormat?: 'DD' | 'DMS'; density?: 'comfortable' | 'compact' };
+        if (parsed.coordFormat) setCoordFormat(parsed.coordFormat);
+        if (parsed.density) setDensity(parsed.density);
+      } catch {
+        // ignore malformed data
+      }
+    }
+  }, []);
 
   useEffect(() => {
     setIsStandalone(window.matchMedia('(display-mode: standalone)').matches);
@@ -122,6 +140,11 @@ export default function SettingsPage() {
   async function handleSignOut() {
     await signOut();
     router.replace('/login');
+  }
+
+  function saveDisplayPrefs(format: 'DD' | 'DMS', den: 'comfortable' | 'compact') {
+    localStorage.setItem('geoagent-display-prefs', JSON.stringify({ coordFormat: format, density: den }));
+    toast.success('Preferencias guardadas');
   }
 
   async function handleSync() {
@@ -289,7 +312,79 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Section 4: Atajos de teclado */}
+      {/* Section 4: Preferencias de visualización */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Eye className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-base">Preferencias de visualización</CardTitle>
+          </div>
+          <CardDescription>Personaliza cómo se muestran los datos en la plataforma</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Formato de coordenadas */}
+          <div className="space-y-3">
+            <p className="text-sm font-medium">Formato de coordenadas</p>
+            <RadioGroup
+              value={coordFormat}
+              onValueChange={(val) => {
+                const newFormat = val as 'DD' | 'DMS';
+                setCoordFormat(newFormat);
+                saveDisplayPrefs(newFormat, density);
+              }}
+              className="space-y-2"
+            >
+              <div className="flex items-start gap-3">
+                <RadioGroupItem value="DD" id="coord-dd" className="mt-0.5" />
+                <Label htmlFor="coord-dd" className="cursor-pointer space-y-0.5">
+                  <span className="text-sm font-medium">Grados decimales</span>
+                  <p className="text-xs font-mono text-muted-foreground">-33.456789, -70.648300</p>
+                </Label>
+              </div>
+              <div className="flex items-start gap-3">
+                <RadioGroupItem value="DMS" id="coord-dms" className="mt-0.5" />
+                <Label htmlFor="coord-dms" className="cursor-pointer space-y-0.5">
+                  <span className="text-sm font-medium">Grados, min, seg</span>
+                  <p className="text-xs font-mono text-muted-foreground">33°27&apos;24.8&quot;S 70°38&apos;53.9&quot;W</p>
+                </Label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          <Separator />
+
+          {/* Densidad de la interfaz */}
+          <div className="space-y-3">
+            <p className="text-sm font-medium">Densidad de la interfaz</p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setDensity('comfortable');
+                  saveDisplayPrefs(coordFormat, 'comfortable');
+                }}
+                className={density === 'comfortable' ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground' : ''}
+              >
+                Cómoda
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setDensity('compact');
+                  saveDisplayPrefs(coordFormat, 'compact');
+                }}
+                className={density === 'compact' ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground' : ''}
+              >
+                Compacta
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Section 5 (old 4): Atajos de teclado */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
@@ -321,7 +416,7 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Section 5: Instalar aplicación */}
+      {/* Section 6 (old 5): Instalar aplicación */}
       {!isStandalone && (
         <Card>
           <CardHeader className="pb-3">

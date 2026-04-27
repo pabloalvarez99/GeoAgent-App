@@ -3,7 +3,7 @@
 import { use, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { read, utils } from 'xlsx';
-import { ArrowLeft, Upload, FileSpreadsheet, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Upload, FileSpreadsheet, CheckCircle2, XCircle, AlertTriangle, FileDown } from 'lucide-react';
 import { useAuth } from '@/lib/firebase/auth';
 import { useDrillHoles } from '@/lib/hooks/use-drillholes';
 import { createStation, createDrillHole, saveDrillInterval } from '@/lib/firebase/firestore';
@@ -177,6 +177,36 @@ function parseIntervalFile(file: File, holeIdToDocId: Record<string, string>): P
   });
 }
 
+// ── Descarga de plantilla CSV ────────────────────────────────────────────────
+function downloadTemplate(filename: string, headers: string[], exampleRow: string[]): void {
+  const csvContent = [headers.join(','), exampleRow.join(',')].join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+const TEMPLATES = {
+  stations: {
+    filename: 'plantilla_estaciones.csv',
+    headers: ['Codigo', 'Geologo', 'Descripcion', 'Latitud', 'Longitud', 'Altitud', 'Fecha', 'CondicionesClima'],
+    example: ['EST-001', 'Juan Perez', 'Afloramiento granítico', '-33.4569', '-70.6483', '850', '2026-04-15', 'Despejado'],
+  },
+  drillholes: {
+    filename: 'plantilla_sondajes.csv',
+    headers: ['HoleID', 'Tipo', 'Geologo', 'Latitud', 'Longitud', 'Altitud', 'Azimut', 'Inclinacion', 'ProfPlanificada', 'Estado', 'Notas'],
+    example: ['DDH-001', 'Diamantina', 'Ana Lopez', '-33.4571', '-70.6480', '855', '270', '-60', '200', 'En Progreso', 'Inicio de campaña'],
+  },
+  intervals: {
+    filename: 'plantilla_intervalos.csv',
+    headers: ['HoleID', 'Desde', 'Hasta', 'TipoRoca', 'GrupoRoca', 'Color', 'Textura', 'TamanoGrano', 'Mineralogia', 'RQD', 'Recuperacion', 'Notas'],
+    example: ['DDH-001', '0', '5.5', 'Andesita', 'Ignea', 'Gris Medio', 'Afanitica', 'Fina', 'Cuarzo Plagioclasa', '85', '92', 'Zona alterada'],
+  },
+} as const;
+
 // ── Componente principal ─────────────────────────────────────────────────────
 export default function ImportPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: projectId } = use(params);
@@ -304,6 +334,22 @@ export default function ImportPage({ params }: { params: Promise<{ id: string }>
         </Card>
 
         <TabsContent value={tab} className="mt-4 space-y-4">
+          {/* Botón descarga plantilla */}
+          <div className="flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const t = TEMPLATES[tab];
+                downloadTemplate(t.filename, [...t.headers], [...t.example]);
+              }}
+              className="gap-1.5"
+            >
+              <FileDown className="h-3.5 w-3.5" />
+              Descargar plantilla CSV
+            </Button>
+          </div>
+
           {/* Drop zone */}
           {status === 'idle' || status === 'parsing' ? (
             <div

@@ -14,6 +14,7 @@ import {
   ArrowUpDown,
   X,
   User,
+  Map as MapViewIcon,
 } from 'lucide-react';
 import { useDrillHoles } from '@/lib/hooks/use-drillholes';
 import { useProject } from '@/lib/hooks/use-projects';
@@ -381,6 +382,11 @@ export default function DrillHolesPage({ params }: { params: Promise<{ id: strin
                       </td>
                       <td className="text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary" asChild>
+                            <Link href={`/projects/${projectId}/map?center_lat=${dh.latitude}&center_lng=${dh.longitude}&center_zoom=16`}>
+                              <MapViewIcon className="h-3.5 w-3.5" />
+                            </Link>
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"

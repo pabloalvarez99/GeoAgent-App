@@ -1,8 +1,9 @@
 'use client';
 
 import { use, useEffect, useState, useMemo } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, BarChart3, FlaskConical, Layers, Drill } from 'lucide-react';
+import { ArrowLeft, BarChart3, FlaskConical, Layers, Drill, CalendarDays, X } from 'lucide-react';
 import {
   ResponsiveContainer,
   PieChart,
@@ -65,6 +66,17 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
   const { user } = useAuth();
   const { stations, loading: stationsLoading } = useStations(projectId);
   const { drillHoles, loading: dhLoading } = useDrillHoles(projectId);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  const dateFrom = searchParams.get('from') ?? '';
+  const dateTo = searchParams.get('to') ?? '';
+
+  function setDateParam(key: 'from' | 'to', value: string) {
+    const p = new URLSearchParams(searchParams.toString());
+    if (value) p.set(key, value); else p.delete(key);
+    router.replace(`?${p.toString()}`, { scroll: false });
+  }
 
   const [lithologies, setLithologies] = useState<any[]>([]);
   const [samples, setSamples] = useState<any[]>([]);
@@ -95,18 +107,47 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
 
   const loading = stationsLoading || dhLoading || dataLoading;
 
+  const filteredStationIds = useMemo((): Set<string> => {
+    if (!dateFrom && !dateTo) return new Set(stations.map(s => s.id));
+    return new Set(
+      stations
+        .filter(s => {
+          const d = (s as any).date ?? '';
+          return (!dateFrom || d >= dateFrom) && (!dateTo || d <= dateTo);
+        })
+        .map(s => s.id)
+    );
+  }, [stations, dateFrom, dateTo]);
+
+  const filteredDrillHoleIds = useMemo((): Set<string> => {
+    if (!dateFrom && !dateTo) return new Set(drillHoles.map(d => d.id));
+    return new Set(
+      drillHoles
+        .filter(d => {
+          const start = (d as any).startDate ?? '';
+          return (!dateFrom || !start || start >= dateFrom) && (!dateTo || !start || start <= dateTo);
+        })
+        .map(d => d.id)
+    );
+  }, [drillHoles, dateFrom, dateTo]);
+
+  const filteredLithologies = useMemo(() => lithologies.filter(l => filteredStationIds.has(l.stationId)), [lithologies, filteredStationIds]);
+  const filteredSamples = useMemo(() => samples.filter(s => filteredStationIds.has(s.stationId)), [samples, filteredStationIds]);
+  const filteredIntervals = useMemo(() => intervals.filter(i => filteredDrillHoleIds.has(i.drillHoleId)), [intervals, filteredDrillHoleIds]);
+  const filteredDrillHoles = useMemo(() => drillHoles.filter(d => filteredDrillHoleIds.has(d.id)), [drillHoles, filteredDrillHoleIds]);
+
   const rockGroupData = useMemo(() => {
     const counts: Record<string, number> = {};
-    lithologies.forEach((l) => {
+    filteredLithologies.forEach((l) => {
       const key = l.rockGroup || 'Sin grupo';
       counts[key] = (counts[key] ?? 0) + 1;
     });
     return Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([name, value]) => ({ name, value }));
-  }, [lithologies]);
+  }, [filteredLithologies]);
 
   const rockTypeData = useMemo(() => {
     const counts: Record<string, number> = {};
-    lithologies.forEach((l) => {
+    filteredLithologies.forEach((l) => {
       const key = l.rockType || 'Sin tipo';
       counts[key] = (counts[key] ?? 0) + 1;
     });
@@ -114,19 +155,19 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
       .sort((a, b) => b[1] - a[1])
       .slice(0, 8)
       .map(([name, value]) => ({ name: name.length > 16 ? name.slice(0, 15) + '…' : name, value }));
-  }, [lithologies]);
+  }, [filteredLithologies]);
 
   const sampleTypeData = useMemo(() => {
     const counts: Record<string, number> = {};
-    samples.forEach((s) => {
+    filteredSamples.forEach((s) => {
       const key = s.type || 'Sin tipo';
       counts[key] = (counts[key] ?? 0) + 1;
     });
     return Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([name, value]) => ({ name, value }));
-  }, [samples]);
+  }, [filteredSamples]);
 
   const drillProgressData = useMemo(() => {
-    return drillHoles
+    return filteredDrillHoles
       .filter((d) => d.plannedDepth > 0)
       .slice(0, 10)
       .map((d) => ({
@@ -134,17 +175,17 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
         Planificado: Number(d.plannedDepth) || 0,
         Real: Number(d.actualDepth) || 0,
       }));
-  }, [drillHoles]);
+  }, [filteredDrillHoles]);
 
   const rqdData = useMemo(() => {
     const byHole: Record<string, number[]> = {};
-    intervals.forEach((i) => {
+    filteredIntervals.forEach((i) => {
       if (i.rqd != null && i.drillHoleId) {
         if (!byHole[i.drillHoleId]) byHole[i.drillHoleId] = [];
         byHole[i.drillHoleId].push(i.rqd);
       }
     });
-    return drillHoles
+    return filteredDrillHoles
       .filter((d) => byHole[d.id]?.length > 0)
       .slice(0, 10)
       .map((d) => {
@@ -154,7 +195,7 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
           RQD: Math.round(vals.reduce((s, v) => s + v, 0) / vals.length),
         };
       });
-  }, [drillHoles, intervals]);
+  }, [filteredDrillHoles, filteredIntervals]);
 
   const hasData = lithologies.length > 0 || samples.length > 0 || drillHoles.length > 0;
 
@@ -174,6 +215,43 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
         </div>
       </div>
 
+      {/* Date range filter */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
+          <span className="text-sm text-muted-foreground">Desde</span>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={e => setDateParam('from', e.target.value)}
+            className="h-8 rounded-md border border-border bg-card px-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Hasta</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={e => setDateParam('to', e.target.value)}
+            className="h-8 rounded-md border border-border bg-card px-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+        </div>
+        {(dateFrom || dateTo) && (
+          <button
+            onClick={() => { setDateParam('from', ''); setDateParam('to', ''); }}
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-3 w-3" />
+            Limpiar
+          </button>
+        )}
+        {(dateFrom || dateTo) && (
+          <span className="text-xs text-muted-foreground">
+            {filteredStationIds.size} estación{filteredStationIds.size !== 1 ? 'es' : ''} · {filteredDrillHoleIds.size} sondaje{filteredDrillHoleIds.size !== 1 ? 's' : ''}
+          </span>
+        )}
+      </div>
+
       {!loading && !hasData ? (
         <div className="flex flex-col items-center gap-3 py-20 text-center">
           <BarChart3 className="h-10 w-10 text-muted-foreground/30" />
@@ -186,19 +264,19 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <Card className="stat-accent-green">
               <CardHeader className="pb-1 pt-3 px-4"><p className="text-xs text-muted-foreground">Estaciones</p></CardHeader>
-              <CardContent className="px-4 pb-3"><p className="text-2xl font-bold text-green-400 font-data">{loading ? '—' : stations.length}</p></CardContent>
+              <CardContent className="px-4 pb-3"><p className="text-2xl font-bold text-green-400 font-data">{loading ? '—' : filteredStationIds.size}</p></CardContent>
             </Card>
             <Card className="stat-accent-blue">
               <CardHeader className="pb-1 pt-3 px-4"><p className="text-xs text-muted-foreground">Litologías</p></CardHeader>
-              <CardContent className="px-4 pb-3"><p className="text-2xl font-bold text-blue-400 font-data">{loading ? '—' : lithologies.length}</p></CardContent>
+              <CardContent className="px-4 pb-3"><p className="text-2xl font-bold text-blue-400 font-data">{loading ? '—' : filteredLithologies.length}</p></CardContent>
             </Card>
             <Card className="stat-accent-amber">
               <CardHeader className="pb-1 pt-3 px-4"><p className="text-xs text-muted-foreground">Muestras</p></CardHeader>
-              <CardContent className="px-4 pb-3"><p className="text-2xl font-bold text-orange-400 font-data">{loading ? '—' : samples.length}</p></CardContent>
+              <CardContent className="px-4 pb-3"><p className="text-2xl font-bold text-orange-400 font-data">{loading ? '—' : filteredSamples.length}</p></CardContent>
             </Card>
             <Card className="stat-accent-rose">
               <CardHeader className="pb-1 pt-3 px-4"><p className="text-xs text-muted-foreground">Intervalos</p></CardHeader>
-              <CardContent className="px-4 pb-3"><p className="text-2xl font-bold text-rose-400 font-data">{loading ? '—' : intervals.length}</p></CardContent>
+              <CardContent className="px-4 pb-3"><p className="text-2xl font-bold text-rose-400 font-data">{loading ? '—' : filteredIntervals.length}</p></CardContent>
             </Card>
           </div>
 

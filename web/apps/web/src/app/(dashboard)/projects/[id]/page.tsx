@@ -16,6 +16,8 @@ import {
   Trash2,
   BarChart3,
   Clock,
+  FileDown,
+  Loader2,
 } from 'lucide-react';
 import {
   BarChart,
@@ -32,6 +34,26 @@ import {
 import { useProject, useProjects } from '@/lib/hooks/use-projects';
 import { useStations } from '@/lib/hooks/use-stations';
 import { useDrillHoles } from '@/lib/hooks/use-drillholes';
+import { useAuth } from '@/lib/firebase/auth';
+import {
+  getPhotosOnce,
+  getLithologiesForStations,
+  getStructuralForStations,
+  getSamplesForStations,
+  getIntervalsForDrillHoles,
+} from '@/lib/firebase/firestore';
+import { downloadPDF } from '@/lib/export/pdf';
+import { downloadExcel } from '@/lib/export/excel';
+import { downloadGeoJSON } from '@/lib/export/geojson';
+import { downloadCsvBundle } from '@/lib/export/csv';
+import type { GeoProject } from '@geoagent/geo-shared/types';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -71,12 +93,14 @@ const subNavItems = [
 export default function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const { user } = useAuth();
   const { project, loading } = useProject(id);
   const { editProject, removeProject } = useProjects();
   const { stations } = useStations(id);
   const { drillHoles } = useDrillHoles(id);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [exporting, setExporting] = useState<string | null>(null);
 
   if (loading) {
     return (
@@ -128,6 +152,99 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     }
   }
 
+  async function handleQuickExport(format: 'pdf' | 'excel' | 'geojson' | 'csv') {
+    if (!user || !project) return;
+    setExporting(format);
+    try {
+      const stationIds = stations.map((s) => s.id);
+      const drillHoleIds = drillHoles.map((d) => d.id);
+      const slug = project.name.replace(/[^a-zA-Z0-9_\-]/g, '_').replace(/\s+/g, '_');
+
+      if (format === 'pdf') {
+        const [rawPhotos, lithologies, structural, samples, intervals] = await Promise.all([
+          getPhotosOnce(user.uid, id),
+          getLithologiesForStations(user.uid, stationIds),
+          getStructuralForStations(user.uid, stationIds),
+          getSamplesForStations(user.uid, stationIds),
+          getIntervalsForDrillHoles(user.uid, drillHoleIds),
+        ]);
+        const { getDownloadURL, ref: storageRef } = await import('firebase/storage');
+        const { storage } = await import('@/lib/firebase/client');
+        const photosWithUrls = await Promise.all(
+          (rawPhotos as any[]).map(async (photo) => {
+            if (!photo.storagePath) return { ...photo, downloadUrl: undefined };
+            try {
+              const url = await getDownloadURL(storageRef(storage, photo.storagePath));
+              return { ...photo, downloadUrl: url };
+            } catch {
+              return { ...photo, downloadUrl: undefined };
+            }
+          }),
+        );
+        await downloadPDF({
+          project: project as GeoProject,
+          stations: stations as any,
+          lithologies: lithologies as any,
+          structural: structural as any,
+          samples: samples as any,
+          drillHoles: drillHoles as any,
+          intervals: intervals as any,
+          photos: photosWithUrls as any,
+        });
+      } else if (format === 'excel') {
+        const [lithologies, structural, samples, intervals] = await Promise.all([
+          getLithologiesForStations(user.uid, stationIds),
+          getStructuralForStations(user.uid, stationIds),
+          getSamplesForStations(user.uid, stationIds),
+          getIntervalsForDrillHoles(user.uid, drillHoleIds),
+        ]);
+        await downloadExcel({
+          project: project as GeoProject,
+          stations: stations as any,
+          lithologies: lithologies as any,
+          structural: structural as any,
+          samples: samples as any,
+          drillHoles: drillHoles as any,
+          intervals: intervals as any,
+        });
+      } else if (format === 'geojson') {
+        const [lithologies, structural, samples, intervals] = await Promise.all([
+          getLithologiesForStations(user.uid, stationIds),
+          getStructuralForStations(user.uid, stationIds),
+          getSamplesForStations(user.uid, stationIds),
+          getIntervalsForDrillHoles(user.uid, drillHoleIds),
+        ]);
+        await downloadGeoJSON({
+          projectName: project.name,
+          projectDescription: (project as any).description,
+          stations: stations as any,
+          drillHoles: drillHoles as any,
+          lithologies: lithologies as any,
+          structural: structural as any,
+          samples: samples as any,
+          intervals: intervals as any,
+        }, slug);
+      } else {
+        const intervals = await getIntervalsForDrillHoles(user.uid, drillHoleIds);
+        const drillHoleMap: Record<string, string> = Object.fromEntries(
+          drillHoles.map((d) => [d.id, (d as any).holeId]),
+        );
+        const enriched = (intervals as any[]).map((i: any) => ({
+          ...i,
+          holeId: drillHoleMap[i.drillHoleId] ?? i.drillHoleId,
+        }));
+        await downloadCsvBundle(drillHoles as any, enriched as any, slug);
+      }
+
+      toast.success(`Exportación ${format.toUpperCase()} completada`);
+    } catch (e) {
+      console.error(e);
+      toast.error('Error al exportar');
+    } finally {
+      setExporting(null);
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Back + title */}
@@ -159,6 +276,33 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           </div>
         </div>
         <div className="flex gap-2 shrink-0">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" disabled={!!exporting}>
+                {exporting ? (
+                  <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                ) : (
+                  <FileDown className="h-4 w-4 mr-1.5" />
+                )}
+                {exporting ? 'Exportando...' : 'Exportar'}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleQuickExport('pdf')}>
+                Reporte PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleQuickExport('excel')}>
+                Excel (.xlsx)
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => handleQuickExport('geojson')}>
+                GeoJSON
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleQuickExport('csv')}>
+                CSV Collar/Survey (ZIP)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
             <Pencil className="h-4 w-4 mr-1.5" />
             Editar

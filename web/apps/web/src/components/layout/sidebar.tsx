@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/firebase/auth';
+import { useProject } from '@/lib/hooks/use-projects';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -53,6 +54,51 @@ function UserAvatar({ email }: { email?: string | null }) {
   );
 }
 
+function ActiveProjectBadge({
+  id,
+  collapsed,
+  mobileOpen,
+}: {
+  id: string;
+  collapsed: boolean;
+  mobileOpen: boolean;
+}) {
+  const { project } = useProject(id);
+  if (!project) return null;
+
+  if (!collapsed || mobileOpen) {
+    return (
+      <div className="px-2 pb-2">
+        <p className="px-2 mb-1 text-[10px] uppercase tracking-widest text-muted-foreground/50">
+          Proyecto activo
+        </p>
+        <div className="rounded-md bg-primary/5 border border-primary/15 px-2.5 py-2">
+          <div className="flex items-center gap-2">
+            <div className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+            <p className="text-xs font-medium text-primary truncate leading-tight">
+              {project.name}
+            </p>
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-0.5 truncate pl-3.5">
+            {project.location}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex justify-center pb-2">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="h-2 w-2 rounded-full bg-primary cursor-default" />
+        </TooltipTrigger>
+        <TooltipContent side="right">{project.name}</TooltipContent>
+      </Tooltip>
+    </div>
+  );
+}
+
 interface SidebarProps {
   mobileOpen?: boolean;
   onMobileClose?: () => void;
@@ -62,6 +108,8 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
   const { signOut, user } = useAuth();
+  const projectMatch = pathname.match(/\/projects\/([^/]+)/);
+  const activeProjectId = projectMatch ? projectMatch[1] : null;
 
   function isActive(href: string) {
     return pathname === href || pathname.startsWith(href + '/');
@@ -133,6 +181,15 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
             return item;
           })}
         </nav>
+
+        {/* Active project badge */}
+        {activeProjectId && (
+          <ActiveProjectBadge
+            id={activeProjectId}
+            collapsed={collapsed}
+            mobileOpen={mobileOpen}
+          />
+        )}
 
         {/* User + sign out */}
         <div className="border-t border-border p-2 space-y-1">

@@ -14,7 +14,18 @@ import {
   Copy,
   ChevronLeft,
   ChevronRight,
+  LayoutList,
+  BarChart2,
 } from 'lucide-react';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+} from 'recharts';
 import { useDrillHoles, useDrillIntervals } from '@/lib/hooks/use-drillholes';
 import { useProject } from '@/lib/hooks/use-projects';
 import { Button } from '@/components/ui/button';
@@ -45,6 +56,112 @@ import type { DrillIntervalFormData, DrillHoleFormData } from '@geoagent/geo-sha
 import type { GeoDrillInterval } from '@geoagent/geo-shared/types';
 import { toast } from 'sonner';
 
+function DrillIntervalLog({
+  intervals,
+  maxDepth,
+}: {
+  intervals: GeoDrillInterval[];
+  maxDepth: number;
+}) {
+  if (intervals.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+        Sin intervalos registrados
+      </div>
+    );
+  }
+
+  const sorted = [...intervals].sort((a, b) => a.fromDepth - b.fromDepth);
+  const max = maxDepth > 0 ? maxDepth : Math.max(...sorted.map(i => i.toDepth));
+
+  function rockGroupColor(group: string): string {
+    switch (group) {
+      case 'Ignea': return '#ef4444';
+      case 'Sedimentaria': return '#f59e0b';
+      case 'Metamorfica': return '#6366f1';
+      default: return '#64748b';
+    }
+  }
+
+  const data = sorted.map((interval) => ({
+    label: `${interval.fromDepth}–${interval.toDepth}m`,
+    thickness: interval.toDepth - interval.fromDepth,
+    fromDepth: interval.fromDepth,
+    toDepth: interval.toDepth,
+    rockType: interval.rockType,
+    rockGroup: interval.rockGroup,
+    rqd: interval.rqd,
+    recovery: interval.recovery,
+    color: rockGroupColor(interval.rockGroup),
+  }));
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div className="flex items-start gap-4">
+        {/* Eje de profundidad izquierdo */}
+        <div className="flex flex-col justify-between text-xs font-mono text-muted-foreground" style={{ height: Math.max(data.length * 40, 200) }}>
+          <span>0 m</span>
+          <span>{Math.round(max / 2)} m</span>
+          <span>{max} m</span>
+        </div>
+
+        {/* Barras */}
+        <div className="flex-1">
+          <ResponsiveContainer width="100%" height={Math.max(data.length * 40, 200)}>
+            <BarChart
+              layout="vertical"
+              data={data}
+              margin={{ top: 0, right: 16, bottom: 0, left: 0 }}
+            >
+              <XAxis type="number" hide />
+              <YAxis
+                type="category"
+                dataKey="label"
+                tick={{ fontSize: 10, fill: '#71717a' }}
+                width={80}
+              />
+              <Tooltip
+                content={({ active, payload }) => {
+                  if (!active || !payload?.[0]) return null;
+                  const d = payload[0].payload;
+                  return (
+                    <div className="rounded-md border border-border bg-popover p-2.5 text-xs shadow-lg space-y-1">
+                      <p className="font-medium text-foreground">{d.rockType} <span className="text-muted-foreground">({d.rockGroup})</span></p>
+                      <p className="text-muted-foreground">De <span className="font-mono text-foreground">{d.fromDepth}</span> a <span className="font-mono text-foreground">{d.toDepth}</span> m ({d.thickness} m)</p>
+                      {d.rqd != null && <p className="text-muted-foreground">RQD: <span className="font-mono text-foreground">{d.rqd}%</span></p>}
+                      {d.recovery != null && <p className="text-muted-foreground">Recuperación: <span className="font-mono text-foreground">{d.recovery}%</span></p>}
+                    </div>
+                  );
+                }}
+              />
+              <Bar dataKey="thickness" radius={[0, 2, 2, 0]}>
+                {data.map((entry, index) => (
+                  <Cell key={index} fill={entry.color} fillOpacity={0.85} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Leyenda */}
+      <div className="mt-3 flex flex-wrap gap-3 border-t border-border pt-3">
+        {[
+          { group: 'Ignea', color: '#ef4444' },
+          { group: 'Sedimentaria', color: '#f59e0b' },
+          { group: 'Metamorfica', color: '#6366f1' },
+          { group: 'Otro', color: '#64748b' },
+        ].map(({ group, color }) => (
+          <span key={group} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span className="h-2.5 w-2.5 rounded-sm shrink-0" style={{ backgroundColor: color }} />
+            {group}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function DrillHoleDetailPage({
   params,
 }: {
@@ -57,6 +174,7 @@ export default function DrillHoleDetailPage({
   const { intervals, loading, saveInterval, removeInterval } = useDrillIntervals(dhId);
 
   const [drillHoleEditOpen, setDrillHoleEditOpen] = useState(false);
+  const [intervalView, setIntervalView] = useState<'table' | 'log'>('table');
 
   const [intervalOpen, setIntervalOpen] = useState(false);
   const [editInterval, setEditInterval] = useState<GeoDrillInterval | null>(null);
@@ -273,10 +391,36 @@ export default function DrillHoleDetailPage({
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold">Intervalos litológicos</h2>
-          <Button size="sm" onClick={() => { setEditInterval(null); setIntervalOpen(true); }}>
-            <Plus className="h-4 w-4 mr-1.5" />
-            Agregar intervalo
-          </Button>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 border border-border rounded-md overflow-hidden">
+              <button
+                onClick={() => setIntervalView('table')}
+                className={`px-2 py-1 text-xs flex items-center gap-1 transition-colors ${
+                  intervalView === 'table'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <LayoutList className="h-3 w-3" />
+                Tabla
+              </button>
+              <button
+                onClick={() => setIntervalView('log')}
+                className={`px-2 py-1 text-xs flex items-center gap-1 transition-colors ${
+                  intervalView === 'log'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <BarChart2 className="h-3 w-3" />
+                Log
+              </button>
+            </div>
+            <Button size="sm" onClick={() => { setEditInterval(null); setIntervalOpen(true); }}>
+              <Plus className="h-4 w-4 mr-1.5" />
+              Agregar intervalo
+            </Button>
+          </div>
         </div>
 
         {loading ? (
@@ -299,6 +443,8 @@ export default function DrillHoleDetailPage({
               <Plus className="h-3.5 w-3.5 mr-1.5" /> Agregar intervalo
             </Button>
           </div>
+        ) : intervalView === 'log' ? (
+          <DrillIntervalLog intervals={intervals} maxDepth={drillHole.actualDepth ?? drillHole.plannedDepth} />
         ) : (
           <div className="space-y-3">
             {/* Desktop table */}

@@ -12,6 +12,8 @@ import {
   Pencil,
   Trash2,
   Search,
+  LayoutGrid,
+  LayoutList,
 } from 'lucide-react';
 import { useProjects } from '@/lib/hooks/use-projects';
 import { useStations } from '@/lib/hooks/use-stations';
@@ -96,6 +98,7 @@ export default function ProjectsPage() {
   const [deleteTarget, setDeleteTarget] = useState<GeoProject | null>(null);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<'date_desc' | 'date_asc' | 'name_asc' | 'name_desc'>('date_desc');
+  const [view, setView] = useState<'grid' | 'list'>('grid');
 
   const filteredProjects = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -183,6 +186,22 @@ export default function ProjectsPage() {
               <SelectItem value="name_desc">Nombre Z→A</SelectItem>
             </SelectContent>
           </Select>
+          <div className="flex items-center rounded-md border border-border h-8 overflow-hidden shrink-0">
+            <button
+              onClick={() => setView('grid')}
+              className={`flex items-center justify-center h-full px-2.5 transition-colors ${view === 'grid' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              title="Vista cuadrícula"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => setView('list')}
+              className={`flex items-center justify-center h-full px-2.5 transition-colors ${view === 'list' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              title="Vista lista"
+            >
+              <LayoutList className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       )}
 
@@ -217,84 +236,11 @@ export default function ProjectsPage() {
         </div>
       )}
 
-      {/* Project grid */}
+      {/* Project grid / list */}
       {!loading && projects.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredProjects.map((project) => {
-            const accent = getProjectAccent(project.name);
-            const initials = project.name.slice(0, 2).toUpperCase();
-            return (
-              <Card
-                key={project.id}
-                className="group relative hover:border-border card-lift transition-all"
-              >
-                {/* Context menu */}
-                <div className="absolute top-3 right-3 z-10">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setEditTarget(project)}>
-                        <Pencil className="h-4 w-4 mr-2" />
-                        Editar
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={() => setDeleteTarget(project)}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Eliminar
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-
-                <Link href={`/projects/${project.id}`}>
-                  <CardHeader className="pb-2">
-                    <div className="flex items-start gap-3">
-                      {/* Color-hashed project avatar */}
-                      <div className={cn(
-                        'flex h-9 w-9 rounded-lg items-center justify-center shrink-0 ring-1 text-sm font-bold select-none',
-                        accent.bg, accent.text, accent.ring,
-                      )}>
-                        {initials}
-                      </div>
-                      <div className="min-w-0 pr-6">
-                        <CardTitle className="text-base truncate">{project.name}</CardTitle>
-                        <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground">
-                          <MapPin className="h-3 w-3 shrink-0" />
-                          <span className="truncate">{project.location}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <CardDescription className="line-clamp-2 text-xs mb-3">
-                      {project.description}
-                    </CardDescription>
-                    <div className="flex items-center justify-between mt-2">
-                      <ProjectStats projectId={project.id} />
-                      {project.updatedAt && (
-                        <span className="text-[10px] text-muted-foreground/60 shrink-0 ml-2">
-                          {formatDistanceToNow((project.updatedAt as any).toDate?.() ?? project.updatedAt, { addSuffix: true, locale: es })}
-                        </span>
-                      )}
-                    </div>
-                  </CardContent>
-                </Link>
-              </Card>
-            );
-          })}
+        <>
           {filteredProjects.length === 0 && (
-            <div className="col-span-full flex flex-col items-center gap-2 py-16 text-center">
+            <div className="flex flex-col items-center gap-2 py-16 text-center">
               <Search className="h-8 w-8 text-muted-foreground/30" />
               <p className="text-sm text-muted-foreground">Sin resultados para &quot;{search}&quot;</p>
               <button onClick={() => setSearch('')} className="text-xs text-primary hover:underline">
@@ -302,7 +248,146 @@ export default function ProjectsPage() {
               </button>
             </div>
           )}
-        </div>
+
+          {view === 'grid' && filteredProjects.length > 0 && (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredProjects.map((project) => {
+                const accent = getProjectAccent(project.name);
+                const initials = project.name.slice(0, 2).toUpperCase();
+                return (
+                  <Card
+                    key={project.id}
+                    className="group relative hover:border-border card-lift transition-all"
+                  >
+                    <div className="absolute top-3 right-3 z-10">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setEditTarget(project)}>
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => setDeleteTarget(project)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Eliminar
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    <Link href={`/projects/${project.id}`}>
+                      <CardHeader className="pb-2">
+                        <div className="flex items-start gap-3">
+                          <div className={cn(
+                            'flex h-9 w-9 rounded-lg items-center justify-center shrink-0 ring-1 text-sm font-bold select-none',
+                            accent.bg, accent.text, accent.ring,
+                          )}>
+                            {initials}
+                          </div>
+                          <div className="min-w-0 pr-6">
+                            <CardTitle className="text-base truncate">{project.name}</CardTitle>
+                            <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground">
+                              <MapPin className="h-3 w-3 shrink-0" />
+                              <span className="truncate">{project.location}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <CardDescription className="line-clamp-2 text-xs mb-3">
+                          {project.description}
+                        </CardDescription>
+                        <div className="flex items-center justify-between mt-2">
+                          <ProjectStats projectId={project.id} />
+                          {project.updatedAt && (
+                            <span className="text-[10px] text-muted-foreground/60 shrink-0 ml-2">
+                              {formatDistanceToNow((project.updatedAt as any).toDate?.() ?? project.updatedAt, { addSuffix: true, locale: es })}
+                            </span>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Link>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+
+          {view === 'list' && filteredProjects.length > 0 && (
+            <div className="rounded-lg border border-border overflow-hidden">
+              {filteredProjects.map((project, idx) => {
+                const accent = getProjectAccent(project.name);
+                const initials = project.name.slice(0, 2).toUpperCase();
+                return (
+                  <div
+                    key={project.id}
+                    className={`group flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors ${idx < filteredProjects.length - 1 ? 'border-b border-border' : ''}`}
+                  >
+                    <Link href={`/projects/${project.id}`} className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className={cn(
+                        'flex h-8 w-8 rounded-md items-center justify-center shrink-0 ring-1 text-xs font-bold select-none',
+                        accent.bg, accent.text, accent.ring,
+                      )}>
+                        {initials}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{project.name}</p>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <MapPin className="h-3 w-3 shrink-0" />
+                          <span className="truncate">{project.location}</span>
+                        </div>
+                      </div>
+                      <div className="hidden sm:block shrink-0">
+                        <ProjectStats projectId={project.id} />
+                      </div>
+                      {project.updatedAt && (
+                        <span className="hidden md:block text-[10px] text-muted-foreground/60 shrink-0 w-24 text-right">
+                          {formatDistanceToNow((project.updatedAt as any).toDate?.() ?? project.updatedAt, { addSuffix: true, locale: es })}
+                        </span>
+                      )}
+                    </Link>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setEditTarget(project)}>
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-destructive focus:text-destructive"
+                          onClick={() => setDeleteTarget(project)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Eliminar
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
 
       {/* Create dialog */}

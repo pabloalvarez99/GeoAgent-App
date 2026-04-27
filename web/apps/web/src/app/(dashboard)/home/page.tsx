@@ -16,6 +16,8 @@ import {
   Monitor,
   FlaskConical,
   BarChart3,
+  TrendingUp,
+  TrendingDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -247,6 +249,53 @@ export default function DashboardPage() {
       .sort((a, b) => b.pct - a.pct);
   }, [drillHoles]);
 
+  // ── Resumen de la semana ─────────────────────────────────────────────────────
+  const weeklyStats = useMemo(() => {
+    const now = Date.now();
+    const oneWeekMs = 7 * 24 * 60 * 60 * 1000;
+    const thisWeekStart = now - oneWeekMs;
+    const lastWeekStart = now - 2 * oneWeekMs;
+
+    function getMs(updatedAt: any): number {
+      if (!updatedAt) return 0;
+      if (typeof updatedAt.toDate === 'function') return updatedAt.toDate().getTime();
+      if (typeof updatedAt === 'number') return updatedAt;
+      return new Date(updatedAt).getTime();
+    }
+
+    const stationsThisWeek = stations.filter(s => {
+      const ms = getMs(s.updatedAt);
+      return ms >= thisWeekStart;
+    }).length;
+    const stationsLastWeek = stations.filter(s => {
+      const ms = getMs(s.updatedAt);
+      return ms >= lastWeekStart && ms < thisWeekStart;
+    }).length;
+
+    const drillsThisWeek = drillHoles.filter(d => {
+      const ms = getMs(d.updatedAt);
+      return ms >= thisWeekStart;
+    }).length;
+    const drillsLastWeek = drillHoles.filter(d => {
+      const ms = getMs(d.updatedAt);
+      return ms >= lastWeekStart && ms < thisWeekStart;
+    }).length;
+
+    function pctChange(current: number, prev: number): number | null {
+      if (prev === 0) return current > 0 ? 100 : null;
+      return Math.round(((current - prev) / prev) * 100);
+    }
+
+    return {
+      stationsThisWeek,
+      stationsPct: pctChange(stationsThisWeek, stationsLastWeek),
+      drillsThisWeek,
+      drillsPct: pctChange(drillsThisWeek, drillsLastWeek),
+      totalThisWeek: stationsThisWeek + drillsThisWeek,
+      isActive: stationsThisWeek + drillsThisWeek > 0,
+    };
+  }, [stations, drillHoles]);
+
   function timeAgo(seconds: number): string {
     if (!seconds) return '—';
     const diff = Math.floor(Date.now() / 1000) - seconds;
@@ -476,6 +525,60 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Esta semana */}
+      {!dataLoading && weeklyStats.isActive && (
+        <div>
+          <h2 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            Esta semana
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {/* Total */}
+            <Card className="stat-accent-green">
+              <CardHeader className="pb-1 pt-4 px-4">
+                <p className="text-xs text-muted-foreground">Registros activos</p>
+              </CardHeader>
+              <CardContent className="px-4 pb-4">
+                <p className="text-2xl font-semibold font-data text-green-400">{weeklyStats.totalThisWeek}</p>
+                <p className="text-xs text-muted-foreground mt-1">modificados esta semana</p>
+              </CardContent>
+            </Card>
+
+            {/* Estaciones */}
+            <Card className="stat-accent-blue">
+              <CardHeader className="pb-1 pt-4 px-4">
+                <p className="text-xs text-muted-foreground">Estaciones</p>
+              </CardHeader>
+              <CardContent className="px-4 pb-4">
+                <p className="text-2xl font-semibold font-data text-blue-400">{weeklyStats.stationsThisWeek}</p>
+                {weeklyStats.stationsPct !== null && (
+                  <p className={`text-xs mt-1 flex items-center gap-1 ${weeklyStats.stationsPct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {weeklyStats.stationsPct >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                    {weeklyStats.stationsPct >= 0 ? '+' : ''}{weeklyStats.stationsPct}% vs semana anterior
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Sondajes */}
+            <Card className="stat-accent-purple">
+              <CardHeader className="pb-1 pt-4 px-4">
+                <p className="text-xs text-muted-foreground">Sondajes</p>
+              </CardHeader>
+              <CardContent className="px-4 pb-4">
+                <p className="text-2xl font-semibold font-data text-purple-400">{weeklyStats.drillsThisWeek}</p>
+                {weeklyStats.drillsPct !== null && (
+                  <p className={`text-xs mt-1 flex items-center gap-1 ${weeklyStats.drillsPct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {weeklyStats.drillsPct >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                    {weeklyStats.drillsPct >= 0 ? '+' : ''}{weeklyStats.drillsPct}% vs semana anterior
+                  </p>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </div>
       )}

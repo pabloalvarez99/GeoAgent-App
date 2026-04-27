@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState, useMemo } from 'react';
+import { use, useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -16,8 +16,14 @@ import {
   ArrowUpDown,
   Map as MapViewIcon,
 } from 'lucide-react';
+import { useAuth } from '@/lib/firebase/auth';
 import { useStations } from '@/lib/hooks/use-stations';
 import { useProject } from '@/lib/hooks/use-projects';
+import {
+  getLithologiesForStations,
+  getStructuralForStations,
+  getSamplesForStations,
+} from '@/lib/firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -51,10 +57,13 @@ import { toast } from 'sonner';
 
 type SortKey = 'code' | 'date_desc' | 'date_asc' | 'geologist';
 
+type CompletenessMap = Record<string, { litho: boolean; structural: boolean; samples: boolean }>;
+
 export default function StationsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: projectId } = use(params);
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user } = useAuth();
   const { project } = useProject(projectId);
   const { stations, loading, addStation, editStation, removeStation } = useStations(projectId);
 
@@ -65,6 +74,29 @@ export default function StationsPage({ params }: { params: Promise<{ id: string 
   const [editTarget, setEditTarget] = useState<GeoStation | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<GeoStation | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [completeness, setCompleteness] = useState<CompletenessMap>({});
+
+  useEffect(() => {
+    if (!user || stations.length === 0) return;
+    const stationIds = stations.map((s) => s.id);
+    Promise.all([
+      getLithologiesForStations(user.uid, stationIds),
+      getStructuralForStations(user.uid, stationIds),
+      getSamplesForStations(user.uid, stationIds),
+    ]).then(([lithos, structurals, samplesData]) => {
+      const hasStation = (items: unknown[], id: string) =>
+        items.some((item) => (item as { stationId?: string }).stationId === id);
+      const map: CompletenessMap = {};
+      stations.forEach((s) => {
+        map[s.id] = {
+          litho: hasStation(lithos, s.id),
+          structural: hasStation(structurals, s.id),
+          samples: hasStation(samplesData, s.id),
+        };
+      });
+      setCompleteness(map);
+    });
+  }, [user, stations]);
 
   const allGeologists = useMemo(
     () => [...new Set(stations.map((s) => s.geologist).filter(Boolean))].sort(),
@@ -270,6 +302,7 @@ export default function StationsPage({ params }: { params: Promise<{ id: string 
                   <th className="hidden md:table-cell">Geólogo</th>
                   <th className="hidden lg:table-cell">Fecha</th>
                   <th className="hidden xl:table-cell">Coordenadas</th>
+                  <th className="hidden sm:table-cell">Datos</th>
                   <th className="text-right w-16"></th>
                 </tr>
               </thead>
@@ -302,6 +335,27 @@ export default function StationsPage({ params }: { params: Promise<{ id: string 
                     </td>
                     <td className="hidden xl:table-cell font-mono text-xs text-muted-foreground">
                       {station.latitude.toFixed(5)}, {station.longitude.toFixed(5)}
+                    </td>
+                    <td className="hidden sm:table-cell">
+                      {(() => {
+                        const comp = completeness[station.id];
+                        return (
+                          <div className="flex items-center gap-1">
+                            <span
+                              title="Litología"
+                              className={`h-2 w-2 rounded-full ${comp?.litho ? 'bg-cyan-400' : 'bg-muted'}`}
+                            />
+                            <span
+                              title="Estructural"
+                              className={`h-2 w-2 rounded-full ${comp?.structural ? 'bg-orange-400' : 'bg-muted'}`}
+                            />
+                            <span
+                              title="Muestras"
+                              className={`h-2 w-2 rounded-full ${comp?.samples ? 'bg-yellow-400' : 'bg-muted'}`}
+                            />
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

@@ -88,8 +88,11 @@ async function fetchPhoto(
 ): Promise<{ data: string; format: 'JPEG' | 'PNG' } | null> {
   if (typeof window === 'undefined') return null;
   try {
-    const response = await fetch(url);
-    if (!response.ok) return null;
+    const response = await fetch(url, { mode: 'cors' });
+    if (!response.ok) {
+      console.warn('[PDF] fetchPhoto HTTP error', response.status, url);
+      return null;
+    }
     const blob = await response.blob();
     const dataUrl = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
@@ -101,7 +104,8 @@ async function fetchPhoto(
     if (!base64) return null;
     const format: 'JPEG' | 'PNG' = blob.type === 'image/png' ? 'PNG' : 'JPEG';
     return { data: base64, format };
-  } catch {
+  } catch (err) {
+    console.warn('[PDF] fetchPhoto failed (likely CORS). Run: gsutil cors set cors.json gs://geoagent-app.firebasestorage.app', url, err);
     return null;
   }
 }
