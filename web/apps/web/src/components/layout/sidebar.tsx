@@ -11,6 +11,7 @@ import {
   LogOut,
   LayoutDashboard,
   X,
+  BarChart3,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/firebase/auth';
@@ -42,6 +43,7 @@ function GeoMark({ size = 18 }: { size?: number }) {
 const navItems = [
   { href: '/home', label: 'Inicio', icon: LayoutDashboard },
   { href: '/projects', label: 'Proyectos', icon: FolderOpen },
+  { href: '/analytics', label: 'Analítica', icon: BarChart3 },
   { href: '/settings', label: 'Configuración', icon: Settings },
 ];
 

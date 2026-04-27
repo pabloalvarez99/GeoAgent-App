@@ -1391,3 +1391,169 @@ Todos los formularios ahora tienen secciones visualmente separadas con `<Separat
 - **Fix 1:** `map/page.tsx` — añadido link "Crear sondaje" (ámbar) junto al "Crear estación" (verde), con URL `/projects/${projectId}/drillholes/new?lat=X&lng=Y`
 - **Fix 2:** `drillholes/new/page.tsx` — añadido `useSearchParams` para leer `?lat=` y `?lng=` → `gpsDefaults` object → pasado como `defaultValues` a `DrillHoleForm` (parity con `stations/new/page.tsx` que ya tenía esto)
 - **Archivos:** `map/page.tsx`, `drillholes/new/page.tsx`
+
+---
+
+## 2026-04-27 — Fix: fotos PDF aún mostraban "Imagen no disponible" (CORS)
+
+**Problema raíz real:** El fix anterior (`fetch() + FileReader`) fue correcto en código, pero Firebase Storage no tiene CORS configurado para el bucket `geoagent-app.firebasestorage.app`. El browser bloquea requests `fetch()` cross-origin a Storage — el error era silencioso porque el `catch {}` no tenía logging.
+
+**Root cause adicional confirmado:** `storage.rules` requiere autenticación (`request.auth != null`). Los Firebase Storage download URLs con `?token=...` bypassan las rules y son públicos, PERO CORS sigue siendo necesario para que el browser permita `fetch()`.
+
+**Fixes aplicados:**
+
+1. **`web/apps/web/src/lib/export/pdf.ts` — `fetchPhoto()`:**
+   - Añadido `mode: 'cors'` explícito al `fetch(url)`
+   - Añadidos `console.warn` en ambos paths de error (HTTP error + CORS exception) con mensajes accionables
+
+2. **`cors.json` creado en raíz del repo:** Configuración CORS para Firebase Storage.
+
+**Acción OBLIGATORIA para que funcione:** Aplicar CORS al bucket ejecutando desde Google Cloud SDK:
+```
+gsutil cors set cors.json gs://geoagent-app.firebasestorage.app
+```
+
+Esto es un cambio de infraestructura — no hay código que lo reemplace. Sin ejecutar este comando, las fotos seguirán fallando en producción.
+
+**Archivos:** `web/apps/web/src/lib/export/pdf.ts`, `cors.json` (nuevo)
+
+---
+
+## 2026-04-27 — Nueva página global `/analytics`
+
+**Qué se hizo:**
+- Creado `web/apps/web/src/app/(dashboard)/analytics/page.tsx` — dashboard de analítica global
+- Modificado `web/apps/web/src/components/layout/sidebar.tsx` — agregado "Analítica" entre Proyectos y Configuración
+
+**Contenido de la página:**
+- 5 stat cards: Total proyectos, Estaciones, Muestras, Sondajes, Metros perforados (suma de `actualDepth`)
+- Chart 1 (PieChart donut): Grupos litológicos (Ignea/Sedimentaria/Metamorfica) — todos los proyectos
+- Chart 2 (BarChart horizontal): Top 10 tipos de roca — todos los proyectos
+- Chart 3 (PieChart donut): Tipos de muestra — todos los proyectos
+- Chart 4 (BarChart): Sondajes por estado (En Progreso / Completado / Abandonado / Suspendido)
+- Chart 5 (BarChart horizontal): Top 5 geólogos por número de estaciones (usa campo `station.geologist`)
+- Skeleton loading + empty state
+
+**Datos:** `subscribeToAllStations`, `subscribeToAllDrillHoles`, `subscribeToAllLithologies`, `subscribeToAllSamples` — misma pauta que `home/page.tsx`
+
+**Archivos:**
+- `web/apps/web/src/app/(dashboard)/analytics/page.tsx` (nuevo)
+- `web/apps/web/src/components/layout/sidebar.tsx` (modificado)
+
+---
+
+## 2026-04-27 — Mapa: toggles de capa + leyenda + contador de marcadores
+
+**Qué se hizo en `web/apps/web/src/app/(dashboard)/projects/[id]/map/page.tsx`:**
+
+1. **Estado nuevo:** `showStations` y `showDrillHoles` (ambos `true` por defecto).
+
+2. **Layer visibility toggles** en el top toolbar (antes del botón "Medir"):
+   - Botón "● Estaciones" — activo: `bg-blue-500/20 text-blue-400 border-blue-500/30`, inactivo: `bg-transparent text-muted-foreground border-border`
+   - Botón "● Sondajes" — activo: `bg-violet-500/20 text-violet-400 border-violet-500/30`, inactivo igual
+   - Estilo: `h-7 px-2.5 text-xs rounded-md`
+
+3. **Contador de marcadores visibles** junto a los toggles: `{N} marcadores`
+
+4. **Renderizado condicional** de marcadores: `{showStations && stations.map(...)}` y `{showDrillHoles && drillHoles.map(...)}`
+
+5. **Leyenda en esquina inferior derecha** (absolute `bottom-10 right-2 z-10`) con panel `bg-background/90 backdrop-blur-sm`:
+   - Fila "● Estaciones" con conteo — solo si `showStations`
+   - Fila "● Sondajes" con conteo — solo si `showDrillHoles`
+   - Solo se muestra cuando hay API key y al menos una capa activa
+
+**No se instalaron dependencias. Solo se modificó `map/page.tsx`.**
+
+---
+
+## 2026-04-27 — Import page: preview table, errores detallados, progress bar
+
+**Archivo:** `web/apps/web/src/app/(dashboard)/projects/[id]/import/page.tsx`
+
+**Cambios realizados:**
+
+1. **`RowError` type** — errores cambiados de `{ row, message }` a `{ row, field, message, value }` con valor bad truncado a 40 chars. Todos los validadores actualizados.
+
+2. **Preview table con columnas fijas por tab:**
+   - `PREVIEW_COLUMNS` map: stations (Código/Geólogo/Lat/Lng/Fecha), drillholes (HoleID/Tipo/Az/Inc/Prof), intervals (HoleID/De/A/Tipo Roca/RQD)
+   - Muestra primeras 10 filas válidas (antes 3 con keys dinámicas)
+   - Celdas numéricas: `font-data text-right`
+   - Tabla `w-full text-xs border-collapse` con `border border-border`
+   - Botón renombrado a "Confirmar e importar N registros"
+
+3. **Errores detallados con toggle chevron:**
+   - Heading "X errores de validación" en `text-destructive`
+   - Show/hide con `showAllErrors` state
+   - Formato: `[Fila N] campo: mensaje (valor: "xyz")` — máx 10, luego `+ N errores más`
+
+4. **Progress bar inline** dentro del Card resultado:
+   - `importProgress: { current, total } | null`
+   - Barra `h-1.5 bg-primary/20` + fill `bg-primary transition-all duration-300`
+   - Pantalla éxito muestra `text-green-500` "✓ N registros importados exitosamente"
+   - Eliminado el card de importación que ocupaba pantalla completa
+
+---
+
+## 2026-04-27 — Preferencia de formato de coordenadas + hook compartido
+
+### Qué se hizo
+
+**Archivos creados:**
+- `web/apps/web/src/lib/hooks/use-preferences.ts` — hook `usePreferences()` que lee/escribe `geoagent-display-prefs` en localStorage. Expone `coordFormat: 'DD' | 'DMS'`, `density`, `setCoordFormat`, `setDensity`. Mismo storage key que la Settings page existente → las páginas de detalle leen la preferencia guardada sin duplicidad.
+- `web/apps/web/src/lib/utils/coords.ts` — utilidades `formatCoord()` y `formatLatLng()`. Convierte coordenadas decimales a DMS (`33°26'56.12"S`) o las retorna como DD (`-33.448900`). Soporta eje `lat`/`lng` para direcciones correctas (N/S/E/W).
+
+**Archivos modificados:**
+- `web/apps/web/src/app/(dashboard)/projects/[id]/stations/[stId]/page.tsx` — importa `usePreferences` + `formatLatLng`. Reemplaza `latitude.toFixed(6), longitude.toFixed(6)` por `formatLatLng(..., coordFormat)` en el header y en `copyCoords()`.
+- `web/apps/web/src/app/(dashboard)/projects/[id]/drillholes/[dhId]/page.tsx` — mismo tratamiento para coordenadas del sondaje (display + clipboard copy).
+
+**Nota:** `settings/page.tsx` ya tenía secciones "Perfil de usuario" y "Preferencias de visualización" con RadioGroup DD/DMS completas — no se modificó. El hook nuevo lee la misma clave `geoagent-display-prefs` con los mismos valores `'DD' | 'DMS'`.
+
+### Comportamiento resultante
+- Usuario cambia formato en Settings → todas las páginas de detalle (estación + sondaje) muestran coordenadas en el formato elegido instantáneamente en el próximo render.
+- Copy al clipboard también usa el formato activo.
+
+---
+
+## 2026-04-27 — Botón "Subir fotos" en station detail y drillhole detail
+
+**Archivos modificados:**
+- `web/apps/web/src/app/(dashboard)/projects/[id]/stations/[stId]/page.tsx`
+- `web/apps/web/src/app/(dashboard)/projects/[id]/drillholes/[dhId]/page.tsx`
+
+### Qué se agregó a cada archivo
+
+**Imports nuevos (ambos archivos):**
+- `useRef`, `useEffect` de React
+- `Upload`, `Loader2`, `Camera` de lucide-react
+- `Image` de next/image
+- `uploadBytesResumable` de firebase/storage
+- `addDoc`, `serverTimestamp` de firebase/firestore
+- `db` de `@/lib/firebase/client` (ya tenían `storage`)
+- `userCollection` de `@/lib/firebase/firestore`
+- `COLLECTIONS` de `@geoagent/geo-shared/constants`
+- `useAuth` de `@/lib/firebase/auth`
+- `usePhotos` (drillhole ya no lo tenía; station ya lo tenía)
+
+**Estado nuevo (ambos):**
+- `fileInputRef: useRef<HTMLInputElement>(null)`
+- `uploadQueue: Record<string, { name: string; progress: number }>` con `isUploadingPhotos` derivado
+- `photoUrls: string[]` + `photoUrlsLoading: boolean` + `useEffect` para resolverlos (drillhole no tenía esto)
+
+**Funciones nuevas:**
+- `uploadPhotos()` en station detail — sube a `photos/{uid}/{uniqueName}`, guarda en Firestore con `{ projectId, stationId: stId, ... }`
+- `uploadDhPhotos()` en drillhole detail — igual pero con `{ projectId, drillHoleId: dhId, ... }`
+- Lógica copiada directamente de `photos/page.tsx`: `uploadBytesResumable` + progreso por archivo + `getDownloadURL` + `addDoc`
+
+**JSX nuevo:**
+- `<input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={...} />`
+- Botón `variant="outline" size="sm" className="h-7 gap-1.5 text-xs"` → "Subir foto" / "Subiendo..."
+- Barra de progreso por archivo durante upload
+- Foto strip en drillhole (hasta 4 thumbs 80×80 + "+N más" link)
+- Photo strip en station ahora siempre visible (antes solo si había fotos cargadas)
+
+**Comportamiento:**
+- Botón "Subir foto" aparece en el header de la sección fotos en ambas páginas
+- Al seleccionar archivos: progreso por archivo en tiempo real
+- Al completar: toast "N fotos subidas correctamente"
+- Las fotos quedan asociadas a la estación/sondaje específico (campo `stationId`/`drillHoleId` en Firestore)
+- 0 errores TS en los archivos modificados (errores preexistentes en map/page y photos/page no son de esta sesión)

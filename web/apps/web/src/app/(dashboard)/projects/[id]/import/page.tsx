@@ -3,7 +3,7 @@
 import { use, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { read, utils } from 'xlsx';
-import { ArrowLeft, Upload, FileSpreadsheet, CheckCircle2, XCircle, AlertTriangle, FileDown } from 'lucide-react';
+import { ArrowLeft, Upload, FileSpreadsheet, CheckCircle2, XCircle, AlertTriangle, FileDown, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '@/lib/firebase/auth';
 import { useDrillHoles } from '@/lib/hooks/use-drillholes';
 import { createStation, createDrillHole, saveDrillInterval } from '@/lib/firebase/firestore';
@@ -13,19 +13,48 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 // ── Tipos de resultado ───────────────────────────────────────────────────────
+type RowError = { row: number; field: string; message: string; value: string };
+
 interface ParseResult {
   valid: any[];
-  errors: { row: number; message: string }[];
+  errors: RowError[];
 }
 
+// ── Columnas de preview por tab ──────────────────────────────────────────────
+const PREVIEW_COLUMNS = {
+  stations: [
+    { label: 'Código',   key: 'code' },
+    { label: 'Geólogo',  key: 'geologist' },
+    { label: 'Lat',      key: 'latitude',  numeric: true },
+    { label: 'Lng',      key: 'longitude', numeric: true },
+    { label: 'Fecha',    key: 'date' },
+  ],
+  drillholes: [
+    { label: 'HoleID',   key: 'holeId' },
+    { label: 'Tipo',     key: 'type' },
+    { label: 'Az',       key: 'azimuth',      numeric: true },
+    { label: 'Inc',      key: 'inclination',  numeric: true },
+    { label: 'Prof',     key: 'plannedDepth', numeric: true },
+  ],
+  intervals: [
+    { label: 'HoleID',     key: 'drillHoleId' },
+    { label: 'De',         key: 'fromDepth',  numeric: true },
+    { label: 'A',          key: 'toDepth',    numeric: true },
+    { label: 'Tipo Roca',  key: 'rockType' },
+    { label: 'RQD',        key: 'rqd',        numeric: true },
+  ],
+} as const;
+
 // ── Validación de filas ──────────────────────────────────────────────────────
-function validateStationRow(row: any, index: number): { data: any } | { error: string } {
+function validateStationRow(row: any, index: number): { data: any } | { error: RowError } {
+  const code = String(row['code'] ?? row['codigo'] ?? row['station'] ?? '').trim();
   const lat = parseFloat(row['latitude'] ?? row['latitud'] ?? row['lat']);
   const lon = parseFloat(row['longitude'] ?? row['longitud'] ?? row['lon'] ?? row['lng']);
-  const code = String(row['code'] ?? row['codigo'] ?? row['station'] ?? '').trim();
-  if (!code) return { error: `Fila ${index + 2}: falta campo "code" (código de estación)` };
-  if (isNaN(lat) || lat < -90 || lat > 90) return { error: `Fila ${index + 2}: latitud inválida` };
-  if (isNaN(lon) || lon < -180 || lon > 180) return { error: `Fila ${index + 2}: longitud inválida` };
+  if (!code) return { error: { row: index + 2, field: 'code', message: 'campo requerido vacío', value: '' } };
+  if (isNaN(lat) || lat < -90 || lat > 90)
+    return { error: { row: index + 2, field: 'latitude', message: 'latitud inválida (debe ser -90 a 90)', value: String(row['latitude'] ?? row['latitud'] ?? row['lat'] ?? '').slice(0, 40) } };
+  if (isNaN(lon) || lon < -180 || lon > 180)
+    return { error: { row: index + 2, field: 'longitude', message: 'longitud inválida (debe ser -180 a 180)', value: String(row['longitude'] ?? row['longitud'] ?? row['lon'] ?? row['lng'] ?? '').slice(0, 40) } };
   return {
     data: {
       code,
@@ -40,15 +69,18 @@ function validateStationRow(row: any, index: number): { data: any } | { error: s
   };
 }
 
-function validateDrillHoleRow(row: any, index: number): { data: any } | { error: string } {
+function validateDrillHoleRow(row: any, index: number): { data: any } | { error: RowError } {
+  const holeId = String(row['holeId'] ?? row['hole_id'] ?? row['id_sondaje'] ?? row['sondaje'] ?? '').trim();
   const lat = parseFloat(row['latitude'] ?? row['latitud'] ?? row['lat']);
   const lon = parseFloat(row['longitude'] ?? row['longitud'] ?? row['lon'] ?? row['lng']);
-  const holeId = String(row['holeId'] ?? row['hole_id'] ?? row['id_sondaje'] ?? row['sondaje'] ?? '').trim();
   const plannedDepth = parseFloat(row['plannedDepth'] ?? row['planned_depth'] ?? row['profundidad'] ?? row['depth'] ?? '');
-  if (!holeId) return { error: `Fila ${index + 2}: falta campo "holeId"` };
-  if (isNaN(lat) || lat < -90 || lat > 90) return { error: `Fila ${index + 2}: latitud inválida` };
-  if (isNaN(lon) || lon < -180 || lon > 180) return { error: `Fila ${index + 2}: longitud inválida` };
-  if (isNaN(plannedDepth) || plannedDepth <= 0) return { error: `Fila ${index + 2}: profundidad planificada inválida` };
+  if (!holeId) return { error: { row: index + 2, field: 'holeId', message: 'campo requerido vacío', value: '' } };
+  if (isNaN(lat) || lat < -90 || lat > 90)
+    return { error: { row: index + 2, field: 'latitude', message: 'latitud inválida', value: String(row['latitude'] ?? row['latitud'] ?? row['lat'] ?? '').slice(0, 40) } };
+  if (isNaN(lon) || lon < -180 || lon > 180)
+    return { error: { row: index + 2, field: 'longitude', message: 'longitud inválida', value: String(row['longitude'] ?? row['longitud'] ?? row['lon'] ?? row['lng'] ?? '').slice(0, 40) } };
+  if (isNaN(plannedDepth) || plannedDepth <= 0)
+    return { error: { row: index + 2, field: 'plannedDepth', message: 'profundidad planificada inválida (debe ser > 0)', value: String(row['plannedDepth'] ?? row['planned_depth'] ?? row['profundidad'] ?? row['depth'] ?? '').slice(0, 40) } };
   return {
     data: {
       holeId,
@@ -73,24 +105,28 @@ function validateIntervalRow(
   row: any,
   index: number,
   holeIdToDocId: Record<string, string>,
-): { data: any } | { error: string } {
+): { data: any } | { error: RowError } {
   const rawHoleId = String(
     row['HoleID'] ?? row['holeId'] ?? row['hole_id'] ?? row['SondajeID'] ?? row['sondaje'] ?? '',
   ).trim();
-  if (!rawHoleId) return { error: `Fila ${index + 2}: falta campo "HoleID"` };
+  if (!rawHoleId) return { error: { row: index + 2, field: 'HoleID', message: 'campo requerido vacío', value: '' } };
   const drillHoleId = holeIdToDocId[rawHoleId];
-  if (!drillHoleId) return { error: `Fila ${index + 2}: sondaje "${rawHoleId}" no existe en este proyecto` };
+  if (!drillHoleId)
+    return { error: { row: index + 2, field: 'HoleID', message: 'sondaje no existe en este proyecto', value: rawHoleId.slice(0, 40) } };
 
   const fromDepth = parseFloat(row['From'] ?? row['from'] ?? row['Desde'] ?? row['desde'] ?? '');
   const toDepth = parseFloat(row['To'] ?? row['to'] ?? row['Hasta'] ?? row['hasta'] ?? '');
-  if (isNaN(fromDepth) || fromDepth < 0) return { error: `Fila ${index + 2}: profundidad inicial inválida` };
-  if (isNaN(toDepth)) return { error: `Fila ${index + 2}: profundidad final inválida` };
-  if (fromDepth >= toDepth) return { error: `Fila ${index + 2}: "Desde" (${fromDepth}) debe ser menor que "Hasta" (${toDepth})` };
+  if (isNaN(fromDepth) || fromDepth < 0)
+    return { error: { row: index + 2, field: 'From', message: 'profundidad inicial inválida', value: String(row['From'] ?? row['from'] ?? row['Desde'] ?? '').slice(0, 40) } };
+  if (isNaN(toDepth))
+    return { error: { row: index + 2, field: 'To', message: 'profundidad final inválida', value: String(row['To'] ?? row['to'] ?? row['Hasta'] ?? '').slice(0, 40) } };
+  if (fromDepth >= toDepth)
+    return { error: { row: index + 2, field: 'From/To', message: `"Desde" debe ser menor que "Hasta"`, value: `${fromDepth} ≥ ${toDepth}` } };
 
   const rockType = String(row['RockType'] ?? row['TipoRoca'] ?? row['rockType'] ?? row['tipo_roca'] ?? '').trim();
   const rockGroup = String(row['RockGroup'] ?? row['GrupoRoca'] ?? row['rockGroup'] ?? row['grupo_roca'] ?? '').trim();
-  if (!rockType) return { error: `Fila ${index + 2}: falta campo "RockType"` };
-  if (!rockGroup) return { error: `Fila ${index + 2}: falta campo "RockGroup"` };
+  if (!rockType) return { error: { row: index + 2, field: 'RockType', message: 'campo requerido vacío', value: '' } };
+  if (!rockGroup) return { error: { row: index + 2, field: 'RockGroup', message: 'campo requerido vacío', value: '' } };
 
   const color = String(row['Color'] ?? row['color'] ?? '').trim();
   const texture = String(row['Texture'] ?? row['Textura'] ?? row['texture'] ?? '').trim();
@@ -133,19 +169,19 @@ function parseFile(file: File, type: 'stations' | 'drillholes'): Promise<ParseRe
         const rows: any[] = utils.sheet_to_json(sheet);
 
         const valid: any[] = [];
-        const errors: { row: number; message: string }[] = [];
+        const errors: RowError[] = [];
 
         rows.forEach((row, i) => {
           const result = type === 'stations'
             ? validateStationRow(row, i)
             : validateDrillHoleRow(row, i);
           if ('data' in result) valid.push(result.data);
-          else errors.push({ row: i + 2, message: result.error });
+          else errors.push(result.error);
         });
 
         resolve({ valid, errors });
       } catch {
-        resolve({ valid: [], errors: [{ row: 0, message: 'No se pudo leer el archivo. Verifica que sea .xlsx o .csv válido.' }] });
+        resolve({ valid: [], errors: [{ row: 0, field: 'archivo', message: 'No se pudo leer el archivo. Verifica que sea .xlsx o .csv válido.', value: file.name.slice(0, 40) }] });
       }
     };
     reader.readAsArrayBuffer(file);
@@ -162,15 +198,15 @@ function parseIntervalFile(file: File, holeIdToDocId: Record<string, string>): P
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const rows: any[] = utils.sheet_to_json(sheet);
         const valid: any[] = [];
-        const errors: { row: number; message: string }[] = [];
+        const errors: RowError[] = [];
         rows.forEach((row, i) => {
           const result = validateIntervalRow(row, i, holeIdToDocId);
           if ('data' in result) valid.push(result.data);
-          else errors.push({ row: i + 2, message: result.error });
+          else errors.push(result.error);
         });
         resolve({ valid, errors });
       } catch {
-        resolve({ valid: [], errors: [{ row: 0, message: 'No se pudo leer el archivo. Verifica que sea .xlsx o .csv válido.' }] });
+        resolve({ valid: [], errors: [{ row: 0, field: 'archivo', message: 'No se pudo leer el archivo. Verifica que sea .xlsx o .csv válido.', value: file.name.slice(0, 40) }] });
       }
     };
     reader.readAsArrayBuffer(file);
@@ -220,12 +256,15 @@ export default function ImportPage({ params }: { params: Promise<{ id: string }>
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
   const [status, setStatus] = useState<'idle' | 'parsing' | 'ready' | 'importing' | 'done' | 'error'>('idle');
   const [importedCount, setImportedCount] = useState(0);
+  const [importProgress, setImportProgress] = useState<{ current: number; total: number } | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [showAllErrors, setShowAllErrors] = useState(false);
 
   const handleFile = useCallback(async (f: File) => {
     setFile(f);
     setStatus('parsing');
     setParseResult(null);
+    setShowAllErrors(false);
     const result = tab === 'intervals'
       ? await parseIntervalFile(f, holeIdToDocId)
       : await parseFile(f, tab);
@@ -250,14 +289,17 @@ export default function ImportPage({ params }: { params: Promise<{ id: string }>
     setFile(null);
     setParseResult(null);
     setStatus('idle');
+    setImportProgress(null);
+    setShowAllErrors(false);
   };
 
   const handleImport = async () => {
     if (!user || !parseResult?.valid.length) return;
     setStatus('importing');
     setImportedCount(0);
+    setImportProgress({ current: 0, total: parseResult.valid.length });
     let count = 0;
-    const BATCH = 20; // parallel writes per round
+    const BATCH = 20;
     try {
       const items = parseResult.valid;
       for (let i = 0; i < items.length; i += BATCH) {
@@ -271,6 +313,7 @@ export default function ImportPage({ params }: { params: Promise<{ id: string }>
         );
         count += chunk.length;
         setImportedCount(count);
+        setImportProgress({ current: count, total: items.length });
       }
       setStatus('done');
     } catch (err) {
@@ -284,7 +327,11 @@ export default function ImportPage({ params }: { params: Promise<{ id: string }>
     setParseResult(null);
     setStatus('idle');
     setImportedCount(0);
+    setImportProgress(null);
+    setShowAllErrors(false);
   };
+
+  const previewCols = PREVIEW_COLUMNS[tab === 'intervals' ? 'intervals' : tab === 'drillholes' ? 'drillholes' : 'stations'];
 
   return (
     <div className="space-y-6">
@@ -386,8 +433,8 @@ export default function ImportPage({ params }: { params: Promise<{ id: string }>
             </div>
           ) : null}
 
-          {/* Preview resultado */}
-          {parseResult && status !== 'importing' && status !== 'done' && (
+          {/* Resultado del parsing + preview + import */}
+          {parseResult && status !== 'done' && (
             <Card>
               <CardHeader className="pb-2 pt-4 px-4">
                 <div className="flex items-center justify-between">
@@ -401,7 +448,7 @@ export default function ImportPage({ params }: { params: Promise<{ id: string }>
                       {parseResult.valid.length} válidas
                     </Badge>
                     {parseResult.errors.length > 0 && (
-                      <Badge variant="secondary" className="text-red-400">
+                      <Badge variant="secondary" className="text-destructive">
                         <XCircle className="h-3 w-3 mr-1" />
                         {parseResult.errors.length} errores
                       </Badge>
@@ -409,41 +456,79 @@ export default function ImportPage({ params }: { params: Promise<{ id: string }>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="px-4 pb-4 space-y-3">
+              <CardContent className="px-4 pb-4 space-y-4">
+
+                {/* ── Errores detallados ── */}
                 {parseResult.errors.length > 0 && (
-                  <div className="space-y-1">
-                    {parseResult.errors.slice(0, 5).map((e, i) => (
-                      <div key={i} className="flex items-start gap-2 text-xs text-red-400">
-                        <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
-                        {e.message}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-destructive">
+                        {parseResult.errors.length} {parseResult.errors.length === 1 ? 'error' : 'errores'} de validación
+                      </p>
+                      <button
+                        type="button"
+                        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        onClick={() => setShowAllErrors((v) => !v)}
+                      >
+                        {showAllErrors ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                        {showAllErrors ? 'Ocultar' : 'Mostrar'}
+                      </button>
+                    </div>
+                    {showAllErrors && (
+                      <div className="space-y-1">
+                        {parseResult.errors.slice(0, 10).map((e, i) => (
+                          <div key={i} className="flex items-start gap-2 text-xs text-destructive/90">
+                            <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0 text-destructive" />
+                            <span>
+                              <span className="font-medium">[Fila {e.row}]</span>{' '}
+                              <span className="font-mono">{e.field}</span>:{' '}
+                              {e.message}
+                              {e.value ? <span className="text-muted-foreground"> (valor: &quot;{e.value}&quot;)</span> : null}
+                            </span>
+                          </div>
+                        ))}
+                        {parseResult.errors.length > 10 && (
+                          <p className="text-xs text-muted-foreground pl-5">
+                            + {parseResult.errors.length - 10} errores más
+                          </p>
+                        )}
                       </div>
-                    ))}
-                    {parseResult.errors.length > 5 && (
-                      <p className="text-xs text-muted-foreground">...y {parseResult.errors.length - 5} errores más</p>
                     )}
                   </div>
                 )}
 
-                {parseResult.valid.length > 0 && (
-                  <div className="rounded-md bg-muted/50 p-3">
-                    <p className="text-xs text-muted-foreground mb-2">Vista previa (primeras 3 filas):</p>
-                    <div className="overflow-x-auto">
-                      <table className="text-xs w-full">
+                {/* ── Preview table (10 filas) ── */}
+                {parseResult.valid.length > 0 && status !== 'importing' && (
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">
+                      Vista previa — primeras {Math.min(10, parseResult.valid.length)} de {parseResult.valid.length} filas válidas:
+                    </p>
+                    <div className="overflow-x-auto rounded-md border border-border">
+                      <table className="w-full text-xs border-collapse">
                         <thead>
-                          <tr className="text-muted-foreground">
-                            {Object.keys(parseResult.valid[0]).slice(0, 6).map((k) => (
-                              <th key={k} className="text-left pr-3 pb-1 font-medium">{k}</th>
+                          <tr className="bg-muted/50">
+                            {previewCols.map((col) => (
+                              <th key={col.key} className="border border-border px-2 py-1.5 text-left font-medium text-muted-foreground whitespace-nowrap">
+                                {col.label}
+                              </th>
                             ))}
                           </tr>
                         </thead>
                         <tbody>
-                          {parseResult.valid.slice(0, 3).map((row, i) => (
-                            <tr key={i}>
-                              {Object.values(row).slice(0, 6).map((v: any, j) => (
-                                <td key={j} className="pr-3 pb-0.5 truncate max-w-[100px]">
-                                  {v === undefined || v === null ? '—' : String(v)}
-                                </td>
-                              ))}
+                          {parseResult.valid.slice(0, 10).map((row, i) => (
+                            <tr key={i} className="even:bg-muted/20">
+                              {previewCols.map((col) => {
+                                const v = row[col.key];
+                                const display = v === undefined || v === null ? '—' : String(v);
+                                return (
+                                  <td
+                                    key={col.key}
+                                    className={`border border-border px-2 py-1 truncate max-w-[120px] ${(col as any).numeric ? 'font-data text-right' : ''}`}
+                                  >
+                                    {display}
+                                  </td>
+                                );
+                              })}
                             </tr>
                           ))}
                         </tbody>
@@ -452,48 +537,36 @@ export default function ImportPage({ params }: { params: Promise<{ id: string }>
                   </div>
                 )}
 
-                <div className="flex gap-2 pt-1">
-                  <Button variant="outline" size="sm" onClick={reset}>
-                    Cambiar archivo
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={handleImport}
-                    disabled={parseResult.valid.length === 0}
-                  >
-                    Importar {parseResult.valid.length} {tab === 'stations' ? 'estaciones' : tab === 'drillholes' ? 'sondajes' : 'intervalos'}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                {/* ── Barra de progreso durante importación ── */}
+                {status === 'importing' && importProgress && (
+                  <div className="space-y-1">
+                    <div className="h-1.5 rounded-full bg-primary/20 overflow-hidden">
+                      <div
+                        className="h-full bg-primary transition-all duration-300"
+                        style={{ width: `${Math.round((importProgress.current / importProgress.total) * 100)}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {importProgress.current} / {importProgress.total} registros importados...
+                    </p>
+                  </div>
+                )}
 
-          {/* Progreso de importación */}
-          {status === 'importing' && (
-            <Card>
-              <CardContent className="flex flex-col items-center gap-4 py-10">
-                {(() => {
-                  const total = parseResult?.valid.length ?? 0;
-                  const pct = total > 0 ? Math.round((importedCount / total) * 100) : 0;
-                  return (
-                    <>
-                      <div className="w-full max-w-xs space-y-2">
-                        <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>Importando registros...</span>
-                          <span className="font-mono">{importedCount} / {total}</span>
-                        </div>
-                        <div className="h-2 rounded-full bg-muted overflow-hidden">
-                          <div
-                            className="h-full rounded-full bg-primary transition-all duration-300"
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                        <p className="text-center text-xs text-muted-foreground font-mono">{pct}%</p>
-                      </div>
-                      <p className="text-xs text-muted-foreground">No cierres esta ventana</p>
-                    </>
-                  );
-                })()}
+                {/* ── Botones de acción ── */}
+                {status !== 'importing' && (
+                  <div className="flex gap-2 pt-1">
+                    <Button variant="outline" size="sm" onClick={reset}>
+                      Cambiar archivo
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleImport}
+                      disabled={parseResult.valid.length === 0}
+                    >
+                      Confirmar e importar {parseResult.valid.length} {tab === 'stations' ? 'estaciones' : tab === 'drillholes' ? 'sondajes' : 'intervalos'}
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
@@ -505,8 +578,8 @@ export default function ImportPage({ params }: { params: Promise<{ id: string }>
                 <CheckCircle2 className="h-10 w-10 text-primary" />
                 <div>
                   <p className="font-semibold">¡Importación completada!</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Se importaron {importedCount} {tab === 'stations' ? 'estaciones' : tab === 'drillholes' ? 'sondajes' : 'intervalos'} exitosamente
+                  <p className="text-sm text-green-500 mt-1">
+                    ✓ {importedCount} {tab === 'stations' ? 'estaciones' : tab === 'drillholes' ? 'sondajes' : 'intervalos'} importados exitosamente
                   </p>
                 </div>
                 <div className="flex gap-2">

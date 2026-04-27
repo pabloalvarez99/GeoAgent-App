@@ -326,6 +326,8 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
   const [selected, setSelected] = useState<SelectedFeature | null>(null);
   const [showList, setShowList] = useState(false);
   const [mapTypeId, setMapTypeId] = useState<'roadmap' | 'satellite' | 'hybrid' | 'terrain'>('roadmap');
+  const [showStations, setShowStations] = useState(true);
+  const [showDrillHoles, setShowDrillHoles] = useState(true);
   const [mapClick, setMapClick] = useState<{ lat: number; lng: number } | null>(null);
 
   // Distance measurement
@@ -432,6 +434,35 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
             {loading ? '…' : drillHoles.length} sondaje{drillHoles.length !== 1 ? 's' : ''}
           </Badge>
         </div>
+
+        {/* Layer visibility toggles */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setShowStations((v) => !v)}
+            className={`h-7 px-2.5 text-xs rounded-md font-medium transition-colors ${
+              showStations
+                ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                : 'bg-transparent text-muted-foreground border border-border'
+            }`}
+          >
+            ● Estaciones
+          </button>
+          <button
+            onClick={() => setShowDrillHoles((v) => !v)}
+            className={`h-7 px-2.5 text-xs rounded-md font-medium transition-colors ${
+              showDrillHoles
+                ? 'bg-violet-500/20 text-violet-400 border border-violet-500/30'
+                : 'bg-transparent text-muted-foreground border border-border'
+            }`}
+          >
+            ● Sondajes
+          </button>
+        </div>
+
+        {/* Visible marker count */}
+        <span className="font-data text-xs text-muted-foreground px-2">
+          {(showStations ? stations.length : 0) + (showDrillHoles ? drillHoles.length : 0)} marcadores
+        </span>
 
         {/* Measure tool */}
         <button
@@ -589,7 +620,7 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
                 cursor={measuring ? 'crosshair' : undefined}
               >
                 {/* Station markers — blue */}
-                {stations.map((station) => (
+                {showStations && stations.map((station) => (
                   <AdvancedMarker
                     key={`st-${station.id}`}
                     position={{ lat: station.latitude, lng: station.longitude }}
@@ -624,7 +655,7 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
                 )}
 
                 {/* DrillHole markers — amber */}
-                {drillHoles.map((dh) => (
+                {showDrillHoles && drillHoles.map((dh) => (
                   <AdvancedMarker
                     key={`dh-${dh.id}`}
                     position={{ lat: dh.latitude, lng: dh.longitude }}
@@ -644,6 +675,27 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
                 ))}
               </Map>
             </APIProvider>
+          )}
+
+          {/* Map legend */}
+          {!hasNoApiKey && (showStations || showDrillHoles) && (
+            <div className="absolute bottom-10 right-2 z-10 rounded-lg border border-border bg-background/90 backdrop-blur-sm p-2.5 text-xs space-y-1.5">
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Leyenda</p>
+              {showStations && (
+                <div className="flex items-center gap-2">
+                  <div className="h-2.5 w-2.5 rounded-full bg-blue-500 shrink-0" />
+                  <span className="text-muted-foreground">Estaciones</span>
+                  <span className="font-data ml-auto text-foreground">{stations.length}</span>
+                </div>
+              )}
+              {showDrillHoles && (
+                <div className="flex items-center gap-2">
+                  <div className="h-2.5 w-2.5 rounded-full bg-violet-500 shrink-0" />
+                  <span className="text-muted-foreground">Sondajes</span>
+                  <span className="font-data ml-auto text-foreground">{drillHoles.length}</span>
+                </div>
+              )}
+            </div>
           )}
 
           {/* Empty state */}

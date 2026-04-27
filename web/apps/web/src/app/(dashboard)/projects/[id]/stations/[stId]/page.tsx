@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState, useEffect } from 'react';
+import { use, useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -22,10 +22,18 @@ import {
   Map as MapViewIcon,
   Copy,
   Check,
+  Upload,
+  Loader2,
 } from 'lucide-react';
 import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
-import { ref as storageRef, getDownloadURL } from 'firebase/storage';
-import { storage } from '@/lib/firebase/client';
+import { ref as storageRef, getDownloadURL, uploadBytesResumable } from 'firebase/storage';
+import { addDoc, serverTimestamp } from 'firebase/firestore';
+import { storage, db } from '@/lib/firebase/client';
+import { userCollection } from '@/lib/firebase/firestore';
+import { COLLECTIONS } from '@geoagent/geo-shared/constants';
+import { useAuth } from '@/lib/firebase/auth';
+import { usePreferences } from '@/lib/hooks/use-preferences';
+import { formatLatLng } from '@/lib/utils/coords';
 import { useStations } from '@/lib/hooks/use-stations';
 import { useLithologies } from '@/lib/hooks/use-lithologies';
 import { useStructural } from '@/lib/hooks/use-structural';
@@ -96,6 +104,8 @@ export default function StationDetailPage({
   params: Promise<{ id: string; stId: string }>;
 }) {
   const { id: projectId, stId } = use(params);
+  const { user } = useAuth();
+  const { coordFormat } = usePreferences();
   const { project } = useProject(projectId);
   const { stations, loading: stationsLoading, editStation } = useStations(projectId);
   const station = stations.find((s) => s.id === stId);
@@ -112,6 +122,11 @@ export default function StationDetailPage({
   // Resolve download URLs for up to 4 photos
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [photoUrlsLoading, setPhotoUrlsLoading] = useState(false);
+
+  // Upload state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadQueue, setUploadQueue] = useState<Record<string, { name: string; progress: number }>>({});
+  const isUploadingPhotos = Object.keys(uploadQueue).length > 0;
 
   useEffect(() => {
     if (photos.length === 0) {
@@ -141,7 +156,7 @@ export default function StationDetailPage({
   const [coordsCopied, setCoordsCopied] = useState(false);
   function copyCoords() {
     if (!station) return;
-    navigator.clipboard.writeText(`${station.latitude.toFixed(6)}, ${station.longitude.toFixed(6)}`);
+    navigator.clipboard.writeText(formatLatLng(station.latitude, station.longitude, coordFormat));
     setCoordsCopied(true);
     setTimeout(() => setCoordsCopied(false), 2000);
   }
@@ -239,6 +254,75 @@ export default function StationDetailPage({
     }
   }
 
+  async function uploadPhotos(files: FileList | File[]) {
+    if (!user || files.length === 0) return;
+    const arr = Array.from(files);
+
+    const initial: Record<string, { name: string; progress: number }> = {};
+    arr.forEach((file) => {
+      const uniqueName = `${Date.now()}_${Math.random().toString(36).slice(2)}_${file.name.replace(/\s+/g, '_')}`;
+      initial[uniqueName] = { name: file.name, progress: 0 };
+    });
+    setUploadQueue(initial);
+
+    const uploadPromises = arr.map(async (file, idx) => {
+      const uniqueName = Object.keys(initial)[idx];
+      const path = `photos/${user.uid}/${uniqueName}`;
+      const fileRef = storageRef(storage, path);
+
+      return new Promise<void>((resolve, reject) => {
+        const task = uploadBytesResumable(fileRef, file);
+
+        task.on(
+          'state_changed',
+          (snapshot) => {
+            const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+            setUploadQueue((prev) => ({
+              ...prev,
+              [uniqueName]: { ...prev[uniqueName], progress: pct },
+            }));
+          },
+          (error) => reject(error),
+          async () => {
+            try {
+              await getDownloadURL(fileRef);
+              await addDoc(userCollection(user.uid, COLLECTIONS.PHOTOS), {
+                projectId,
+                stationId: stId,
+                fileName: file.name,
+                storagePath: path,
+                description: file.name.replace(/\.[^.]+$/, ''),
+                takenAt: new Date().toISOString(),
+                updatedAt: serverTimestamp(),
+              });
+              setUploadQueue((prev) => ({
+                ...prev,
+                [uniqueName]: { ...prev[uniqueName], progress: 100 },
+              }));
+              resolve();
+            } catch (e) {
+              reject(e);
+            }
+          },
+        );
+      });
+    });
+
+    try {
+      await Promise.all(uploadPromises);
+      toast.success(
+        arr.length === 1
+          ? '1 foto subida correctamente'
+          : `${arr.length} fotos subidas correctamente`,
+      );
+    } catch (e) {
+      console.error(e);
+      toast.error('Error al subir las fotos');
+    } finally {
+      setTimeout(() => setUploadQueue({}), 1500);
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -311,7 +395,7 @@ export default function StationDetailPage({
             </span>
             <span className="flex items-center gap-1 font-mono">
               <MapPin className="h-3 w-3" />
-              {station.latitude.toFixed(6)}, {station.longitude.toFixed(6)}
+              {formatLatLng(station.latitude, station.longitude, coordFormat)}
               {station.altitude ? ` · ${station.altitude.toFixed(0)} m` : ''}
               <button
                 onClick={copyCoords}
@@ -375,21 +459,67 @@ export default function StationDetailPage({
         );
       })()}
 
+      {/* Hidden file input for photo upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={(e) => e.target.files && uploadPhotos(e.target.files)}
+      />
+
       {/* Photo strip */}
-      {!photosLoading && (photoUrls.length > 0 || photoUrlsLoading) && (
+      {!photosLoading && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <p className="text-xs text-muted-foreground flex items-center gap-1.5">
               <Camera className="h-3.5 w-3.5 shrink-0" />
               {photoUrlsLoading ? 'Cargando fotos...' : `${photos.length} foto${photos.length !== 1 ? 's' : ''}`}
             </p>
-            <Link
-              href={`/projects/${projectId}/photos`}
-              className="text-xs text-primary hover:underline"
-            >
-              Ver todas
-            </Link>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1.5 text-xs"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploadingPhotos}
+              >
+                {isUploadingPhotos ? (
+                  <><Loader2 className="h-3 w-3 animate-spin" />Subiendo...</>
+                ) : (
+                  <><Upload className="h-3 w-3" />Subir foto</>
+                )}
+              </Button>
+              {photos.length > 0 && (
+                <Link
+                  href={`/projects/${projectId}/photos`}
+                  className="text-xs text-primary hover:underline"
+                >
+                  Ver todas
+                </Link>
+              )}
+            </div>
           </div>
+          {/* Upload progress */}
+          {isUploadingPhotos && (
+            <div className="rounded-lg border border-border bg-card p-2.5 space-y-1.5">
+              {Object.entries(uploadQueue).map(([key, { name, progress }]) => (
+                <div key={key} className="space-y-0.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground truncate max-w-[180px]">{name}</span>
+                    <span className="text-xs font-mono text-muted-foreground ml-2">{progress}%</span>
+                  </div>
+                  <div className="h-1 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-primary transition-all duration-200"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
           {photoUrls.length > 0 && (
             <div className="flex gap-2 overflow-x-auto pb-1">
               {photoUrls.map((url, i) => (
