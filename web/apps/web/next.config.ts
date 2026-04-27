@@ -1,9 +1,6 @@
 import type { NextConfig } from 'next';
-import path from 'path';
 
 const nextConfig: NextConfig = {
-  // Silence monorepo workspace root warning
-  outputFileTracingRoot: path.join(__dirname, '../../'),
   // Static export for Electron desktop build (set NEXT_EXPORT=1)
   // trailingSlash: true makes Next.js emit /route/index.html (folder per route)
   // instead of /route.html, which is required for the app:// protocol handler in Electron.
