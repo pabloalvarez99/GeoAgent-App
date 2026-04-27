@@ -88,38 +88,72 @@ export default function ProjectPhotosPage({ params }: { params: Promise<{ id: st
   const [deleteTarget, setDeleteTarget] = useState<GeoPhoto | null>(null);
   const [deleting, setDeleting] = useState(false);
   // Upload state
-  const [uploading, setUploading] = useState(false);
+  // key: uniqueName del archivo, value: { name, progress 0-100 }
+  const [uploadQueue, setUploadQueue] = useState<Record<string, { name: string; progress: number }>>({});
+  const isUploading = Object.keys(uploadQueue).length > 0;
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function uploadFiles(files: FileList | File[]) {
     if (!user || files.length === 0) return;
-    setUploading(true);
     const arr = Array.from(files);
+
+    // Inicializar queue con progreso 0 para cada archivo
+    const initial: Record<string, { name: string; progress: number }> = {};
+    arr.forEach((file) => {
+      const uniqueName = `${Date.now()}_${Math.random().toString(36).slice(2)}_${file.name.replace(/\s+/g, '_')}`;
+      initial[uniqueName] = { name: file.name, progress: 0 };
+    });
+    setUploadQueue(initial);
+
+    const uploadPromises = arr.map(async (file, idx) => {
+      const uniqueName = Object.keys(initial)[idx];
+      const path = `photos/${user.uid}/${uniqueName}`;
+      const fileRef = storageRef(storage, path);
+
+      return new Promise<void>((resolve, reject) => {
+        const task = uploadBytesResumable(fileRef, file);
+
+        task.on(
+          'state_changed',
+          (snapshot) => {
+            const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+            setUploadQueue((prev) => ({
+              ...prev,
+              [uniqueName]: { ...prev[uniqueName], progress: pct },
+            }));
+          },
+          (error) => reject(error),
+          async () => {
+            try {
+              const downloadUrl = await getDownloadURL(fileRef);
+              const docRef = await addDoc(userCollection(user.uid, COLLECTIONS.PHOTOS), {
+                projectId,
+                fileName: file.name,
+                storagePath: path,
+                description: file.name.replace(/\.[^.]+$/, ''),
+                takenAt: new Date().toISOString(),
+                updatedAt: serverTimestamp(),
+              });
+              // Cache URL immediately so thumbnail renders without waiting for a second getDownloadURL
+              fetchedIdsRef.current.add(docRef.id);
+              setPhotoUrls((prev) => ({ ...prev, [docRef.id]: downloadUrl }));
+              // Marcar como completo (100%)
+              setUploadQueue((prev) => ({
+                ...prev,
+                [uniqueName]: { ...prev[uniqueName], progress: 100 },
+              }));
+              resolve();
+            } catch (e) {
+              reject(e);
+            }
+          },
+        );
+      });
+    });
+
     try {
-      await Promise.all(
-        arr.map(async (file) => {
-          const uniqueName = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
-          const path = `photos/${user.uid}/${uniqueName}`;
-          const fileRef = storageRef(storage, path);
-          await uploadBytesResumable(fileRef, file).then(
-            () => Promise.resolve(),
-            (err) => { throw err; },
-          );
-          const downloadUrl = await getDownloadURL(fileRef);
-          const docRef = await addDoc(userCollection(user.uid, COLLECTIONS.PHOTOS), {
-            projectId,
-            fileName: file.name,
-            storagePath: path,
-            description: file.name.replace(/\.[^.]+$/, ''),
-            takenAt: new Date().toISOString(),
-            updatedAt: serverTimestamp(),
-          });
-          // Cache URL immediately so thumbnail renders without waiting for a second getDownloadURL
-          fetchedIdsRef.current.add(docRef.id);
-          setPhotoUrls((prev) => ({ ...prev, [docRef.id]: downloadUrl }));
-        }),
-      );
+      await Promise.all(uploadPromises);
       toast.success(
         arr.length === 1
           ? '1 foto subida correctamente'
@@ -129,7 +163,8 @@ export default function ProjectPhotosPage({ params }: { params: Promise<{ id: st
       console.error(e);
       toast.error('Error al subir las fotos');
     } finally {
-      setUploading(false);
+      // Limpiar queue después de 1.5s para que el usuario vea el 100%
+      setTimeout(() => setUploadQueue({}), 1500);
     }
   }
 
@@ -298,9 +333,9 @@ export default function ProjectPhotosPage({ params }: { params: Promise<{ id: st
           <Button
             size="sm"
             onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
+            disabled={isUploading}
           >
-            {uploading ? (
+            {isUploading ? (
               <><Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />Subiendo...</>
             ) : (
               <><Upload className="h-3.5 w-3.5 mr-2" />Subir fotos</>
@@ -333,6 +368,27 @@ export default function ProjectPhotosPage({ params }: { params: Promise<{ id: st
         </div>
       )}
 
+      {/* Upload progress queue */}
+      {isUploading && (
+        <div className="rounded-lg border border-border bg-card p-3 space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Subiendo fotos...</p>
+          {Object.entries(uploadQueue).map(([key, { name, progress }]) => (
+            <div key={key} className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground truncate max-w-[200px]">{name}</span>
+                <span className="text-xs font-mono text-muted-foreground ml-2">{progress}%</span>
+              </div>
+              <div className="h-1 rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-primary transition-all duration-200"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Content */}
       {loading ? (
         // Loading skeleton grid
@@ -356,7 +412,7 @@ export default function ProjectPhotosPage({ params }: { params: Promise<{ id: st
               Arrastra imágenes aquí o haz click para subir. JPG, PNG, WebP soportados.
             </p>
           </div>
-          <Button disabled={uploading} className="mt-2">
+          <Button disabled={isUploading} className="mt-2">
             <Upload className="h-4 w-4 mr-2" />
             Seleccionar fotos
           </Button>
