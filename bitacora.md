@@ -1557,3 +1557,38 @@ Esto es un cambio de infraestructura — no hay código que lo reemplace. Sin ej
 - Al completar: toast "N fotos subidas correctamente"
 - Las fotos quedan asociadas a la estación/sondaje específico (campo `stationId`/`drillHoleId` en Firestore)
 - 0 errores TS en los archivos modificados (errores preexistentes en map/page y photos/page no son de esta sesión)
+
+---
+
+## 2026-04-27 — Fix deploy Vercel + dominio geoagent-app.vercel.app
+
+### Problema raíz del deploy roto
+Los deploys automáticos de GitHub llevaban fallando desde la sesión actual. Root cause: la configuración del proyecto Vercel tenía `rootDirectory: null` + `framework: vite` — Vercel corría `npm install` desde la raíz del repo (sin `package.json`) → `ENOENT`.
+
+También: `outputFileTracingRoot: path.join(__dirname, '../../')` en `next.config.ts` apuntaba a `/vercel/path0/` en Vercel (la raíz del repo), causando fallo en file tracing post-build: `Cannot find module 'next/dist/compiled/next-server/server.runtime.prod.js'`.
+
+### Fixes aplicados
+
+1. **Via Vercel REST API** — `PATCH /v9/projects/prj_904BfKPW4v7CEwtpo9Qw3zdUj5BC`:
+   - `framework: "nextjs"` (era `"vite"`)
+   - `rootDirectory: "web/apps/web"` (era `null`)
+   - Esto corrige los deploys automáticos de GitHub push
+
+2. **`web/apps/web/next.config.ts`** — eliminado `outputFileTracingRoot: path.join(__dirname, '../../')`:
+   - En Vercel con `rootDirectory: web/apps/web`, `__dirname` = `/vercel/path0/apps/web`
+   - `../../` = `/vercel/path0/` pero `node_modules/next/` está en `apps/web/node_modules/` → file tracing fallaba
+   - Next.js usa `__dirname` por defecto cuando no se especifica → correcto
+
+3. **Dominio `geoagent-app.vercel.app`** añadido via `vercel domains add geoagent-app.vercel.app`
+   - Verified: true, asignado automáticamente al latest production deployment
+
+### Estado final
+- **URL producción:** `https://geoagent-app.vercel.app` ← URL nueva y permanente
+- **URL legacy (sigue activa):** `https://agent003.vercel.app`
+- **Deploy pipeline:** push a `master` → Vercel detecta → build desde `web/apps/web/` → deploy automático
+- **Commits:** `b208825` (empty trigger), `b929892` (fix outputFileTracingRoot)
+
+### Nota para deploys manuales con CLI
+Usar siempre GitHub push — no `vercel --prod` desde local porque con `rootDirectory: web/apps/web` en Vercel, el CLI dobla el path al correr desde `web/apps/web/`. El workflow correcto es solo git push.
+
+*Última actualización: 2026-04-27 — Deploy pipeline saneado. URL definitiva: geoagent-app.vercel.app*
