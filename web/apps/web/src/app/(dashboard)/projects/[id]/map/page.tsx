@@ -604,7 +604,7 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
                 fullscreenControl={false}
                 streetViewControl={false}
                 zoomControl
-                style={{ width: '100%', height: '100%' }}
+                style={{ width: '100%', height: '100%', cursor: measuring ? 'crosshair' : undefined }}
                 onClick={(e) => {
                   const ll = e.detail?.latLng;
                   if (!ll) return;
@@ -617,7 +617,6 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
                     setMapClick({ lat: ll.lat, lng: ll.lng });
                   }
                 }}
-                cursor={measuring ? 'crosshair' : undefined}
               >
                 {/* Station markers — blue */}
                 {showStations && stations.map((station) => (

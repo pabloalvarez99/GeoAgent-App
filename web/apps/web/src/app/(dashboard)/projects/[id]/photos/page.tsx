@@ -93,6 +93,7 @@ export default function ProjectPhotosPage({ params }: { params: Promise<{ id: st
   const isUploading = Object.keys(uploadQueue).length > 0;
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [filterTab, setFilterTab] = useState<'all' | 'stations' | 'drillholes'>('all');
 
   async function uploadFiles(files: FileList | File[]) {
     if (!user || files.length === 0) return;
@@ -216,7 +217,7 @@ export default function ProjectPhotosPage({ params }: { params: Promise<{ id: st
         const loaded = photos
           .filter((p) => filterTab === 'stations' ? p.stationId : filterTab === 'drillholes' ? p.drillHoleId : true)
           .filter((p) => photoUrls[p.id]);
-        const idx = loaded.findIndex((p) => p.id === lightboxPhoto.id);
+        const idx = loaded.findIndex((p) => p.id === lightboxPhoto!.id);
         if (idx === -1) return;
         const nextIdx = e.key === 'ArrowRight'
           ? (idx + 1) % loaded.length
@@ -269,8 +270,6 @@ export default function ProjectPhotosPage({ params }: { params: Promise<{ id: st
   }
 
   const lightboxUrl = lightboxPhoto ? photoUrls[lightboxPhoto.id] : undefined;
-
-  const [filterTab, setFilterTab] = useState<'all' | 'stations' | 'drillholes'>('all');
 
   const visiblePhotos = filterTab === 'stations'
     ? photos.filter((p) => p.stationId)
