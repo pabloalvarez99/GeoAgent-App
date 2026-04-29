@@ -1,8 +1,51 @@
 # GeoAgent — Bitácora de Desarrollo Web + Desktop
 
-> **Para el agente que retome esta sesión:** Lee este archivo completo antes de hacer cualquier cosa.
-> Contiene TODO el contexto, las decisiones tomadas, lo que está hecho y lo que falta.
-> No se necesita conocimiento previo del proyecto — todo está aquí.
+> **Para el agente que retome esta sesión:** Lee §0 (Estado Actual) primero. Si necesitas más, usa el TOC.
+
+---
+
+## 0. Estado Actual (snapshot 2026-04-29)
+
+**Producción:** https://geoagent-app.vercel.app — Next.js 15 + Firebase web SDK v11
+**Último commit master:** `286f820` — docs: update bitacora — deploy fix + geoagent-app.vercel.app domain
+**Branch activa:** `master` (clean)
+**Stack real:** Next.js 15.2 + npm workspaces + Turborepo + Tailwind 4 + shadcn/ui + Firebase SDK 11
+**Backend:** Firebase project `geoagent-app` (Firestore + Auth + Storage + Cloud Functions)
+**Deploy pipeline:** push a `master` → Vercel auto-deploy desde `web/apps/web/`. NO usar `vercel --prod` local (rootDirectory dobla path).
+
+### Fases — estado real
+
+| Fase | Estado | Notas |
+|---|---|---|
+| 1. Foundation | ✅ | Monorepo npm, Next 15, Firebase, auth, layout |
+| 2. Proyectos + Dashboard | ✅ | Lista, detalle, contadores en tiempo real |
+| 3. Estaciones | ✅ | CRUD + lithology/structural/samples forms |
+| 4. Sondajes | ✅ | CRUD + intervalos + RQD/Recovery |
+| 5. Mapa | ✅ | Google Maps, marcadores, layer toggles, distance, leyenda |
+| 6. Fotos | ✅ | Galería, upload inline en station/drillhole, lightbox |
+| 7. Exportación | ✅ | PDF (con fotos CORS-safe), Excel, GeoJSON, CSV collar/survey/assay |
+| 8. Electron Desktop | ✅ | `web/apps/desktop/` — main+preload, builder, GitHub Actions release |
+| 9. Features PC | ✅ | Analytics global+por-proyecto, Settings, Import preview, Command Palette |
+| 10. Deploy Final | ✅ | Vercel production, dominio fijo, PWA manifest+SW, env vars |
+
+### Áreas de mejora abiertas (TODO real)
+
+- [ ] Tests (no hay suite de tests web aún — ni unit ni e2e)
+- [ ] i18n (todo hardcoded ES; sin infra para EN/PT)
+- [ ] Accesibilidad: auditoría WCAG (foco visible, ARIA en data-tables, contraste)
+- [ ] Performance: bundle analyzer + code-split de jspdf/xlsx (lazy en página export)
+- [x] Error boundaries por ruta (✅ 2026-04-29 — `global-error.tsx`, `(dashboard)/error.tsx`, `not-found.tsx`). Sentry pendiente.
+- [ ] Sentry o equivalente para logging remoto de errores
+- [ ] Firestore security rules: review de cobertura completa (todas las colecciones tienen rules)
+- [ ] Bitácora archive: mover log cronológico (§16+) a `bitacora-archive.md` cuando supere 2k líneas
+
+### TOC
+
+- §1 Contexto · §2 Arquitectura · §3 Stack · §4 Estructura · §5 Modelo de datos
+- §6 Constantes · §7 Validaciones · §8 Rutas · §9 Diseño UI
+- §10 Fases (referencia histórica — usar §0 para estado real)
+- §11 Variables de entorno · §12 Comandos · §13 Decisiones técnicas · §14 Archivos Android
+- §15 Git · §16+ Log cronológico de sesiones (más reciente al final)
 
 ---
 
@@ -61,7 +104,7 @@ users/{userId}/photos/{id}
 
 | Herramienta | Versión | Propósito |
 |---|---|---|
-| Next.js | 16 | Framework web (App Router) |
+| Next.js | 15.2 | Framework web (App Router) |
 | shadcn/ui | latest | UI components |
 | Tailwind CSS | 4 | Styling |
 | Firebase Web SDK | 11 | Firestore + Auth + Storage |
@@ -72,7 +115,7 @@ users/{userId}/photos/{id}
 | jsPDF + jspdf-autotable | latest | Export PDF |
 | recharts | latest | Gráficos de analytics |
 | TypeScript | 5 | Type safety |
-| pnpm | 11 | Package manager |
+| npm | 10.9.2 | Package manager (npm workspaces — no pnpm, ver §13) |
 | Turborepo | 2 | Monorepo orchestration |
 
 **Desktop (Fase 7):**
@@ -458,6 +501,8 @@ export const drillIntervalSchema = z.object({
 
 ## 10. Fases de Implementación
 
+> **Nota:** Esta sección es histórica (plan original). El estado real está en §0. Fases 1–10 todas ✅ completas.
+
 ### ✅ COMPLETADO (Fases 1-7)
 
 #### Fase 1: Foundation
@@ -505,27 +550,26 @@ export const drillIntervalSchema = z.object({
 - [x] `lib/export/csv.ts` — CSV collar/survey/assay (formato industria)
 - [x] `/projects/[id]/export` — página con 4 export cards
 
-### ⏳ PENDIENTE — Fase 8: Electron Desktop
+### ✅ COMPLETADO — Fase 8: Electron Desktop
 
-- [ ] `web/apps/desktop/electron-src/main.ts`
-- [ ] `web/apps/desktop/electron-src/preload.ts`
-- [ ] `web/apps/desktop/package.json`
-- [ ] `web/apps/desktop/electron-builder.yml`
-- [ ] build: genera `GeoAgent-Setup.exe`
-- [ ] auto-update via GitHub Releases
+- [x] `web/apps/desktop/electron-src/main.ts` + `preload.ts`
+- [x] `web/apps/desktop/package.json` + `electron-builder.yml`
+- [x] Build genera `GeoAgent-Setup.exe`
+- [x] GitHub Actions release pipeline (custom `app://` protocol)
 
-### ⏳ PENDIENTE — Fase 9: Features PC-Exclusivos
+### ✅ COMPLETADO — Fase 9: Features PC
 
-- [ ] Dashboard analytics con recharts
-- [ ] Settings page
-- [ ] Importación CSV/Excel → bulk create
+- [x] Dashboard analytics con recharts (global `/analytics` + por proyecto)
+- [x] Settings page (perfil, formato coords, network status, PWA install)
+- [x] Importación CSV/Excel → bulk create (con preview + errores detallados + progress)
+- [x] Command Palette
 
-### ⏳ PENDIENTE — Fase 10: Deploy Final
+### ✅ COMPLETADO — Fase 10: Deploy Final
 
-- [ ] Variables de entorno en Vercel (Google Maps API key)
-- [ ] GitHub Actions CI/CD
-- [ ] PWA manifest
-- [ ] GitHub Actions build Electron → GitHub Releases
+- [x] Variables de entorno en Vercel
+- [x] GitHub Actions CI/CD (deploy Cloud Functions + Electron release)
+- [x] PWA manifest + Service Worker
+- [x] Dominio fijo `geoagent-app.vercel.app`
 
 ---
 
@@ -553,16 +597,18 @@ NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=...
 
 Desde `web/`:
 ```bash
-pnpm install                     # Instalar todas las dependencias
-pnpm web                         # Dev server: http://localhost:3000
-pnpm build                       # Build producción
-pnpm desktop                     # Dev Electron (Fase 7)
+npm install                      # Instalar todas las dependencias (npm workspaces)
+npm run web                      # Dev server: http://localhost:3000
+npm run build                    # Build producción
+npm run desktop                  # Dev Electron
 ```
 
 Desde root del repo:
 ```bash
-cd web && pnpm install && pnpm web
+cd web && npm install && npm run web
 ```
+
+> ⚠️ **NO usar pnpm.** Vercel + Node 22 + pnpm 9 tenía bug fatal `ERR_INVALID_THIS` en undici. Migrado a npm workspaces (ver §13). `web/package.json` declara `"packageManager": "npm@10.9.2"`.
 
 ---
 
@@ -1592,3 +1638,44 @@ También: `outputFileTracingRoot: path.join(__dirname, '../../')` en `next.confi
 Usar siempre GitHub push — no `vercel --prod` desde local porque con `rootDirectory: web/apps/web` en Vercel, el CLI dobla el path al correr desde `web/apps/web/`. El workflow correcto es solo git push.
 
 *Última actualización: 2026-04-27 — Deploy pipeline saneado. URL definitiva: geoagent-app.vercel.app*
+
+---
+
+## 2026-04-29 — Error boundaries Next.js App Router
+
+### Problema detectado
+Sin `error.tsx` ni `global-error.tsx` en ningún segmento. Cualquier excepción no atrapada en componente cliente → pantalla blanca o error genérico de Next dev. En producción peor: usuario sin recovery path.
+
+### Archivos creados
+1. **`src/app/global-error.tsx`** — boundary catastrófico raíz. Reemplaza `<html>` + `<body>` cuando `RootLayout` mismo crashea. Estilos inline (no Tailwind disponible en este nivel). Botón "Reintentar" llama `reset()`.
+2. **`src/app/(dashboard)/error.tsx`** — boundary del segmento dashboard. Cubre errores en home/projects/analytics/settings/etc. UI con `Button`, lucide icons, muestra `error.digest` siempre y `error.message` solo en dev. Acciones: Reintentar (`reset()`) + Volver al inicio (`/home`).
+3. **`src/app/not-found.tsx`** — 404 global. Card centrada con link a `/home`.
+
+### Verificación
+- `tsc --noEmit` exit 0 en `apps/web`.
+- `next lint` deprecado en Next 16 — migración a ESLint CLI pendiente (no bloqueante).
+
+### Próximos pasos sugeridos
+- Integrar Sentry o similar dentro de `useEffect(() => { ... }, [error])` para logging remoto.
+- Añadir `error.tsx` por feature crítica (projects/[id], drillholes, map) si quieres recovery más granular sin perder contexto del proyecto.
+
+---
+
+## 2026-04-29 — Reestructura bitácora: §0 Estado Actual + fixes de consistencia
+
+### Problemas detectados al revisar bitácora completa
+- §10 marcaba Fases 8/9/10 como ⏳ PENDIENTE pero el log cronológico (2026-04-26+) confirmaba completas → contradicción que confundía a agentes nuevos.
+- §3 stack table decía "Next.js 16" + "pnpm 11"; código real = Next 15.2 + npm 10.9.2 → versiones falsas.
+- §12 comandos usaban `pnpm` aunque §13 mandaba npm → docs inconsistentes.
+- 1594 líneas sin TOC ni resumen ejecutivo → agente nuevo debía leer todo para conocer estado.
+
+### Fixes aplicados
+1. Insertado **§0 Estado Actual** al tope: URL prod, último commit, branch, stack real, tabla de fases con estado verdadero, lista TODO de mejoras abiertas, TOC.
+2. §3 stack: Next.js 16→15.2, pnpm 11→npm 10.9.2.
+3. §10: nota aclaratoria + Fases 8/9/10 reescritas como ✅ con bullets reales.
+4. §12 comandos: pnpm→npm + warning explícito sobre por qué no pnpm.
+
+### TODO real (movido a §0)
+Tests, i18n, accesibilidad WCAG, bundle analyzer (jspdf/xlsx lazy), error boundaries+Sentry, archive del log cronológico cuando supere 2k líneas.
+
+*Última actualización: 2026-04-29 — Bitácora consolidada con §0 Estado Actual.*
