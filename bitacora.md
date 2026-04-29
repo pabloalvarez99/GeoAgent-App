@@ -33,7 +33,7 @@
 - [ ] Tests (no hay suite de tests web aún — ni unit ni e2e)
 - [ ] i18n (todo hardcoded ES; sin infra para EN/PT)
 - [ ] Accesibilidad: auditoría WCAG (foco visible, ARIA en data-tables, contraste)
-- [ ] Performance: bundle analyzer + code-split de jspdf/xlsx (lazy en página export)
+- [x] Performance: bundle analyzer + code-split jspdf/xlsx (✅ 2026-04-29 — `npm run analyze`, libs lazy en handlers)
 - [x] Error boundaries por ruta (✅ 2026-04-29 — `global-error.tsx`, `(dashboard)/error.tsx`, `not-found.tsx`). Sentry pendiente.
 - [ ] Sentry: instalar `@sentry/nextjs` + DSN. Hook ya cableado en `lib/report-error.ts` (2026-04-29)
 - [ ] Firestore security rules: review de cobertura completa (todas las colecciones tienen rules)
@@ -1638,6 +1638,36 @@ También: `outputFileTracingRoot: path.join(__dirname, '../../')` en `next.confi
 Usar siempre GitHub push — no `vercel --prod` desde local porque con `rootDirectory: web/apps/web` en Vercel, el CLI dobla el path al correr desde `web/apps/web/`. El workflow correcto es solo git push.
 
 *Última actualización: 2026-04-27 — Deploy pipeline saneado. URL definitiva: geoagent-app.vercel.app*
+
+---
+
+## 2026-04-29 — Bundle analyzer + lazy-load jspdf/xlsx
+
+### Problema
+Bundle inicial de página `/projects/[id]/export` cargaba `jspdf` (~250KB) + `xlsx-js-style` (~600KB) eagerly. Usuarios que no exportaban pagaban el costo.
+
+### Cambio
+- `next.config.ts` — wrap con `@next/bundle-analyzer`. Activar con `ANALYZE=1`.
+- `package.json` — script `analyze` (usa `cross-env`).
+- `src/app/(dashboard)/projects/[id]/export/page.tsx` — `downloadPDF`, `downloadExcel`, `downloadGeoJSON`, `downloadCsvBundle` ahora se importan dinámicamente dentro de cada handler (`await import('@/lib/export/X')`). Next.js code-splittea en cada `import()`.
+
+### Resultado esperado
+Página `export` arranca con chunk mínimo. Las libs pesadas se descargan solo cuando el usuario clickea "Exportar".
+
+### Cómo correr el analyzer
+```bash
+cd web/apps/web
+npm run analyze
+```
+Abre 3 reports HTML (client/edge/nodejs) en `.next/analyze/`.
+
+### Archivos tocados
+- `web/apps/web/next.config.ts`
+- `web/apps/web/package.json`
+- `web/apps/web/src/app/(dashboard)/projects/[id]/export/page.tsx`
+
+### Verificación
+`tsc --noEmit` exit 0.
 
 ---
 

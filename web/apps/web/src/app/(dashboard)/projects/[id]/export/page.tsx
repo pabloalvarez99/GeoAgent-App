@@ -25,10 +25,8 @@ import {
   getSamplesForStations,
   getIntervalsForDrillHoles,
 } from '@/lib/firebase/firestore';
-import { downloadPDF } from '@/lib/export/pdf';
-import { downloadExcel } from '@/lib/export/excel';
-import { downloadGeoJSON } from '@/lib/export/geojson';
-import { downloadCsvBundle } from '@/lib/export/csv';
+// Heavy export libs (jspdf ~250KB, xlsx-js-style ~600KB) are loaded on-demand
+// via dynamic import inside each handler. Keeps the initial page chunk light.
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -146,6 +144,7 @@ export default function ExportPage({ params }: { params: Promise<{ id: string }>
         }),
       );
 
+      const { downloadPDF } = await import('@/lib/export/pdf');
       await downloadPDF({
         project: project as GeoProject,
         stations: allStations as any,
@@ -185,6 +184,7 @@ export default function ExportPage({ params }: { params: Promise<{ id: string }>
         getIntervalsForDrillHoles(user.uid, drillHoleIdsExcel),
       ]);
 
+      const { downloadExcel } = await import('@/lib/export/excel');
       await downloadExcel({
         project: project as GeoProject,
         stations: allStations as any,
@@ -224,6 +224,7 @@ export default function ExportPage({ params }: { params: Promise<{ id: string }>
         getIntervalsForDrillHoles(user.uid, drillHoleIdsGeo),
       ]);
 
+      const { downloadGeoJSON } = await import('@/lib/export/geojson');
       await downloadGeoJSON({
         projectName: project.name,
         projectDescription: (project as any).description,
@@ -262,6 +263,7 @@ export default function ExportPage({ params }: { params: Promise<{ id: string }>
         holeId: drillHoleMap[i.drillHoleId] ?? i.drillHoleId,
       }));
 
+      const { downloadCsvBundle } = await import('@/lib/export/csv');
       await downloadCsvBundle(
         allDrillHoles as any,
         enriched as any,
