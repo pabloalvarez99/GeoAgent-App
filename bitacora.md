@@ -35,7 +35,7 @@
 - [ ] Accesibilidad: auditoría WCAG (foco visible, ARIA en data-tables, contraste)
 - [ ] Performance: bundle analyzer + code-split de jspdf/xlsx (lazy en página export)
 - [x] Error boundaries por ruta (✅ 2026-04-29 — `global-error.tsx`, `(dashboard)/error.tsx`, `not-found.tsx`). Sentry pendiente.
-- [ ] Sentry o equivalente para logging remoto de errores
+- [ ] Sentry: instalar `@sentry/nextjs` + DSN. Hook ya cableado en `lib/report-error.ts` (2026-04-29)
 - [ ] Firestore security rules: review de cobertura completa (todas las colecciones tienen rules)
 - [ ] Bitácora archive: mover log cronológico (§16+) a `bitacora-archive.md` cuando supere 2k líneas
 
@@ -1638,6 +1638,27 @@ También: `outputFileTracingRoot: path.join(__dirname, '../../')` en `next.confi
 Usar siempre GitHub push — no `vercel --prod` desde local porque con `rootDirectory: web/apps/web` en Vercel, el CLI dobla el path al correr desde `web/apps/web/`. El workflow correcto es solo git push.
 
 *Última actualización: 2026-04-27 — Deploy pipeline saneado. URL definitiva: geoagent-app.vercel.app*
+
+---
+
+## 2026-04-29 — `reportError()` abstracción (Sentry-ready)
+
+### Cambio
+Nuevo `src/lib/report-error.ts` — wrapper único `reportError(scope, error, context)`. Hoy logea a `console.error`. Hook listo para Sentry: cuando `NEXT_PUBLIC_SENTRY_DSN` esté seteado y `@sentry/nextjs` instalado, basta reemplazar bloque marcado en el archivo.
+
+### Archivos tocados
+- `src/lib/report-error.ts` (nuevo)
+- `src/app/global-error.tsx` — `console.error` → `reportError('global:error', ...)`
+- `src/app/(dashboard)/error.tsx` — idem `dashboard:error`
+
+### Activar Sentry (cuando Pablo tenga DSN)
+1. `pnpm add @sentry/nextjs`
+2. `npx @sentry/wizard@latest -i nextjs`
+3. Set `NEXT_PUBLIC_SENTRY_DSN` en Vercel env (Production + Preview)
+4. Reemplazar bloque marcado en `report-error.ts` con `Sentry.captureException(error, { tags: { scope }, extra: context })`
+
+### Verificación
+`tsc --noEmit` exit 0.
 
 ---
 
