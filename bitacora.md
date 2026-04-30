@@ -1796,3 +1796,16 @@ Firebase auth + firestore mockeados via `vi.mock()`. Hooks expuestos como cajas 
 - `web/apps/web/package.json` (scripts + devDeps)
 - `web/apps/web/src/lib/hooks/use-projects.test.ts` (nuevo)
 - `web/apps/web/src/lib/hooks/use-stations.test.ts` (nuevo)
+
+---
+
+## 2026-04-29 — Tests extendidos: drillholes + samples
+
+Añadidos `use-drillholes.test.ts` (7 casos: useDrillHoles + useDrillIntervals) y `use-samples.test.ts` (4 casos). Mismo patrón de mock que projects/stations.
+
+### Resultado
+19/19 tests verde en ~2.5s.
+
+### Archivos tocados
+- `web/apps/web/src/lib/hooks/use-drillholes.test.ts` (nuevo)
+- `web/apps/web/src/lib/hooks/use-samples.test.ts` (nuevo)
