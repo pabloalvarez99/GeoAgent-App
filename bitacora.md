@@ -1730,3 +1730,69 @@ Sin `error.tsx` ni `global-error.tsx` en ningún segmento. Cualquier excepción 
 Tests, i18n, accesibilidad WCAG, bundle analyzer (jspdf/xlsx lazy), error boundaries+Sentry, archive del log cronológico cuando supere 2k líneas.
 
 *Última actualización: 2026-04-29 — Bitácora consolidada con §0 Estado Actual.*
+
+---
+
+## 2026-04-29 — Electron desktop: fix `output: export` con rutas dinámicas Firestore
+
+### Problema raíz
+`NEXT_EXPORT=1 next build` rompía con: `Page "/projects/[id]/..." is missing "generateStaticParams()"`. Next 15.5 con `output: 'export'` exige `generateStaticParams` en cada **leaf** que herede param dinámico, no basta con declararlo en el layout raíz `[id]/`. Pages son `'use client'` → no pueden exportar `generateStaticParams` (server-only). Layout vacío `return []` tampoco satisface — Next requiere al menos un placeholder.
+
+### Solución aplicada
+1. Layout server por subruta dentro de `[id]/` con placeholder `[{ id: '_' }]`:
+   - `analytics/`, `drillholes/`, `drillholes/new/`, `export/`, `import/`, `map/`, `photos/`, `stations/`, `stations/new/`
+2. Layouts en segmentos con segundo param: `drillholes/[dhId]/layout.tsx` → `[{ id: '_', dhId: '_' }]`, `stations/[stId]/layout.tsx` → `[{ id: '_', stId: '_' }]`.
+3. `[id]/layout.tsx` raíz también con placeholder `[{ id: '_' }]`.
+4. Resultado: build genera shells en `out/projects/_/...`. Cliente router rehidrata y lee ID real de `window.location` para fetch a Firebase.
+
+### Protocol handler `app://` (electron-src/main.ts)
+Fallback antiguo servía `index.html` raíz para rutas desconocidas → no cargaba chunks de la ruta correcta. Añadido rewrite: `/projects/<realId>/...` → `/projects/_/...` antes de buscar archivo. Lo mismo para `[dhId]` y `[stId]`. Preserva `/new` (no es dinámico).
+
+### Otros fixes scaffold Electron
+- `apps/desktop/package.json`: `name` corregido `geoagent-desktop` → `@geoagent/desktop` (turbo filter `--filter=@geoagent/desktop` no encontraba el package).
+- `electron`: `^34.0.0` → `34.5.8` pin exacto (electron-builder error: "version not fixed").
+
+### Estado actual desktop
+- ✅ `next build` con `NEXT_EXPORT=1` → genera `out/` completo
+- ✅ `tsc -p tsconfig.electron.json` → compila `dist/main.js` + `dist/preload.js`
+- ❌ `electron-builder` falla: `app-builder-bin/win/x64/app-builder.exe` y `app-builder-lib/out/util/rebuild/remote-rebuild.js` desaparecen tras `npm install`. Patrón = Windows Defender quarantining binaries de electron-builder.
+
+### Próximo paso
+Añadir exclusión Defender para `node_modules/app-builder-bin/` y `node_modules/app-builder-lib/`, o instalar electron-builder como dep directa en `apps/desktop/` con `nohoist` para aislar. Reintentar `npm run dist` desde `apps/desktop/`.
+
+### Pendientes verificación interactiva
+- Probar `npm run desktop` (dev mode) — concurrently + Next dev + Electron loadURL `localhost:3000`
+- Verificar export PDF → dialog nativo Windows (`saveFile()` IPC)
+- Confirmar menú nativo ES funciona
+
+### Archivos modificados
+- `web/apps/web/src/app/(dashboard)/projects/[id]/layout.tsx` (placeholder)
+- `web/apps/web/src/app/(dashboard)/projects/[id]/{analytics,drillholes,drillholes/new,drillholes/[dhId],export,import,map,photos,stations,stations/new,stations/[stId]}/layout.tsx` (nuevos)
+- `web/apps/desktop/package.json` (name + electron version)
+- `web/apps/desktop/electron-src/main.ts` (rewriteDynamic en protocol handler)
+
+---
+
+## 2026-04-29 — Vitest + smoke tests para hooks
+
+### Cambio
+Setup de testing en `web/apps/web/`:
+- `vitest.config.ts` + `vitest.setup.ts` — happy-dom env, `@testing-library/jest-dom` matchers, paths via `resolve.tsconfigPaths: true`.
+- Devdeps: `vitest`, `@vitejs/plugin-react`, `@testing-library/react`, `@testing-library/jest-dom`, `happy-dom`.
+- Scripts: `npm test` (run once) y `npm run test:watch`.
+- Tests:
+  - `src/lib/hooks/use-projects.test.ts` — 4 casos: unauth, subscribe+push, addProject sin auth, addProject con auth.
+  - `src/lib/hooks/use-stations.test.ts` — 4 casos: sin user, sin projectId, subscribe+push, addStation sin auth.
+
+### Patrón de mock
+Firebase auth + firestore mockeados via `vi.mock()`. Hooks expuestos como cajas negras: validamos contrato (qué se llama, con qué args, qué retorna).
+
+### Resultado
+8/8 tests verde en ~2.4s. `tsc --noEmit` exit 0.
+
+### Archivos tocados
+- `web/apps/web/vitest.config.ts` (nuevo)
+- `web/apps/web/vitest.setup.ts` (nuevo)
+- `web/apps/web/package.json` (scripts + devDeps)
+- `web/apps/web/src/lib/hooks/use-projects.test.ts` (nuevo)
+- `web/apps/web/src/lib/hooks/use-stations.test.ts` (nuevo)
