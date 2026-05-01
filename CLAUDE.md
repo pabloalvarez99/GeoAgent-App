@@ -1,11 +1,11 @@
 ## ⚠️ PRIORIDAD DEL PROYECTO — LEER PRIMERO
 
-**WEB PRIMERO.** El trabajo activo es la plataforma web (`web/`).
+**WEB + ELECTRON.** Plataformas activas: web (`web/`) y desktop Electron. Android **DESACTIVADO** (2026-04-29).
 
-- Tareas en `app/` (Android) → **SOLO si el usuario pide explícitamente algo de Android**.
-- `app/` tiene código completo y funcional. No tocar salvo instrucción directa.
-- Toda nueva funcionalidad va en `web/apps/web/` o `web/packages/`.
+- Android (`app/`) → **NO TOCAR**. Pausado por decisión del usuario. Código existente queda como referencia, no hay trabajo activo.
+- Toda nueva funcionalidad va en `web/apps/web/`, `web/packages/`, o el paquete de Electron.
 - Si el usuario no especifica plataforma → asumir web.
+- Solo retomar Android si el usuario lo pide explícitamente y reactiva la prioridad.
 
 ---
 
@@ -79,7 +79,26 @@ Si no actualizas `bitacora.md`, la próxima sesión empezará sin contexto y rep
 
 ---
 
-# GeoAgent - Android Field Geology App
+# GeoAgent — Plataformas activas
+
+## Web (`web/apps/web/`) — PRIMARIO
+Next.js 15 App Router + React 19 + Tailwind + Firebase. Deploy: Vercel (`geoagent-app.vercel.app`).
+
+## Desktop Electron (`web/apps/desktop/`) — SECUNDARIO
+Wrapper de la web app. Carga build estático de Next vía `app://` protocol. NSIS installer Windows x64. Auto-updater desde GitHub releases.
+
+- `electron-src/main.ts` — main process: protocol handler, IPC, menú nativo ES, auto-updater
+- `electron-src/preload.ts` — `window.electronAPI` (saveFile, openFile, getVersion, checkForUpdates)
+- `web/src/lib/electron.ts` — bridge con fallback browser (`isElectron()`, `saveFile()`)
+- Build: `npm run desktop` (dev) · `cd apps/desktop && npm run build` (export → installer)
+- `next.config.ts` activa `output: 'export'` con `NEXT_EXPORT=1`
+- Cualquier flujo de export nuevo debe usar `saveFile()` de `lib/electron.ts`, no `<a download>` directo.
+
+---
+
+# GeoAgent — Android (PAUSADO 2026-04-29)
+
+> Plataforma desactivada. No tocar `app/` salvo instrucción explícita del usuario para reactivar.
 
 ## Project Overview
 Android native app (Kotlin + Jetpack Compose) for field geology data collection.
@@ -147,20 +166,74 @@ ve actualizando bitacora.md despues de cada prompt y cambios significativos
 
 ---
 
-## Obsidian Mind Vault (PKM)
+## Obsidian Mind Vault (Segundo Cerebro) — OBLIGATORIO
 
-Vault instalado en `C:\Users\Admin\Documents\obsidian-mind`. Cerebro externo del proyecto — conocimiento durable que persiste entre sesiones y máquinas.
+**Path correcto:** `C:\Users\Administrator\Documents\obsidian-mind\`
+(El path antiguo `C:\Users\Admin\...` está mal — no usar.)
 
-| Qué guardar | Dónde en el vault |
-|---|---|
-| Patrones y gotchas del codebase | `brain/Patterns.md`, `brain/Gotchas.md` |
-| Decisiones arquitectónicas | `brain/Key Decisions.md` |
-| Features activas en desarrollo | `work/active/` |
-| Contexto de stack y arquitectura | `reference/GeoAgent Architecture.md` |
-| Objetivos del producto | `brain/North Star.md` |
+Vault = cerebro externo durable. Compartido entre proyectos (Tu Farmacia + GeoAgent + futuros). Persiste entre sesiones, PCs y modelos. Si algo merece sobrevivir a `/clear`, va al vault.
 
-### Reglas
-- Conocimiento durable → vault `brain/`, no en memoria efímera de sesión
-- Al terminar sesión significativa, actualizar `brain/Gotchas.md` con trampas reales encontradas
-- Las decisiones irreversibles van a `brain/Key Decisions.md` con fecha y justificación
-- APPEND siempre — los archivos `brain/` son compartidos entre proyectos
+### Mapa del vault
+
+| Path | Contenido | Cuándo escribir |
+|---|---|---|
+| `brain/Gotchas.md` | Trampas reales que mordieron — root cause + fix. Caveman-compressed | Tras debug no-trivial: bug raro, error oscuro, edge case |
+| `brain/Patterns.md` | Idiomas/convenciones reusables del codebase | Al detectar patrón replicable (>2 usos) |
+| `brain/Key Decisions.md` | Decisiones irreversibles + fecha + justificación | Cambio de stack, migración, tradeoff arquitectónico |
+| `brain/North Star.md` | Objetivos del producto, no técnicos | Cambio de visión/scope mayor |
+| `brain/Skills.md` | Recetas operativas (cómo hacer X) | Procedimiento que se repetirá |
+| `brain/Memories.md` | Contexto del usuario / preferencias persistentes | Solo si Pablo lo pide explícito |
+| `reference/GeoAgent Architecture.md` | Snapshot de arquitectura (stack, dirs, flujos) | Cambio estructural mayor del codebase |
+| `work/active/` | Features en desarrollo activo (un .md por feature) | Al iniciar feature multi-sesión |
+| `work/archive/` | Features completados | Mover desde `active/` al cerrar feature |
+| `work/incidents/` | Postmortems de incidentes | Tras incidente prod o regresión grave |
+
+### Protocolo de sesión
+
+**Al inicio de sesión (cuando tarea es no-trivial):**
+1. Leer `brain/Gotchas.md` filtrando por proyecto activo (`## GeoAgent — *`)
+2. Leer `brain/Key Decisions.md` si la tarea toca arquitectura
+3. Si feature continúa → leer `work/active/<feature>.md`
+
+**Durante sesión:**
+- `bitacora.md` (proyecto) = log cronológico verboso, qué se hizo
+- Vault `brain/` = lecciones destiladas, qué aprender. NO duplicar bitácora aquí
+- Regla decisión: ¿lo necesita otro proyecto/agente futuro sin contexto? → vault. ¿Solo histórico de este proyecto? → bitácora.
+
+**Al cierre de sesión significativa:**
+1. Si encontraste trampa real → APPEND a `brain/Gotchas.md` bajo header `## GeoAgent — <tema>`
+2. Si tomaste decisión irreversible → APPEND a `brain/Key Decisions.md` con fecha ISO + por qué
+3. Si patrón nuevo (>2 usos esperados) → APPEND a `brain/Patterns.md`
+4. Si feature sigue abierto → actualizar `work/active/<feature>.md` con estado
+5. Si arquitectura cambió → editar `reference/GeoAgent Architecture.md`
+
+### Formato — caveman compressed
+
+Los archivos `brain/` usan estilo ultra-comprimido para maximizar densidad:
+- Bullet por línea, sin artículos
+- `X → Y` para causalidad
+- Abreviaciones técnicas (DB/auth/fn/req/res)
+- Quote errores exactos con backticks
+
+Ejemplo (de `Gotchas.md` real):
+```
+## GeoAgent — Sync
+- Android escribía `updated_at`, web ordenaba `updatedAt` → datos invisibles. Fix: snake_case en ambos lados
+- Firestore rules sin desplegar = sync falla silente. Verificar con `firebase deploy --only firestore:rules`
+```
+
+### Reglas estrictas
+
+- **APPEND, no sobrescribir** — vault es compartido entre proyectos. Header `## <Proyecto> — <tema>` separa contextos
+- **Verificar antes de citar** — entrada del vault con fecha vieja puede estar stale. Confirmar con código actual antes de actuar
+- **No duplicar bitácora** — si ya está en `bitacora.md`, no copiar al vault salvo que sea lección reusable
+- **Backup automático** — Gotchas.md tiene `Gotchas.original.md` como backup human-readable. No tocar `.original.md`
+- **Path con espacios** — `"Key Decisions.md"` necesita comillas en CLI
+
+### Cuándo NO usar el vault
+
+- Estado efímero de sesión actual → memoria de Claude
+- TODOs del proyecto → `tasks/todo.md`
+- Log de cambios → `bitacora.md`
+- Lecciones de correcciones del usuario → `tasks/lessons.md` (per-proyecto)
+- Snippets de código grandes → vault es para destilados, no copy-paste de código

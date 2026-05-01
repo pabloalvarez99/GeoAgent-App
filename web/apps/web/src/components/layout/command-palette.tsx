@@ -10,10 +10,12 @@ import {
   Download,
   Upload,
   Camera,
+  Box,
   Settings,
   Home,
   Plus,
   Search,
+  type LucideIcon,
 } from 'lucide-react';
 import {
   Dialog,
@@ -25,7 +27,7 @@ interface CommandItem {
   id: string;
   label: string;
   description?: string;
-  icon: React.ElementType;
+  icon: LucideIcon;
   action: () => void;
   group: string;
 }
@@ -58,6 +60,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     { id: `p-${p.id}-stations`, label: `${p.name} — Estaciones`, icon: Layers, action: () => navigate(`/projects/${p.id}/stations`), group: 'Proyectos' },
     { id: `p-${p.id}-drillholes`, label: `${p.name} — Sondajes`, icon: Drill, action: () => navigate(`/projects/${p.id}/drillholes`), group: 'Proyectos' },
     { id: `p-${p.id}-map`, label: `${p.name} — Mapa`, icon: Map, action: () => navigate(`/projects/${p.id}/map`), group: 'Proyectos' },
+    { id: `p-${p.id}-3d`, label: `${p.name} — Vista 3D`, icon: Box, action: () => navigate(`/projects/${p.id}/3d`), group: 'Proyectos' },
     { id: `p-${p.id}-photos`, label: `${p.name} — Fotos`, icon: Camera, action: () => navigate(`/projects/${p.id}/photos`), group: 'Proyectos' },
     { id: `p-${p.id}-export`, label: `${p.name} — Exportar`, icon: Download, action: () => navigate(`/projects/${p.id}/export`), group: 'Proyectos' },
     { id: `p-${p.id}-import`, label: `${p.name} — Importar`, icon: Upload, action: () => navigate(`/projects/${p.id}/import`), group: 'Proyectos' },

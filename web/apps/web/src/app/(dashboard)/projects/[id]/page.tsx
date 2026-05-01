@@ -18,6 +18,7 @@ import {
   Clock,
   FileDown,
   Loader2,
+  Box,
 } from 'lucide-react';
 import {
   BarChart,
@@ -84,6 +85,7 @@ const subNavItems = [
   { href: 'stations',  label: 'Estaciones', icon: Layers,    desc: 'Puntos de muestreo'     },
   { href: 'drillholes',label: 'Sondajes',   icon: Drill,     desc: 'Perforaciones y logs'   },
   { href: 'map',       label: 'Mapa',       icon: Map,       desc: 'Vista georreferenciada' },
+  { href: '3d',        label: 'Vista 3D',   icon: Box,       desc: 'Visor sondajes 3D'      },
   { href: 'photos',    label: 'Fotos',      icon: Camera,    desc: 'Galería del proyecto'   },
   { href: 'analytics', label: 'Analítica',  icon: BarChart3, desc: 'Gráficos y estadísticas'},
   { href: 'export',    label: 'Exportar',   icon: Download,  desc: 'PDF, Excel, GeoJSON'    },

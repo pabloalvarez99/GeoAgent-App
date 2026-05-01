@@ -9,6 +9,7 @@ import {
   FlaskConical,
   Gauge,
   Users,
+  type LucideIcon,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -78,7 +79,7 @@ function StatCard({
   iconColor = 'text-primary',
   accentClass,
 }: {
-  icon: React.ElementType;
+  icon: LucideIcon;
   label: string;
   value: string | number;
   sub?: string;

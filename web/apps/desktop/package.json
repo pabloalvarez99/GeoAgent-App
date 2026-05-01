@@ -1,5 +1,5 @@
 {
-  "name": "geoagent-desktop",
+  "name": "@geoagent/desktop",
   "version": "1.0.0",
   "description": "GeoAgent Desktop — app Windows para geología de campo",
   "main": "dist/main.js",
@@ -20,7 +20,7 @@
     "@types/node": "^22.0.0",
     "concurrently": "^9.0.0",
     "cross-env": "^7.0.3",
-    "electron": "^34.0.0",
+    "electron": "34.5.8",
     "electron-builder": "^25.1.8",
     "typescript": "^5.7.0",
     "wait-on": "^8.0.1"

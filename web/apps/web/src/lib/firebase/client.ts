@@ -35,6 +35,9 @@ export const db = initializeFirestore(app, {
 export const storage = getStorage(app);
 
 export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
-export const perf = typeof window !== 'undefined' ? getPerformance(app) : null;
+export const perf =
+  typeof window !== 'undefined' && process.env.NODE_ENV === 'production'
+    ? getPerformance(app)
+    : null;
 
 export default app;

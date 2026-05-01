@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/lib/firebase/auth';
@@ -37,8 +37,13 @@ export default function LoginPage() {
   const [resetSent, setResetSent] = useState(false);
   const [resetSubmitting, setResetSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (!loading && user) {
+      router.replace('/projects');
+    }
+  }, [loading, user, router]);
+
   if (!loading && user) {
-    router.replace('/projects');
     return null;
   }
 

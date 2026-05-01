@@ -11,6 +11,7 @@ import {
   FileSpreadsheet,
   Loader2,
   CheckCircle2,
+  type LucideIcon,
 } from 'lucide-react';
 import { useProject } from '@/lib/hooks/use-projects';
 import { useStations } from '@/lib/hooks/use-stations';
@@ -36,7 +37,7 @@ import type { GeoProject } from '@geoagent/geo-shared/types';
 type ExportStatus = 'idle' | 'loading' | 'done' | 'error';
 
 interface ExportCardProps {
-  icon: React.ElementType;
+  icon: LucideIcon;
   title: string;
   description: string;
   formats: string[];

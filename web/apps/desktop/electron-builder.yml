@@ -31,6 +31,7 @@ nsis:
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: GeoAgent
+  artifactName: GeoAgent-Setup.exe
 
 publish:
   provider: github

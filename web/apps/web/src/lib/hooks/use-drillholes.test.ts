@@ -59,6 +59,33 @@ describe('useDrillHoles', () => {
     const { result } = renderHook(() => useDrillHoles('proj1'));
     await expect(result.current.addDrillHole({} as never)).rejects.toThrow('No autenticado');
   });
+
+  it('mutations delegate when authenticated, throw when not', async () => {
+    mockUseAuth.mockReturnValue({ user: { uid: 'u1' } });
+    mockSubHoles.mockReturnValue(() => {});
+    const { result } = renderHook(() => useDrillHoles('proj1'));
+    await result.current.addDrillHole({ holeId: 'd' } as never);
+    expect(mockCreateHole).toHaveBeenCalledWith('u1', { holeId: 'd' });
+    await result.current.editDrillHole('d1', { holeId: 'd2' });
+    await result.current.removeDrillHole('d1');
+
+    mockUseAuth.mockReturnValue({ user: null });
+    const { result: r2 } = renderHook(() => useDrillHoles('proj1'));
+    await expect(r2.current.editDrillHole('d1', {})).rejects.toThrow('No autenticado');
+    await expect(r2.current.removeDrillHole('d1')).rejects.toThrow('No autenticado');
+  });
+
+  it('subscribe error callback clears loading', async () => {
+    mockUseAuth.mockReturnValue({ user: { uid: 'u1' } });
+    let errCb: (() => void) | null = null;
+    mockSubHoles.mockImplementation((_u, _p, _ok, onErr) => {
+      errCb = onErr;
+      return () => {};
+    });
+    const { result } = renderHook(() => useDrillHoles('proj1'));
+    act(() => errCb!());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+  });
 });
 
 describe('useDrillIntervals', () => {
@@ -89,5 +116,25 @@ describe('useDrillIntervals', () => {
     mockUseAuth.mockReturnValue({ user: null });
     const { result } = renderHook(() => useDrillIntervals('dh1'));
     await expect(result.current.saveInterval({} as never)).rejects.toThrow('No autenticado');
+  });
+
+  it('mutations delegate when authenticated, removeInterval throws when unauth', async () => {
+    mockUseAuth.mockReturnValue({ user: { uid: 'u1' } });
+    mockSubIntervals.mockReturnValue(() => {});
+    const { result } = renderHook(() => useDrillIntervals('dh1'));
+    await result.current.saveInterval({ from: 0 } as never, 'i1');
+    expect(mockSaveInterval).toHaveBeenCalledWith('u1', { from: 0 }, 'i1');
+    await result.current.removeInterval('i1');
+
+    mockUseAuth.mockReturnValue({ user: null });
+    const { result: r2 } = renderHook(() => useDrillIntervals('dh1'));
+    await expect(r2.current.removeInterval('i1')).rejects.toThrow('No autenticado');
+  });
+
+  it('skips when drillHoleId empty', async () => {
+    mockUseAuth.mockReturnValue({ user: { uid: 'u1' } });
+    const { result } = renderHook(() => useDrillIntervals(''));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(mockSubIntervals).not.toHaveBeenCalled();
   });
 });

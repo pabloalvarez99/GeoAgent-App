@@ -12,12 +12,13 @@ import {
   Plus,
   MapPin,
   Download,
-  Smartphone,
   Monitor,
   FlaskConical,
   BarChart3,
+  Box,
   TrendingUp,
   TrendingDown,
+  type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -77,7 +78,7 @@ function StatCard({
   iconColor = 'text-primary',
   accentClass,
 }: {
-  icon: React.ElementType;
+  icon: LucideIcon;
   label: string;
   value: string | number;
   sub?: string;
@@ -160,6 +161,16 @@ export default function DashboardPage() {
   const greeting = hour < 12 ? 'Buenos días' : hour < 18 ? 'Buenas tardes' : 'Buenas noches';
 
   const recentProjects = projects.slice(0, 3);
+
+  const projectsWith3D = useMemo(() => {
+    const counts = new Map<string, number>();
+    drillHoles.forEach((d) => counts.set(d.projectId, (counts.get(d.projectId) ?? 0) + 1));
+    return projects
+      .filter((p) => (counts.get(p.id) ?? 0) > 0)
+      .map((p) => ({ ...p, drillCount: counts.get(p.id) ?? 0 }))
+      .sort((a, b) => b.drillCount - a.drillCount)
+      .slice(0, 6);
+  }, [projects, drillHoles]);
 
   // ── Gráfico 1: distribución de tipos de roca (lithologies) ──────────────
   const rockTypeData = useMemo(() => {
@@ -346,6 +357,55 @@ export default function DashboardPage() {
           accentClass="stat-accent-amber"
         />
       </div>
+
+      {/* Visor 3D — acceso rápido */}
+      {!dataLoading && projectsWith3D.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Box className="h-4 w-4 text-cyan-400" />
+              <h2 className="text-base font-semibold">Visor 3D</h2>
+              <span className="text-xs text-muted-foreground font-mono">
+                {projectsWith3D.length} proyecto{projectsWith3D.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+            {projectsWith3D[0] && (
+              <Button size="sm" asChild>
+                <Link href={`/projects/${projectsWith3D[0].id}/3d`} className="flex items-center gap-1.5">
+                  <Box className="h-3.5 w-3.5" />
+                  Abrir visor
+                </Link>
+              </Button>
+            )}
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {projectsWith3D.map((p) => {
+              const accent = getProjectAccent(p.name);
+              return (
+                <Link key={p.id} href={`/projects/${p.id}/3d`}>
+                  <Card className="hover:border-cyan-500/50 transition-colors h-full card-lift border-cyan-500/10 bg-gradient-to-br from-cyan-500/5 to-transparent">
+                    <CardContent className="px-4 py-3 flex items-center gap-3">
+                      <div className={cn(
+                        'flex h-10 w-10 rounded-lg items-center justify-center shrink-0 ring-1',
+                        accent.bg, accent.ring,
+                      )}>
+                        <Box className={cn('h-5 w-5', accent.text)} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold truncate">{p.name}</p>
+                        <p className="text-xs text-muted-foreground font-mono">
+                          {p.drillCount} sondaje{p.drillCount !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground/50 shrink-0" />
+                    </CardContent>
+                  </Card>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Analytics skeleton */}
       {dataLoading && (
@@ -770,38 +830,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Downloads section */}
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Card className="border-primary/20 bg-primary/5">
-          <CardContent className="flex items-center justify-between gap-4 py-4 px-4">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-primary/15 p-2.5 shrink-0">
-                <Smartphone className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="font-semibold text-sm">GeoAgent Android</p>
-                <p className="text-xs text-muted-foreground">GPS, cámara, modo sin conexión</p>
-                <a
-                  href="https://github.com/pabloalvarez99/GeoAgent-App/releases/latest"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[11px] text-primary/60 hover:text-primary transition-colors"
-                >
-                  Ver todas las versiones →
-                </a>
-              </div>
-            </div>
-            <Button size="sm" asChild className="shrink-0">
-              <a
-                href="https://github.com/pabloalvarez99/GeoAgent-App/releases/latest/download/app-debug.apk"
-                download="GeoAgent.apk"
-              >
-                <Download className="h-3.5 w-3.5 mr-1.5" />
-                APK
-              </a>
-            </Button>
-          </CardContent>
-        </Card>
-
+      <div className="grid gap-3">
         <Card className="border-blue-500/20 bg-blue-500/5">
           <CardContent className="flex items-center justify-between gap-4 py-4 px-4">
             <div className="flex items-center gap-3">

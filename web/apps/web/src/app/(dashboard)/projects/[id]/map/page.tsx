@@ -1,6 +1,7 @@
 'use client';
 
 import { use, useState, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { APIProvider, Map, AdvancedMarker, Pin, Polyline, useMap } from '@vis.gl/react-google-maps';
@@ -22,10 +23,24 @@ import {
   Copy,
   Ruler,
   Plus,
+  Box,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStations } from '@/lib/hooks/use-stations';
-import { useDrillHoles } from '@/lib/hooks/use-drillholes';
+import { useDrillHoles, useAllDrillIntervals } from '@/lib/hooks/use-drillholes';
+
+const DrillHole3DViewer = dynamic(
+  () => import('@/components/drillhole/drillhole-3d-viewer'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex items-center justify-center h-full bg-slate-950 text-muted-foreground gap-2">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        <span className="text-sm">Cargando visor 3D…</span>
+      </div>
+    ),
+  },
+);
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -325,6 +340,7 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
 
   const [selected, setSelected] = useState<SelectedFeature | null>(null);
   const [showList, setShowList] = useState(false);
+  const [view, setView] = useState<'2d' | '3d'>('2d');
   const [mapTypeId, setMapTypeId] = useState<'roadmap' | 'satellite' | 'hybrid' | 'terrain'>('roadmap');
   const [showStations, setShowStations] = useState(true);
   const [showDrillHoles, setShowDrillHoles] = useState(true);
@@ -358,6 +374,19 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
 
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
   const loading = loadingStations || loadingDrillHoles;
+
+  const drillHoleIds = useMemo(() => drillHoles.map((d) => d.id), [drillHoles]);
+  const { intervals: allIntervals, loading: loadingIntervals } = useAllDrillIntervals(
+    view === '3d' ? drillHoleIds : [],
+  );
+  const drillHolesWithIntervals = useMemo(
+    () =>
+      drillHoles.map((dh) => ({
+        drillHole: dh,
+        intervals: allIntervals.filter((i) => i.drillHoleId === dh.id),
+      })),
+    [drillHoles, allIntervals],
+  );
 
   const searchParams = useSearchParams();
   const urlLat = searchParams.get('center_lat');
@@ -492,29 +521,57 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
           Lista
         </button>
 
-        {/* Map type switcher */}
-        <div className="flex items-center gap-1">
-          {(
-            [
-              { id: 'roadmap', label: 'Mapa' },
-              { id: 'satellite', label: 'Satélite' },
-              { id: 'hybrid', label: 'Híbrido' },
-              { id: 'terrain', label: 'Terreno' },
-            ] as const
-          ).map(({ id, label }) => (
-            <button
-              key={id}
-              onClick={() => setMapTypeId(id)}
-              className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
-                mapTypeId === id
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
+        {/* View 2D/3D toggle */}
+        <div className="flex items-center gap-1 rounded-md border border-border p-0.5">
+          <button
+            onClick={() => setView('2d')}
+            className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+              view === '2d'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+            }`}
+            title="Mapa 2D"
+          >
+            <MapIcon className="h-3 w-3" /> 2D
+          </button>
+          <button
+            onClick={() => setView('3d')}
+            className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+              view === '3d'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+            }`}
+            title="Vista 3D de sondajes"
+          >
+            <Box className="h-3 w-3" /> 3D
+          </button>
         </div>
+
+        {/* Map type switcher (2D only) */}
+        {view === '2d' && (
+          <div className="flex items-center gap-1">
+            {(
+              [
+                { id: 'roadmap', label: 'Mapa' },
+                { id: 'satellite', label: 'Satélite' },
+                { id: 'hybrid', label: 'Híbrido' },
+                { id: 'terrain', label: 'Terreno' },
+              ] as const
+            ).map(({ id, label }) => (
+              <button
+                key={id}
+                onClick={() => setMapTypeId(id)}
+                className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                  mapTypeId === id
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── Body: map + optional side panel ── */}
@@ -590,7 +647,22 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
 
         {/* Map area */}
         <div className="flex-1 min-w-0 relative">
-          {hasNoApiKey ? (
+          {view === '3d' ? (
+            <>
+              {loadingIntervals && (
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-background/95 backdrop-blur-sm border border-border rounded-lg px-3 py-1.5 shadow-lg">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">Cargando intervalos…</span>
+                </div>
+              )}
+              <DrillHole3DViewer
+                drillHoles={drillHolesWithIntervals}
+                stations={stations}
+                projectId={projectId}
+                fillParent
+              />
+            </>
+          ) : hasNoApiKey ? (
             <NoApiKeyCard />
           ) : (
             <APIProvider apiKey={apiKey}>

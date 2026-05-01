@@ -53,4 +53,19 @@ describe('useSamples', () => {
     const { result } = renderHook(() => useSamples('st1'));
     await expect(result.current.addOrUpdateSample({} as never)).rejects.toThrow('No autenticado');
   });
+
+  it('mutations delegate when authenticated', async () => {
+    mockUseAuth.mockReturnValue({ user: { uid: 'u1' } });
+    mockSub.mockReturnValue(() => {});
+    const { result } = renderHook(() => useSamples('st1'));
+    await result.current.addOrUpdateSample({ code: 'c' } as never, 'id1');
+    expect(mockSave).toHaveBeenCalledWith('u1', { code: 'c' }, 'id1');
+    await result.current.removeSample('id1');
+  });
+
+  it('removeSample throws when unauth', async () => {
+    mockUseAuth.mockReturnValue({ user: null });
+    const { result } = renderHook(() => useSamples('st1'));
+    await expect(result.current.removeSample('x')).rejects.toThrow('No autenticado');
+  });
 });

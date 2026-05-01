@@ -236,13 +236,24 @@ app.whenReady().then(() => {
   //   2. web-out/projects/index.html (trailingSlash route folder — e.g. app://./projects/)
   //   3. web-out/index.html          (fallback for client-side deep links)
   const webOutDir = path.join(process.resourcesPath, 'web-out');
+
+  // Static export uses `_` as placeholder for dynamic Firestore IDs (see [id]/layout.tsx).
+  // Rewrite real IDs in URL to `_` so the right route shell is served; the client router
+  // then reads the original URL and loads data from Firebase.
+  const rewriteDynamic = (rel: string) =>
+    rel.replace(/^projects\/[^/]+/, 'projects/_')
+       .replace(/^projects\/_\/drillholes\/[^/]+/, (m) => m.endsWith('/new') ? m : 'projects/_/drillholes/_')
+       .replace(/^projects\/_\/stations\/[^/]+/, (m) => m.endsWith('/new') ? m : 'projects/_/stations/_');
+
   protocol.handle('app', (request) => {
     const { pathname } = new URL(request.url);
-    // Strip leading slash and resolve safely (no path traversal)
     const relative = pathname.replace(/^\//, '').split('/').filter(s => s !== '..').join('/');
+    const rewritten = rewriteDynamic(relative);
     const candidates = [
       path.join(webOutDir, relative),
       path.join(webOutDir, relative, 'index.html'),
+      path.join(webOutDir, rewritten),
+      path.join(webOutDir, rewritten, 'index.html'),
       path.join(webOutDir, 'index.html'),
     ];
     const filePath = candidates.find(p => fs.existsSync(p) && fs.statSync(p).isFile());

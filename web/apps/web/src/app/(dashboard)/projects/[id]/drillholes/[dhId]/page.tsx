@@ -1,8 +1,10 @@
 'use client';
 
-import { use, useState, useEffect, useRef } from 'react';
+import { use, useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+
+const DrillHole3DViewer = lazy(() => import('@/components/drillhole/drillhole-3d-viewer'));
 import {
   ArrowLeft,
   Plus,
@@ -20,6 +22,7 @@ import {
   Camera,
   Upload,
   Loader2,
+  Box,
 } from 'lucide-react';
 import {
   BarChart,
@@ -199,7 +202,48 @@ export default function DrillHoleDetailPage({
   const [photoUrlsLoading, setPhotoUrlsLoading] = useState(false);
 
   const [drillHoleEditOpen, setDrillHoleEditOpen] = useState(false);
-  const [intervalView, setIntervalView] = useState<'table' | 'log'>('table');
+  const [intervalView, setIntervalView] = useState<'table' | 'log' | '3d'>('table');
+  const [demoMode, setDemoMode] = useState(false);
+
+  const demoIntervals = useMemo<GeoDrillInterval[]>(() => {
+    const total = drillHole?.actualDepth ?? drillHole?.plannedDepth ?? 240;
+    const segments = 14;
+    const step = total / segments;
+    const rocks: Array<{ type: string; group: 'Ignea' | 'Sedimentaria' | 'Metamorfica' | 'Otro'; color: string; texture: string }> = [
+      { type: 'Andesita', group: 'Ignea', color: 'Gris oscuro', texture: 'Porfírica' },
+      { type: 'Brecha hidrotermal', group: 'Ignea', color: 'Gris verdoso', texture: 'Brechosa' },
+      { type: 'Pórfido cuarzo-feldespático', group: 'Ignea', color: 'Gris claro', texture: 'Porfírica' },
+      { type: 'Diorita', group: 'Ignea', color: 'Verde grisáceo', texture: 'Fanerítica' },
+      { type: 'Arenisca', group: 'Sedimentaria', color: 'Beige', texture: 'Granular' },
+      { type: 'Lutita', group: 'Sedimentaria', color: 'Negro', texture: 'Laminada' },
+      { type: 'Caliza', group: 'Sedimentaria', color: 'Crema', texture: 'Microcristalina' },
+      { type: 'Esquisto', group: 'Metamorfica', color: 'Gris plata', texture: 'Esquistosa' },
+      { type: 'Cuarcita', group: 'Metamorfica', color: 'Blanco', texture: 'Granoblástica' },
+    ];
+    return Array.from({ length: segments }).map((_, i) => {
+      const r = rocks[i % rocks.length];
+      return {
+        id: `demo-${i}`,
+        drillHoleId: dhId,
+        fromDepth: +(i * step).toFixed(1),
+        toDepth: +((i + 1) * step).toFixed(1),
+        rockType: r.type,
+        rockGroup: r.group,
+        color: r.color,
+        texture: r.texture,
+        alteration: i % 3 === 0 ? 'Silícea' : i % 3 === 1 ? 'Argílica' : 'Propilítica',
+        mineralization: i % 4 === 0 ? 'Pirita-Calcopirita' : i % 4 === 2 ? 'Magnetita' : null,
+        rqd: 60 + ((i * 7) % 35),
+        recovery: 80 + ((i * 5) % 18),
+        notes: null,
+        photos: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as unknown as GeoDrillInterval;
+    });
+  }, [dhId, drillHole?.actualDepth, drillHole?.plannedDepth]);
+
+  const viewerIntervals = demoMode && intervals.length === 0 ? demoIntervals : intervals;
 
   const [intervalOpen, setIntervalOpen] = useState(false);
   const [editInterval, setEditInterval] = useState<GeoDrillInterval | null>(null);
@@ -529,6 +573,17 @@ export default function DrillHoleDetailPage({
                 <BarChart2 className="h-3 w-3" />
                 Log
               </button>
+              <button
+                onClick={() => setIntervalView('3d')}
+                className={`px-2 py-1 text-xs flex items-center gap-1 transition-colors ${
+                  intervalView === '3d'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Box className="h-3 w-3" />
+                3D
+              </button>
             </div>
             <Button size="sm" onClick={() => { setEditInterval(null); setIntervalOpen(true); }}>
               <Plus className="h-4 w-4 mr-1.5" />
@@ -549,16 +604,50 @@ export default function DrillHoleDetailPage({
               </div>
             ))}
           </div>
-        ) : intervals.length === 0 ? (
+        ) : intervals.length === 0 && !(demoMode && intervalView === '3d') ? (
           <div className="flex flex-col items-center gap-2 py-10 text-center">
             <ArrowDown className="h-8 w-8 text-muted-foreground/30" />
             <p className="text-sm text-muted-foreground">No hay intervalos registrados</p>
-            <Button size="sm" variant="outline" onClick={() => { setEditInterval(null); setIntervalOpen(true); }}>
-              <Plus className="h-3.5 w-3.5 mr-1.5" /> Agregar intervalo
-            </Button>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => { setEditInterval(null); setIntervalOpen(true); }}>
+                <Plus className="h-3.5 w-3.5 mr-1.5" /> Agregar intervalo
+              </Button>
+              {intervalView === '3d' && (
+                <Button size="sm" variant="secondary" onClick={() => setDemoMode(true)}>
+                  <Box className="h-3.5 w-3.5 mr-1.5" /> Cargar demo 3D
+                </Button>
+              )}
+            </div>
           </div>
         ) : intervalView === 'log' ? (
           <DrillIntervalLog intervals={intervals} maxDepth={drillHole.actualDepth ?? drillHole.plannedDepth} />
+        ) : intervalView === '3d' ? (
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center h-[480px] rounded-lg border border-border bg-card text-sm text-muted-foreground gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" /> Cargando visor 3D...
+              </div>
+            }
+          >
+            <div className="space-y-2">
+              {demoMode && intervals.length === 0 && (
+                <div className="flex items-center justify-between rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-300">
+                  <span>Modo demostración — intervalos sintéticos (no guardados)</span>
+                  <button
+                    onClick={() => setDemoMode(false)}
+                    className="text-amber-400 hover:text-amber-200 underline underline-offset-2"
+                  >
+                    Salir
+                  </button>
+                </div>
+              )}
+              <DrillHole3DViewer
+                drillHoles={[{ drillHole, intervals: viewerIntervals }]}
+                highlightId={drillHole.id}
+                projectId={drillHole.projectId}
+              />
+            </div>
+          </Suspense>
         ) : (
           <div className="space-y-3">
             {/* Desktop table */}

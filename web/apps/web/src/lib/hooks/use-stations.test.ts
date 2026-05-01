@@ -54,4 +54,34 @@ describe('useStations', () => {
     const { result } = renderHook(() => useStations('proj1'));
     await expect(result.current.addStation({} as never)).rejects.toThrow('No autenticado');
   });
+
+  it('mutations delegate when authenticated', async () => {
+    mockUseAuth.mockReturnValue({ user: { uid: 'u1' } });
+    mockSubscribe.mockReturnValue(() => {});
+    mockCreate.mockResolvedValue(undefined);
+    const { result } = renderHook(() => useStations('proj1'));
+    await result.current.addStation({ code: 'st' } as never);
+    expect(mockCreate).toHaveBeenCalledWith('u1', { code: 'st' });
+    await result.current.editStation('s1', { code: 'st2' });
+    await result.current.removeStation('s1');
+  });
+
+  it('editStation + removeStation throw when unauth', async () => {
+    mockUseAuth.mockReturnValue({ user: null });
+    const { result } = renderHook(() => useStations('proj1'));
+    await expect(result.current.editStation('s1', {})).rejects.toThrow('No autenticado');
+    await expect(result.current.removeStation('s1')).rejects.toThrow('No autenticado');
+  });
+
+  it('subscribe error callback clears loading', async () => {
+    mockUseAuth.mockReturnValue({ user: { uid: 'u1' } });
+    let errCb: (() => void) | null = null;
+    mockSubscribe.mockImplementation((_uid, _pid, _ok, onErr) => {
+      errCb = onErr;
+      return () => {};
+    });
+    const { result } = renderHook(() => useStations('proj1'));
+    act(() => errCb!());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+  });
 });

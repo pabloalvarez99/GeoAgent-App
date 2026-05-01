@@ -10,6 +10,7 @@ import {
   deleteDrillHole,
   saveDrillInterval,
   deleteDrillInterval,
+  getIntervalsForDrillHoles,
 } from '@/lib/firebase/firestore';
 import { useAuth } from '@/lib/firebase/auth';
 
@@ -82,4 +83,37 @@ export function useDrillIntervals(drillHoleId: string) {
   }
 
   return { intervals, loading, saveInterval, removeInterval };
+}
+
+export function useAllDrillIntervals(drillHoleIds: string[]) {
+  const { user } = useAuth();
+  const [intervals, setIntervals] = useState<GeoDrillInterval[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const key = drillHoleIds.slice().sort().join(',');
+
+  useEffect(() => {
+    if (!user || drillHoleIds.length === 0) {
+      setIntervals([]);
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    getIntervalsForDrillHoles(user.uid, drillHoleIds)
+      .then((data) => {
+        if (cancelled) return;
+        setIntervals(data as GeoDrillInterval[]);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setIntervals([]);
+        setLoading(false);
+      });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, key]);
+
+  return { intervals, loading };
 }
