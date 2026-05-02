@@ -6,6 +6,7 @@ import type { CameraRigHandle } from './camera-rig';
 import { Hud } from './hud';
 import { Scene } from './scene';
 import { CrossSection2D } from './cross-section-2d';
+import { FenceDiagram2D } from './fence-diagram-2d';
 import type { SectionRibbon } from './section-plane';
 import type { DrillHole3DViewerProps, FlatInstance, HoverInfo } from './types';
 import type { GeoStation } from '@geoagent/geo-shared/types';
@@ -49,6 +50,7 @@ export default function DrillHole3DViewer({
   const [measurePoints, setMeasurePoints] = useState<THREE.Vector3[]>([]);
   const [measureHover, setMeasureHover] = useState<THREE.Vector3 | null>(null);
   const [showSection2D, setShowSection2D] = useState(false);
+  const [showFence, setShowFence] = useState(false);
   const [ribbons, setRibbons] = useState<SectionRibbon[]>([]);
   const ribbonPalette = ['#06b6d4', '#a78bfa', '#f59e0b', '#ec4899', '#10b981', '#f43f5e', '#84cc16'];
   const addRibbon = useCallback(() => {
@@ -501,6 +503,7 @@ export default function DrillHole3DViewer({
         removeRibbon={removeRibbon}
         clearRibbons={clearRibbons}
         activateRibbon={activateRibbon}
+        onOpenFence={() => setShowFence(true)}
       />
 
       {showSection2D && (
@@ -510,6 +513,16 @@ export default function DrillHole3DViewer({
           depth={sectionDepth}
           thickness={sectionThickness}
           onClose={() => setShowSection2D(false)}
+          projectId={projectId}
+        />
+      )}
+
+      {showFence && ribbons.length >= 2 && (
+        <FenceDiagram2D
+          flat={flat}
+          ribbons={ribbons}
+          thickness={sectionThickness}
+          onClose={() => setShowFence(false)}
           projectId={projectId}
         />
       )}

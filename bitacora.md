@@ -2359,3 +2359,34 @@ React 19 + lucide-react: `React.ElementType` resuelve `className` a `never` por 
 ### Deploy
 - CLI `vercel --prod --yes` → `dpl_HgN4mSMoqevH1GJ18iepNGM55fWf` Ready.
 - Alias: **https://geoagent-app.vercel.app** ✅
+
+---
+
+## 2026-05-02 — Fence diagram 2D (mining standard)
+
+### Qué cambió
+- **Fence diagram modal**: render N ribbons como paneles 2D lado-a-lado, escala compartida vertical+horizontal entre paneles. Mining standard pa correlación visual.
+
+### Archivos creados
+- `fence-diagram-2d.tsx`: modal SVG. `buildPanel()` proyecta segments+collars por axis del ribbon. `sharedScale` = min(scaleX, scaleY) de máximo range entre todos los paneles. Cada panel: header con #idx, axis, depth (color del ribbon), border ribbon-color, ejes ticks, segments (slab dim outside), collars verdes con holeId. Scale bar compartida bottom-left. Export SVG + PNG (2× resolution).
+
+### Archivos modificados
+- `index.tsx`: state `showFence`. Render `<FenceDiagram2D>` cuando `ribbons.length >= 2`. Prop `onOpenFence` pasado a HUD.
+- `hud.tsx`: prop `onOpenFence`. Botón "Fence" fuchsia visible cuando `ribbons.length >= 2` en sección Ribbons.
+
+### Decisiones técnicas
+- Escala compartida (no per-panel auto-fit) → comparación visual válida entre cortes.
+- Slab thickness aplica a TODOS los paneles (mismo filtro). Si un ribbon necesita thickness propio → próxima iteración.
+- Reuso `projectAxis()` helper para consistency con cross-section-2d (FUTURO: extraer a `utils-section.ts` y consumir desde ambos).
+- viewBox-based SVG → escala fluid en cualquier viewport. Mobile: scroll-x natural si paneles totalW > screen.
+
+### Verificación
+- `npx tsc --noEmit` → clean.
+- `npm test -- --run` → 166/166 verde, 12s.
+
+### Pendientes próxima sesión
+- Refactor: extraer `projectAxis` + `buildSection` helpers a shared util consumido por cross-section-2d + fence-diagram-2d.
+- Ribbons custom name (input al agregar).
+- Ribbons thickness propio por ribbon.
+- Fence: scroll horizontal automático si totalW > viewport.
+- Fence: añadir leyenda de litología compartida abajo.

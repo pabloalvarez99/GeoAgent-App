@@ -81,6 +81,7 @@ interface Props {
   removeRibbon: (id: string) => void;
   clearRibbons: () => void;
   activateRibbon: (rb: SectionRibbon) => void;
+  onOpenFence: () => void;
 }
 
 export function Hud(props: Props) {
@@ -148,6 +149,7 @@ export function Hud(props: Props) {
     removeRibbon,
     clearRibbons,
     activateRibbon,
+    onOpenFence,
   } = props;
 
   const isMobile = useIsMobile();
@@ -799,6 +801,15 @@ export function Hud(props: Props) {
                 >
                   + Add
                 </button>
+                {ribbons.length >= 2 && (
+                  <button
+                    onClick={onOpenFence}
+                    className="px-2 py-0.5 text-[10px] font-mono rounded bg-fuchsia-600/30 hover:bg-fuchsia-600/50 text-fuchsia-100 border border-fuchsia-500/40"
+                    title="Abrir fence diagram (todos los ribbons lado-a-lado)"
+                  >
+                    Fence
+                  </button>
+                )}
                 {ribbons.length > 0 && (
                   <button
                     onClick={clearRibbons}
