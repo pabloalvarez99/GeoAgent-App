@@ -2269,3 +2269,31 @@ React 19 + lucide-react: `React.ElementType` resuelve `className` a `never` por 
   4. `.vercel` ya está en `.gitignore` — no commit needed
 - **Verificación**: `vercel --prod --yes` desde repo root → `dpl_5aYv2WsLXtwGDWYMQeJDbhK6FE93` Ready, alias `geoagent-app.vercel.app` ✅.
 - **Regla**: solo mantener `.vercel/` en repo root. Si reaparece en subdirs, eliminar.
+
+---
+
+## 2026-05-02 — Section ribbons multi-corte
+
+### Qué cambió
+- **Ribbons multi-corte** (#1 pendientes): N planos de sección persistentes simultáneamente, sin clipping (visualización pura).
+
+### Archivos modificados
+- `section-plane.tsx`: nuevo type `SectionRibbon { id, axis, depth, color }`. Props `color` + `opacity` opcionales en `SectionPlaneVisual`.
+- `scene.tsx`: nuevo prop `ribbons: SectionRibbon[]`. Render loop después del corte activo, cada ribbon con su color + opacity 0.18, respeta vScale para horizontal axis.
+- `index.tsx`: state `ribbons`, paleta 7 colores cíclica, `addRibbon` (snapshot axis+depth actuales), `removeRibbon`, `clearRibbons`, `activateRibbon` (carga ribbon como corte activo).
+- `hud.tsx`: prop `ribbons + addRibbon + removeRibbon + clearRibbons + activateRibbon`. Sección "Ribbons" dentro section panel: `+ Add` button, `Clear` (cuando >0), lista con color swatch + label `#N axis @ depth m` + click activa + X remueve. max-h-32 scroll.
+
+### Decisiones técnicas
+- Ribbons son visualización-only (no clipping). Solo plano semi-transparente para referencia espacial. El corte activo es el que clippea geometría.
+- Activar ribbon = setSectionAxis + setSectionDepth + sectionEnabled true → ribbon se vuelve corte interactivo.
+- Paleta cíclica permite distinguir ribbons en pantalla. Color guardado por ribbon, persiste al borrar/agregar otros.
+
+### Verificación
+- `npx tsc --noEmit` → clean.
+- `npm test -- --run` → 166/166 verde, 15s.
+
+### Pendientes próxima sesión
+- #3 Drillhole thumbnails en list panel (offscreen WebGL render por hole + cache).
+- Cross-section 2D: añadir overlay multi-ribbon (renderizar todos los ribbons en una sola vista 2D superpuesta — fence diagram).
+- Ribbons: nombrar/etiquetar custom (input al agregar).
+- Ribbons: thickness propio por ribbon (slab varying).

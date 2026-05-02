@@ -2,16 +2,27 @@ import * as THREE from 'three';
 
 export type SectionAxis = 'horizontal' | 'ns' | 'ew';
 
+export interface SectionRibbon {
+  id: string;
+  axis: SectionAxis;
+  depth: number;
+  color: string;
+}
+
 export function SectionPlaneVisual({
   center,
   size,
   depth,
   axis,
+  color = '#06b6d4',
+  opacity = 0.1,
 }: {
   center: THREE.Vector3;
   size: number;
   depth: number;
   axis: SectionAxis;
+  color?: string;
+  opacity?: number;
 }) {
   let position: [number, number, number] = [center.x, depth, center.z];
   let rotation: [number, number, number] = [-Math.PI / 2, 0, 0];
@@ -28,9 +39,9 @@ export function SectionPlaneVisual({
     <mesh position={position} rotation={rotation} renderOrder={2}>
       <planeGeometry args={[size * 4, size * 4]} />
       <meshBasicMaterial
-        color="#06b6d4"
+        color={color}
         transparent
-        opacity={0.1}
+        opacity={opacity}
         side={THREE.DoubleSide}
         depthWrite={false}
       />

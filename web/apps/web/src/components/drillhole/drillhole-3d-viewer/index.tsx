@@ -6,6 +6,7 @@ import type { CameraRigHandle } from './camera-rig';
 import { Hud } from './hud';
 import { Scene } from './scene';
 import { CrossSection2D } from './cross-section-2d';
+import type { SectionRibbon } from './section-plane';
 import type { DrillHole3DViewerProps, FlatInstance, HoverInfo } from './types';
 import type { GeoStation } from '@geoagent/geo-shared/types';
 
@@ -48,6 +49,24 @@ export default function DrillHole3DViewer({
   const [measurePoints, setMeasurePoints] = useState<THREE.Vector3[]>([]);
   const [measureHover, setMeasureHover] = useState<THREE.Vector3 | null>(null);
   const [showSection2D, setShowSection2D] = useState(false);
+  const [ribbons, setRibbons] = useState<SectionRibbon[]>([]);
+  const ribbonPalette = ['#06b6d4', '#a78bfa', '#f59e0b', '#ec4899', '#10b981', '#f43f5e', '#84cc16'];
+  const addRibbon = useCallback(() => {
+    setRibbons((prev) => {
+      const id = `rb-${Date.now().toString(36)}-${prev.length}`;
+      const color = ribbonPalette[prev.length % ribbonPalette.length];
+      return [...prev, { id, axis: sectionAxis, depth: sectionDepth, color }];
+    });
+  }, [sectionAxis, sectionDepth]);
+  const removeRibbon = useCallback((id: string) => {
+    setRibbons((prev) => prev.filter((r) => r.id !== id));
+  }, []);
+  const clearRibbons = useCallback(() => setRibbons([]), []);
+  const activateRibbon = useCallback((rb: SectionRibbon) => {
+    setSectionAxis(rb.axis);
+    setSectionDepth(rb.depth);
+    setSectionEnabled(true);
+  }, []);
   useEffect(() => {
     setInternalFocusId(highlightId ?? null);
   }, [highlightId]);
@@ -403,6 +422,7 @@ export default function DrillHole3DViewer({
           heatmapEnabled={heatmapEnabled}
           heatmapOpacity={heatmapOpacity}
           heatmapMinRqd={heatmapMinRqd}
+          ribbons={ribbons}
         />
       </div>
 
@@ -476,6 +496,11 @@ export default function DrillHole3DViewer({
         heatmapMinRqd={heatmapMinRqd}
         setHeatmapMinRqd={setHeatmapMinRqd}
         onOpenSection2D={() => setShowSection2D(true)}
+        ribbons={ribbons}
+        addRibbon={addRibbon}
+        removeRibbon={removeRibbon}
+        clearRibbons={clearRibbons}
+        activateRibbon={activateRibbon}
       />
 
       {showSection2D && (

@@ -9,7 +9,7 @@ import { PlannedTrace } from './planned-trace';
 import { SatelliteGround } from './satellite-ground';
 import { TerrainGround } from './terrain-ground';
 import { InstancedIntervals } from './intervals';
-import { SectionPlaneVisual } from './section-plane';
+import { SectionPlaneVisual, type SectionRibbon } from './section-plane';
 import { MeasureTool } from './measure-tool';
 import { RqdHeatmap } from './rqd-heatmap';
 import type { FlatInstance, HoverInfo, SceneItem } from './types';
@@ -53,6 +53,7 @@ interface Props {
   heatmapEnabled: boolean;
   heatmapOpacity: number;
   heatmapMinRqd: number;
+  ribbons: SectionRibbon[];
 }
 
 class HdrBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
@@ -104,6 +105,7 @@ export function Scene(props: Props) {
     heatmapEnabled,
     heatmapOpacity,
     heatmapMinRqd,
+    ribbons,
   } = props;
 
   const groundY = useMemo(() => {
@@ -287,6 +289,21 @@ export function Scene(props: Props) {
           }
           return <SectionPlaneVisual center={center} size={radius} depth={baseDepth} axis={sectionAxis} />;
         })()}
+
+        {ribbons.map((rb) => {
+          const scaleH = rb.axis === 'horizontal' ? vScale : 1;
+          return (
+            <SectionPlaneVisual
+              key={rb.id}
+              center={center}
+              size={radius}
+              depth={rb.depth * scaleH}
+              axis={rb.axis}
+              color={rb.color}
+              opacity={0.18}
+            />
+          );
+        })}
 
         <MeasureTool points={measurePoints} hover={measureHover} active={measureMode} />
 
