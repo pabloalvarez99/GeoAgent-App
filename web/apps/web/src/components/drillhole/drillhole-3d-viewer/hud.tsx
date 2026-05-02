@@ -7,6 +7,7 @@ import type { FlatInstance, HoverInfo, Preset, SceneItem } from './types';
 import type { GeoStation } from '@geoagent/geo-shared/types';
 import { localCoords, rampColor, rockColor } from './utils';
 import { useHudCameraSync, useIsMobile } from './hooks';
+import { DrillholeThumbnail } from './drillhole-thumbnail';
 
 const FOV_DEG = 50;
 const NICE_TIERS = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000];
@@ -405,7 +406,7 @@ export function Hud(props: Props) {
             <span className="text-[9px] opacity-70">({scenes.length})</span>
           </button>
           {holeListOpen && (
-            <div className="rounded-md border border-border bg-popover/95 shadow-lg overflow-y-auto max-h-[60vh] min-w-[180px] max-w-[260px]">
+            <div className="rounded-md border border-border bg-popover/95 shadow-lg overflow-y-auto max-h-[60vh] min-w-[210px] max-w-[280px]">
               <ul className="divide-y divide-border">
                 {scenes.map((s) => {
                   const ivCount = s.intervals.length;
@@ -415,8 +416,13 @@ export function Hud(props: Props) {
                     <li key={s.dh.id}>
                       <button
                         onClick={() => onSelectFocus(s.dh.id)}
-                        className={`w-full flex items-center justify-between gap-2 px-2 py-1.5 text-left hover:bg-accent ${active ? 'bg-cyan-500/15' : ''}`}
+                        className={`w-full flex items-center gap-2 px-2 py-1.5 text-left hover:bg-accent ${active ? 'bg-cyan-500/15' : ''}`}
                       >
+                        <DrillholeThumbnail
+                          intervals={s.intervals}
+                          totalDepth={depth}
+                          active={active}
+                        />
                         <div className="min-w-0 flex-1">
                           <div className={`text-[11px] font-mono truncate ${active ? 'text-cyan-200' : 'text-foreground'}`}>
                             {s.dh.holeId}

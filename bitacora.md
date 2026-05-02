@@ -2301,3 +2301,32 @@ React 19 + lucide-react: `React.ElementType` resuelve `className` a `never` por 
 ### Deploy
 - CLI: `vercel --prod --yes` desde repo root → `web-rbtld3ep1` Ready, ~30s.
 - Alias: **https://geoagent-app.vercel.app** ✅
+
+---
+
+## 2026-05-02 — Drillhole thumbnails en list panel
+
+### Qué cambió
+- **Drillhole thumbnails** (#3 pendientes): mini-perfil SVG por sondaje en lista lateral.
+- Decisión de scope: SVG side-profile vs WebGL offscreen render. SVG gana — info densa (depth + lithology stripes), 0 GPU overhead, render incremental React, memoizable, escalable a 100s de sondajes.
+
+### Archivos creados
+- `drillhole-thumbnail.tsx`: componente `DrillholeThumbnail` memoizado. SVG 26×64 default. Stripes verticales por intervalo (color por rockGroup), collar marker verde top, depth ticks 25/50/75%, border cyan cuando active.
+
+### Archivos modificados
+- `hud.tsx`: import + render `<DrillholeThumbnail>` antes del label en lista. Panel min-w 180→210px para acomodar thumbnail + texto.
+
+### Decisiones técnicas
+- Memo + useMemo segments → re-cálculo solo si intervals/totalDepth cambian.
+- viewBox + preserveAspectRatio default → escala a cualquier tamaño sin re-render.
+- Min-height clamp 0.6px en stripes evita gaps invisibles cuando intervalos ultra-cortos.
+
+### Verificación
+- `npx tsc --noEmit` → clean.
+- `npm test -- --run` → 166/166 verde, 13s.
+
+### Pendientes próxima sesión
+- Cross-section 2D: overlay multi-ribbon (fence diagram).
+- Ribbons: nombrar custom + thickness propio.
+- Thumbnails: tooltip con detalle al hover (rqd/rec promedios, % por grupo).
+- Thumbnails: opción render WebGL offscreen para sondajes con desviaciones (3D mini view).
