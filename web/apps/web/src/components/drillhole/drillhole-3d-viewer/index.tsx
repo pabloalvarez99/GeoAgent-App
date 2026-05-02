@@ -536,6 +536,16 @@ export default function DrillHole3DViewer({
           depth={sectionDepth}
           thickness={sectionThickness}
           onClose={() => setShowSection2D(false)}
+          onSelectInterval={(holeId, intervalId) => {
+            const it = flat.find((f) => f.hole.id === holeId && f.interval.id === intervalId);
+            if (it) {
+              setPinned(it);
+              setShowSection2D(false);
+              const midDepth = (it.fromDepth + it.toDepth) / 2;
+              const target = it.collar.clone().addScaledVector(it.direction, midDepth);
+              requestAnimationFrame(() => rigRef.current?.flyTo(target));
+            }
+          }}
           projectId={projectId}
         />
       )}

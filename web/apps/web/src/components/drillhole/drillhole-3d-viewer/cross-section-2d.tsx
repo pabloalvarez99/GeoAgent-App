@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { saveFile } from '@/lib/electron';
 import type { FlatInstance } from './types';
 import type { SectionAxis } from './section-plane';
@@ -12,6 +12,7 @@ interface Props {
   depth: number;
   thickness: number;
   onClose: () => void;
+  onSelectInterval?: (holeId: string, intervalId: string) => void;
   projectId?: string;
 }
 
@@ -19,7 +20,8 @@ const W = 1100;
 const H = 720;
 const M = 70;
 
-export function CrossSection2D({ flat, axis, depth, thickness, onClose, projectId }: Props) {
+export function CrossSection2D({ flat, axis, depth, thickness, onClose, onSelectInterval, projectId }: Props) {
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const section = useMemo(
     () => buildSection(flat, axis, depth, thickness),
     [flat, axis, depth, thickness],
@@ -200,21 +202,27 @@ export function CrossSection2D({ flat, axis, depth, thickness, onClose, projectI
           </text>
 
           <g>
-            {segments.map((s, i) => (
-              <line
-                key={i}
-                x1={toX(s.u1)}
-                y1={toY(s.v1)}
-                x2={toX(s.u2)}
-                y2={toY(s.v2)}
-                stroke={s.color}
-                strokeWidth={s.inSlab ? 4.5 : 1.2}
-                strokeOpacity={s.inSlab ? 1 : 0.18}
-                strokeLinecap="round"
-              >
-                <title>{`${s.holeLabel} · ${s.rockType ?? s.rockGroup ?? ''} · ${s.fromDepth.toFixed(1)}–${s.toDepth.toFixed(1)} m`}</title>
-              </line>
-            ))}
+            {segments.map((s, i) => {
+              const isHover = hoverIdx === i;
+              const interactive = s.inSlab && !!onSelectInterval;
+              return (
+                <line
+                  key={i}
+                  x1={toX(s.u1)}
+                  y1={toY(s.v1)}
+                  x2={toX(s.u2)}
+                  y2={toY(s.v2)}
+                  stroke={isHover ? '#fbbf24' : s.color}
+                  strokeWidth={isHover ? 7 : s.inSlab ? 4.5 : 1.2}
+                  strokeOpacity={isHover ? 1 : s.inSlab ? 1 : 0.18}
+                  strokeLinecap="round"
+                  onMouseEnter={s.inSlab ? () => setHoverIdx(i) : undefined}
+                  onMouseLeave={s.inSlab ? () => setHoverIdx((h) => (h === i ? null : h)) : undefined}
+                  onClick={interactive ? () => onSelectInterval(s.holeId, s.intervalId) : undefined}
+                  style={{ cursor: interactive ? 'pointer' : 'default' }}
+                />
+              );
+            })}
           </g>
 
           <g>
@@ -271,6 +279,44 @@ export function CrossSection2D({ flat, axis, depth, thickness, onClose, projectI
               <path d="M 0 0 L 10 5 L 0 10 z" fill="#cbd5e1" />
             </marker>
           </defs>
+
+          {hoverIdx != null && segments[hoverIdx] && (() => {
+            const s = segments[hoverIdx];
+            const mx = (toX(s.u1) + toX(s.u2)) / 2;
+            const my = (toY(s.v1) + toY(s.v2)) / 2;
+            const lines = [
+              s.holeLabel,
+              `${s.rockType ?? s.rockGroup ?? '—'}`,
+              `${s.fromDepth.toFixed(1)}–${s.toDepth.toFixed(1)} m`,
+            ];
+            if (s.rqd != null) lines.push(`RQD ${s.rqd}%`);
+            if (s.recovery != null) lines.push(`Rec ${s.recovery}%`);
+            if (onSelectInterval) lines.push('▸ click para abrir 3D');
+            const boxW = 180;
+            const lineH = 14;
+            const padY = 8;
+            const boxH = lines.length * lineH + padY * 2;
+            const tx = Math.min(W - boxW - 8, Math.max(8, mx + 14));
+            const ty = Math.min(H - boxH - 8, Math.max(8, my - boxH - 10));
+            return (
+              <g pointerEvents="none">
+                <rect x={tx} y={ty} width={boxW} height={boxH} rx={4} fill="#0b1220" stroke={s.color} strokeWidth={1.2} opacity={0.96} />
+                {lines.map((ln, j) => (
+                  <text
+                    key={j}
+                    x={tx + 8}
+                    y={ty + padY + (j + 1) * lineH - 4}
+                    fill={j === 0 ? '#fbbf24' : j === lines.length - 1 && onSelectInterval ? '#67e8f9' : '#e2e8f0'}
+                    fontSize={j === 0 ? '11' : '10'}
+                    fontFamily="monospace"
+                    fontWeight={j === 0 ? '700' : '400'}
+                  >
+                    {ln}
+                  </text>
+                ))}
+              </g>
+            );
+          })()}
         </svg>
         </div>
       </div>

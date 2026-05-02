@@ -2445,3 +2445,24 @@ React 19 + lucide-react: `React.ElementType` resuelve `className` a `never` por 
 - Estado: READY (prod)
 - Alias prod: https://geoagent-app.vercel.app
 - ⚠ Gotcha repetido: corrí `vercel --prod --yes` desde `web/apps/web/` y creó `.vercel/` local → path doubling (`web/apps/web/web/apps/web`). Fix: `rm -rf .vercel` y redeploy desde repo root. Confirma regla CLAUDE.md: solo `.vercel/` en repo root.
+
+---
+
+## 2026-05-02 — Cross-section 2D interactions (hover + click)
+
+### Cambio
+Pendiente #2 del visor 3D. Segments en sección 2D ahora son interactivos:
+- Hover → highlight ámbar (stroke #fbbf24, width 7) + tooltip pinned dentro del SVG con holeId, lithology, depths, RQD, Rec
+- Click sobre segmento `inSlab` → cierra modal + setPinned en panel 3D + flyTo midpoint del intervalo
+- Cursor pointer solo en segmentos interactivos (inSlab y con handler)
+
+### Files
+- `utils-section.ts` → `SectionSegment` ahora incluye `intervalId`, `rqd`, `recovery`
+- `cross-section-2d.tsx` → `useState hoverIdx`, `onSelectInterval?` prop, mouse handlers, custom SVG tooltip overlay (no native `<title>`)
+- `index.tsx` → handler resuelve FlatInstance via `find(holeId, intervalId)`, llama setPinned + setShowSection2D(false) + flyTo midpoint
+
+### Por qué
+Native `<title>` SVG es lento + no estilizable. Custom tooltip con la misma data del pinned panel da consistencia. Click→3D cierra el ciclo "explorar 2D, profundizar en 3D" — ya no hay que cerrar modal manualmente y buscar el sondaje.
+
+### Resultado
+TS clean · 166/166 tests verde.

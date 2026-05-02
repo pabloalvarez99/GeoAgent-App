@@ -9,10 +9,13 @@ export interface SectionSegment {
   color: string;
   holeId: string;
   holeLabel: string;
+  intervalId: string;
   rockType?: string;
   rockGroup?: string;
   fromDepth: number;
   toDepth: number;
+  rqd?: number | null;
+  recovery?: number | null;
   inSlab: boolean;
 }
 
@@ -79,10 +82,13 @@ export function buildSection(
       color: f.color,
       holeId: f.hole.id,
       holeLabel: f.hole.holeId,
+      intervalId: f.interval.id,
       rockType: f.interval.rockType,
       rockGroup: f.interval.rockGroup,
       fromDepth: f.fromDepth,
       toDepth: f.toDepth,
+      rqd: f.interval.rqd ?? null,
+      recovery: f.interval.recovery ?? null,
       inSlab,
     };
   });
