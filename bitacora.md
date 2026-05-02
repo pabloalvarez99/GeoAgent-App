@@ -2471,3 +2471,29 @@ TS clean · 166/166 tests verde.
 - URL: https://web-8pn5k8erk-pablo-figueroas-projects-015bb2fb.vercel.app
 - Estado: READY (prod)
 - Alias prod: https://geoagent-app.vercel.app
+
+---
+
+## 2026-05-02 — Demo SE Coquimbo (informe PDF) en /dev/seed
+
+### Cambio
+Nuevo botón en `/dev/seed` que replica el informe SE 25-04-2026 (`Se_GeoAgent_Informe.pdf`) con datos exactos + expansión para visor 3D útil.
+
+- Proyecto: "Se" en Coquimbo, Chile
+- Estación Ss exacta del PDF: -29.957848 / -71.292942, alt 50.7, geólogo Za, descripción "As", fecha 2026-04-16
+- Litología: Dolomita / Sedimentaria / Gris Medio / Clastica / Gruesa (matching PDF)
+- Estructural: Foliacion 0°/0° SE, espesor 5
+- Muestra: Z / Canal / 2g / 2m / D / Enviada
+- Sondajes (expansión PDF: 1→3 con intervalos): S-001 (Az 0 -90 80m), S-002 (Az 90 -70 100m), S-003 (Az 270 -75 90m) RC desde collar -29.957864/-71.292972 alt 51.8
+- Suite SE_SUITE costera Coquimbo: suelo → caliza arrecifal → dolomita → caliza dolomítica → marga → dolomita silicificada → skarn granate-piroxeno (mineralizado Mt-Cpy 8%) → mármol bandeado
+- 24 intervalos totales (8 por sondaje), RQD 60-95% Rec 82-99%
+- Redirect post-seed → `/projects/[id]/3d` directo al visor
+
+### Por qué
+PDF original solo tenía 1 sondaje S de 7m con 0 intervalos → visor 3D vacío. Para "demo con ese lugar" se preserva ubicación + datos del informe y se sintetizan 2 sondajes adicionales en abanico + intervalos coherentes con geología local (secuencia caliza-dolomita-skarn de Coquimbo costero). Permite probar todo el visor 3D (cortes, fence, ribbons, heatmap) sobre escenario realista del usuario.
+
+### Files
+- `app/(dashboard)/dev/seed/page.tsx` → suite `SE_SUITE`, handler `handleSeedSe`, segunda Card UI
+
+### Resultado
+TS clean · 166/166 verde.
