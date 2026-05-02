@@ -2330,3 +2330,7 @@ React 19 + lucide-react: `React.ElementType` resuelve `className` a `never` por 
 - Ribbons: nombrar custom + thickness propio.
 - Thumbnails: tooltip con detalle al hover (rqd/rec promedios, % por grupo).
 - Thumbnails: opción render WebGL offscreen para sondajes con desviaciones (3D mini view).
+
+### Deploy
+- CLI `vercel --prod --yes` → `web-c6zc97xvc` Ready.
+- Alias: **https://geoagent-app.vercel.app** ✅
