@@ -16,6 +16,12 @@
 - `npx tsc --noEmit`: clean
 - `npm test -- --run`: 166/166 verde
 
+### Deploy
+- `vercel --prod --yes` → READY
+- URL: https://web-cmow5u4z8-pablo-figueroas-projects-015bb2fb.vercel.app
+- Alias: https://geoagent-app.vercel.app
+- Commit: `166fd78`
+
 ---
 
 ## 2026-05-01 — Visor 3D: stations clickables + acceso desde home + sessionStorage DEM cache + heatmap RQD voxels
