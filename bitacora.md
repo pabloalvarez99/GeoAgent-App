@@ -21,6 +21,12 @@
 - `npx tsc --noEmit`: clean
 - `npm test -- --run`: 166/166 verde
 
+### Deploy
+- `vercel --prod --yes` → READY
+- URL: https://web-itdrkqmmq-pablo-figueroas-projects-015bb2fb.vercel.app
+- Alias: https://geoagent-app.vercel.app
+- Commit: `f6c4307`
+
 ---
 
 ## 2026-05-02 — Visor 3D: refactor utils-section (extracción projection logic)
