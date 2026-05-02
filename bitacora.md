@@ -2251,3 +2251,10 @@ React 19 + lucide-react: `React.ElementType` resuelve `className` a `never` por 
 - #1 Section ribbon multi-corte N≥3 sin clipping intersect.
 - #3 Drillhole thumbnails en list panel (offscreen WebGL render por hole + cache).
 - Verificar mobile real (iPhone/Android) — DevTools emulación no captura todo (touch latencia, pinch-zoom canvas, scroll bounce).
+
+### Deploy
+- Push: `git push origin master` → commit `a6663c4`.
+- Vercel auto-deploy (GitHub integration) → `web-6h1bq3it5-pablo-figueroas-projects-015bb2fb.vercel.app` Ready, 57s build.
+- Alias prod: **https://geoagent-app.vercel.app** ✅
+- Otros aliases: `web-pablo-figueroas-projects-015bb2fb.vercel.app`, `web-git-master-...`.
+- Nota CLI: `vercel --prod` desde repo root deploya proyecto incorrecto (`vercel-deploy-bay-rho`). El proyecto correcto (`web`) auto-deploya vía push a master. Si requiere CLI manual, deploy directo no funciona por path doubling de rootDirectory remoto — usar push o Vercel UI redeploy.
