@@ -2497,3 +2497,8 @@ PDF original solo tenía 1 sondaje S de 7m con 0 intervalos → visor 3D vacío.
 
 ### Resultado
 TS clean · 166/166 verde.
+
+### Deploy
+- URL: https://web-rf98jpq7n-pablo-figueroas-projects-015bb2fb.vercel.app
+- Estado: READY (prod)
+- Acceso demo: `/dev/seed` → "Crear demo SE (Coquimbo)" → redirect automático a visor 3D
