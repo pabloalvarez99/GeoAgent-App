@@ -2533,3 +2533,30 @@ TS clean · 166/166 tests verde.
 - URL: https://web-nh1cpqvij-pablo-figueroas-projects-015bb2fb.vercel.app
 - Estado: READY (prod)
 - Alias: https://geoagent-app.vercel.app
+
+---
+
+## 2026-05-02 — Project list "Ver en 3D" button
+
+### Cambio
+Pendiente #5: shortcut directo a visor 3D desde el listado de proyectos (antes solo command palette y subnav).
+
+- `app/(dashboard)/projects/page.tsx`:
+  - Nuevo componente `Project3DButton` (variants `card` y `list`) que usa `useDrillHoles(projectId)` y solo renderiza si `drillHoles.length > 0`.
+  - Grid view: botón flotante absolute bottom-right, fade-in `group-hover:opacity-100`, z-20 sobre el Link wrapper.
+  - List view: botón inline 7px height antes del DropdownMenu, hidden en mobile (`hidden sm:inline-flex`).
+  - `e.stopPropagation()` para que el click navegue a `/3d` sin disparar Link parent → `/projects/[id]`.
+  - Estilo cyan (`border-cyan-700/40`, `bg-cyan-950/40`, ícono `Box` lucide).
+
+### Por qué
+Ahora visor 3D era accesible solo desde command palette (Ctrl+K) o subnav del proyecto. Usuario debía entrar al detalle primero. Botón en card hace el visor descubrible para nuevos usuarios y reduce 1 click para regulares.
+
+### Resultado
+TS clean · 166/166 verde.
+
+### Pendiente próx sesión
+1. ~~Fence scroll-x + leyenda~~ ✅
+2. Thumbnails 3D WebGL offscreen
+3. Cross-section drag/zoom/DXF
+4. Ribbons drag&drop + color picker + duplicate
+5. ~~Project list "Ver en 3D"~~ ✅

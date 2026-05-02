@@ -14,6 +14,7 @@ import {
   Search,
   LayoutGrid,
   LayoutList,
+  Box,
 } from 'lucide-react';
 import { useProjects } from '@/lib/hooks/use-projects';
 import { useStations } from '@/lib/hooks/use-stations';
@@ -88,6 +89,36 @@ function ProjectStats({ projectId }: { projectId: string }) {
         <span>sond.</span>
       </span>
     </div>
+  );
+}
+
+// Render only when project has drillholes — shortcut to 3D viewer
+function Project3DButton({ projectId, variant = 'card' }: { projectId: string; variant?: 'card' | 'list' }) {
+  const { drillHoles } = useDrillHoles(projectId);
+  if (drillHoles.length === 0) return null;
+  if (variant === 'list') {
+    return (
+      <Link
+        href={`/projects/${projectId}/3d`}
+        onClick={(e) => e.stopPropagation()}
+        title={`Ver en 3D · ${drillHoles.length} sondaje${drillHoles.length !== 1 ? 's' : ''}`}
+        className="hidden sm:inline-flex items-center gap-1 px-2 h-7 rounded-md border border-cyan-700/40 bg-cyan-950/40 hover:bg-cyan-900/60 text-cyan-200 text-[11px] font-mono shrink-0"
+      >
+        <Box className="h-3.5 w-3.5" />
+        3D
+      </Link>
+    );
+  }
+  return (
+    <Link
+      href={`/projects/${projectId}/3d`}
+      onClick={(e) => e.stopPropagation()}
+      title={`Ver en 3D · ${drillHoles.length} sondaje${drillHoles.length !== 1 ? 's' : ''}`}
+      className="inline-flex items-center gap-1.5 px-2.5 h-7 rounded-md border border-cyan-700/40 bg-cyan-950/40 hover:bg-cyan-900/60 text-cyan-200 text-[11px] font-mono shrink-0"
+    >
+      <Box className="h-3.5 w-3.5" />
+      Ver en 3D
+    </Link>
   );
 }
 
@@ -259,6 +290,9 @@ export default function ProjectsPage() {
                     key={project.id}
                     className="group relative hover:border-border card-lift transition-all"
                   >
+                    <div className="absolute bottom-3 right-3 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Project3DButton projectId={project.id} variant="card" />
+                    </div>
                     <div className="absolute top-3 right-3 z-10">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -357,6 +391,7 @@ export default function ProjectsPage() {
                         </span>
                       )}
                     </Link>
+                    <Project3DButton projectId={project.id} variant="list" />
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
