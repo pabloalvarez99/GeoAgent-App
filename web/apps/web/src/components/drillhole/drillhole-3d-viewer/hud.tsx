@@ -5,7 +5,7 @@ import type { CameraRigHandle } from './camera-rig';
 import type { FlatInstance, HoverInfo, Preset, SceneItem } from './types';
 import type { GeoStation } from '@geoagent/geo-shared/types';
 import { localCoords, rampColor, rockColor } from './utils';
-import { useHudCameraSync } from './hooks';
+import { useHudCameraSync, useIsMobile } from './hooks';
 
 const FOV_DEG = 50;
 const NICE_TIERS = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000];
@@ -73,6 +73,7 @@ interface Props {
   setHeatmapOpacity: (v: number) => void;
   heatmapMinRqd: number;
   setHeatmapMinRqd: (v: number) => void;
+  onOpenSection2D: () => void;
 }
 
 export function Hud(props: Props) {
@@ -134,10 +135,13 @@ export function Hud(props: Props) {
     setHeatmapOpacity,
     heatmapMinRqd,
     setHeatmapMinRqd,
+    onOpenSection2D,
   } = props;
 
+  const isMobile = useIsMobile();
   const [statsOpen, setStatsOpen] = useState(false);
   const [holeListOpen, setHoleListOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const bookmarkKey = `geoagent-3d-bookmark-${projectId ?? 'default'}`;
   const [hasBookmark, setHasBookmark] = useState(false);
   useEffect(() => {
@@ -374,7 +378,13 @@ export function Hud(props: Props) {
 
       {/* Left side: drillhole list panel */}
       {scenes.length > 1 && (
-        <div className="absolute top-3 left-[calc(0.75rem+min(24rem,30vw))] flex flex-col gap-1 max-h-[calc(100%-1.5rem)]">
+        <div
+          className={
+            isMobile
+              ? 'absolute top-14 left-3 flex flex-col gap-1 max-h-[calc(100%-4rem)] z-10 [&_button]:min-h-[40px]'
+              : 'absolute top-3 left-[calc(0.75rem+min(24rem,30vw))] flex flex-col gap-1 max-h-[calc(100%-1.5rem)]'
+          }
+        >
           <button
             onClick={() => setHoleListOpen((v) => !v)}
             className={`flex items-center gap-1 px-2 py-1 text-[10px] font-mono rounded border ${holeListOpen ? 'bg-cyan-600/30 border-cyan-500/60 text-cyan-100' : 'bg-popover/90 border-border text-foreground'} hover:bg-accent shrink-0 self-start`}
@@ -423,16 +433,34 @@ export function Hud(props: Props) {
         </div>
       )}
 
+      {/* Mobile menu toggle */}
+      {isMobile && (
+        <button
+          onClick={() => setMobileMenuOpen((v) => !v)}
+          className="absolute top-3 right-3 z-30 flex items-center justify-center min-h-[44px] min-w-[44px] rounded-md bg-popover/95 border border-border shadow-md text-foreground active:bg-accent"
+          title={mobileMenuOpen ? 'Cerrar menú' : 'Menú herramientas'}
+          aria-label="Menú herramientas"
+        >
+          {mobileMenuOpen ? <X className="h-5 w-5" /> : <Layers className="h-5 w-5" />}
+        </button>
+      )}
+
       {/* Top-right: presets + actions */}
-      <div className="absolute top-3 right-3 flex flex-col gap-2 items-end">
-        <div className="flex gap-1">
+      <div
+        className={
+          isMobile
+            ? `${mobileMenuOpen ? 'flex' : 'hidden'} absolute top-[4.25rem] right-3 z-20 flex-col gap-2 items-stretch w-[min(88vw,22rem)] max-h-[calc(100vh-5.5rem)] overflow-y-auto p-2 rounded-md bg-popover/95 border border-border shadow-xl [&_button]:min-h-[42px] [&_button]:text-xs [&_input[type=range]]:h-3`
+            : 'absolute top-3 right-3 flex flex-col gap-2 items-end'
+        }
+      >
+        <div className={isMobile ? 'flex flex-wrap gap-1.5 justify-stretch' : 'flex gap-1'}>
           {presetBtn('top', 'Top', 'q')}
           {presetBtn('north', 'N', 'w')}
           {presetBtn('east', 'E', 'e')}
           {presetBtn('persp', '3D', 'r')}
           {presetBtn('fit', 'Fit', 'f')}
         </div>
-        <div className="flex gap-1">
+        <div className={isMobile ? 'flex flex-wrap gap-1.5' : 'flex gap-1 flex-wrap justify-end max-w-[calc(100vw-1.5rem)]'}>
           <button
             onClick={onScreenshot}
             className="flex items-center gap-1 px-2 py-1 text-[10px] font-mono rounded bg-popover/90 border border-border hover:bg-accent text-foreground"
@@ -499,6 +527,15 @@ export function Hud(props: Props) {
           >
             <Scissors className="h-3 w-3" /> Section
           </button>
+          {sectionEnabled && (
+            <button
+              onClick={onOpenSection2D}
+              className="flex items-center gap-1 px-2 py-1 text-[10px] font-mono rounded border bg-cyan-700/40 border-cyan-500/60 text-cyan-100 hover:bg-cyan-700/60"
+              title="Abrir vista 2D de sección (proyección plana)"
+            >
+              <Grid3x3 className="h-3 w-3" /> 2D
+            </button>
+          )}
           <button
             onClick={toggleMeasure}
             className={`flex items-center gap-1 px-2 py-1 text-[10px] font-mono rounded border ${measureMode ? 'bg-amber-500/30 border-amber-400/70 text-amber-100' : 'bg-popover/90 border-border text-foreground'} hover:bg-accent`}
@@ -664,14 +701,22 @@ export function Hud(props: Props) {
           </div>
         )}
 
-        <div className="px-2 py-1 text-[10px] font-mono text-muted-foreground bg-popover/80 border border-border rounded leading-tight">
-          Q/W/E/R/F · S sec · B base · M med · P PNG{holeCount > 1 ? ' · ←/→' : ''}
-        </div>
+        {!isMobile && (
+          <div className="px-2 py-1 text-[10px] font-mono text-muted-foreground bg-popover/80 border border-border rounded leading-tight">
+            Q/W/E/R/F · S sec · B base · M med · P PNG{holeCount > 1 ? ' · ←/→' : ''}
+          </div>
+        )}
       </div>
 
       {/* Section slider */}
       {sectionEnabled && (
-        <div className="absolute bottom-20 left-3 w-64 rounded-md border border-cyan-500/60 bg-popover/95 px-2.5 py-2 shadow-lg">
+        <div
+          className={
+            isMobile
+              ? 'absolute bottom-3 left-3 right-3 rounded-md border border-cyan-500/60 bg-popover/95 px-3 py-2.5 shadow-lg [&_input[type=range]]:h-3 [&_button]:min-h-[36px]'
+              : 'absolute bottom-20 left-3 w-64 rounded-md border border-cyan-500/60 bg-popover/95 px-2.5 py-2 shadow-lg'
+          }
+        >
           <div className="flex items-center justify-between text-[10px] font-mono text-foreground mb-1.5">
             <span className="flex items-center gap-1"><Layers className="h-3 w-3" /> Corte</span>
             <div className="flex items-center gap-0 rounded border border-border overflow-hidden">
@@ -729,7 +774,15 @@ export function Hud(props: Props) {
       )}
 
       {/* Bottom-left: legend + filters */}
-      <div className="absolute bottom-3 left-3 rounded-md border border-border bg-popover/90 px-2.5 py-1.5 max-w-md">
+      <div
+        className={
+          isMobile && (sectionEnabled || pinned || pinnedStation)
+            ? 'hidden'
+            : isMobile
+            ? 'absolute bottom-3 left-3 right-3 rounded-md border border-border bg-popover/90 px-2.5 py-2 [&_button]:min-h-[36px]'
+            : 'absolute bottom-3 left-3 rounded-md border border-border bg-popover/90 px-2.5 py-1.5 max-w-md'
+        }
+      >
         {colorBy === 'lithology' ? (
           <div className="flex flex-wrap gap-2">
             {['Ignea', 'Sedimentaria', 'Metamorfica', 'Otro'].map((g) => {
@@ -772,7 +825,13 @@ export function Hud(props: Props) {
       </div>
 
       {/* Bottom-right: compass */}
-      <div className="absolute bottom-3 right-24 w-14 h-14 rounded-full border border-border bg-popover/90 flex items-center justify-center shadow-md">
+      <div
+        className={
+          isMobile
+            ? 'hidden'
+            : 'absolute bottom-3 right-24 w-14 h-14 rounded-full border border-border bg-popover/90 flex items-center justify-center shadow-md'
+        }
+      >
         <div
           className="absolute inset-0 flex items-center justify-center"
           style={{ transform: `rotate(${-compassAz * (180 / Math.PI)}deg)` }}
@@ -786,7 +845,13 @@ export function Hud(props: Props) {
       </div>
 
       {/* Bottom-center: scale bar */}
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2 px-2 py-1 rounded bg-popover/80 border border-border">
+      <div
+        className={
+          isMobile
+            ? 'hidden'
+            : 'absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2 px-2 py-1 rounded bg-popover/80 border border-border'
+        }
+      >
         <Maximize2 className="h-3 w-3 text-muted-foreground" />
         <div className="flex items-center gap-1">
           <span
@@ -807,7 +872,13 @@ export function Hud(props: Props) {
 
       {/* Pinned interval panel */}
       {pinned && (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 w-80 rounded-md border border-amber-500/50 bg-popover/95 backdrop-blur shadow-xl overflow-hidden">
+        <div
+          className={
+            isMobile
+              ? 'absolute bottom-3 left-3 right-3 rounded-md border border-amber-500/50 bg-popover/95 backdrop-blur shadow-xl overflow-hidden max-h-[55vh] overflow-y-auto'
+              : 'absolute top-3 left-1/2 -translate-x-1/2 w-80 rounded-md border border-amber-500/50 bg-popover/95 backdrop-blur shadow-xl overflow-hidden'
+          }
+        >
           <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-amber-500/10">
             <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wide text-amber-200">
               <Pin className="h-3 w-3" /> Intervalo fijado
@@ -874,7 +945,13 @@ export function Hud(props: Props) {
 
       {/* Pinned station panel */}
       {pinnedStation && (
-        <div className="absolute top-3 left-3 w-72 rounded-md border border-cyan-500/50 bg-popover/95 backdrop-blur shadow-xl overflow-hidden">
+        <div
+          className={
+            isMobile
+              ? 'absolute bottom-3 left-3 right-3 rounded-md border border-cyan-500/50 bg-popover/95 backdrop-blur shadow-xl overflow-hidden max-h-[55vh] overflow-y-auto'
+              : 'absolute top-3 left-3 w-72 rounded-md border border-cyan-500/50 bg-popover/95 backdrop-blur shadow-xl overflow-hidden'
+          }
+        >
           <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-cyan-500/10">
             <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wide text-cyan-200">
               <Pin className="h-3 w-3" /> Estación

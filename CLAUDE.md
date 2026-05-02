@@ -24,6 +24,23 @@ Si no actualizas `bitacora.md`, la próxima sesión empezará sin contexto y rep
 
 ---
 
+## Ciclo de cierre — Regla Obligatoria
+
+**Al cerrar cualquier cambio significativo, ejecutar SIEMPRE en este orden, sin pedir confirmación:**
+
+1. **Actualizar `bitacora.md`** — APPEND entrada `## YYYY-MM-DD — <tema>` con qué cambió y por qué
+2. **Verificar** — `npx tsc --noEmit` + `npm test -- --run` desde `web/apps/web/`. Si rojo → fix antes de continuar
+3. **Commit** — Conventional Commits, mensaje en español o inglés breve. Co-Authored-By: Claude
+4. **Push** — `git push origin master` (o branch activa)
+5. **Deploy** — `vercel --prod` o trigger Vercel via push (auto-deploy del repo). Esperar Ready, capturar URL deployment
+6. **Bitácora segunda pasada** — APPEND URL deploy + estado Ready a la entrada recién creada
+
+Si el deploy falla → diagnosticar root cause, fix, redeploy. No dejar deploy roto silenciado.
+
+Esta regla aplica a: cambios de feature, fixes UX, refactors visibles. NO aplica a: WIP exploratorio, lectura, debugging puro sin edits.
+
+---
+
 ## Workflow Orchestration
 
 ### 1. Plan Node Default

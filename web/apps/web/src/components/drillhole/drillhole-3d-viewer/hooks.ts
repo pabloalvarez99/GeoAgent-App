@@ -3,6 +3,23 @@ import * as THREE from 'three';
 import type { CameraControls } from '@react-three/drei';
 import type { SceneItem } from './types';
 
+export function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia(`(max-width: ${breakpoint - 1}px), (pointer: coarse) and (max-width: 1024px)`).matches;
+  });
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia(
+      `(max-width: ${breakpoint - 1}px), (pointer: coarse) and (max-width: 1024px)`,
+    );
+    const onChange = () => setIsMobile(mq.matches);
+    mq.addEventListener?.('change', onChange);
+    return () => mq.removeEventListener?.('change', onChange);
+  }, [breakpoint]);
+  return isMobile;
+}
+
 type CCRef = React.RefObject<CameraControls | null>;
 
 export function useSceneBounds(scenes: SceneItem[]) {

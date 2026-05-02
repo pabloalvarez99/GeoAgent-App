@@ -1,0 +1,339 @@
+'use client';
+
+import { useCallback, useMemo } from 'react';
+import { saveFile } from '@/lib/electron';
+import type { FlatInstance } from './types';
+import type { SectionAxis } from './section-plane';
+
+interface Props {
+  flat: FlatInstance[];
+  axis: SectionAxis;
+  depth: number;
+  thickness: number;
+  onClose: () => void;
+  projectId?: string;
+}
+
+const W = 1100;
+const H = 720;
+const M = 70;
+
+export function CrossSection2D({ flat, axis, depth, thickness, onClose, projectId }: Props) {
+  const segments = useMemo(() => {
+    return flat.map((f) => {
+      const sx = f.collar.x + f.direction.x * f.fromDepth;
+      const sy = f.collar.y + f.direction.y * f.fromDepth;
+      const sz = f.collar.z + f.direction.z * f.fromDepth;
+      const ex = f.collar.x + f.direction.x * f.toDepth;
+      const ey = f.collar.y + f.direction.y * f.toDepth;
+      const ez = f.collar.z + f.direction.z * f.toDepth;
+      let u1: number, v1: number, u2: number, v2: number, perp1: number, perp2: number;
+      if (axis === 'ns') {
+        u1 = sz; v1 = sy; u2 = ez; v2 = ey;
+        perp1 = sx - depth; perp2 = ex - depth;
+      } else if (axis === 'ew') {
+        u1 = sx; v1 = sy; u2 = ex; v2 = ey;
+        perp1 = sz - depth; perp2 = ez - depth;
+      } else {
+        u1 = sx; v1 = sz; u2 = ex; v2 = ez;
+        perp1 = sy - depth; perp2 = ey - depth;
+      }
+      const half = thickness > 0 ? thickness / 2 : Infinity;
+      const inSlab = thickness > 0 ? Math.min(Math.abs(perp1), Math.abs(perp2)) <= half : true;
+      return {
+        u1, v1, u2, v2,
+        color: f.color,
+        holeId: f.hole.id,
+        holeLabel: f.hole.holeId,
+        rockType: f.interval.rockType,
+        rockGroup: f.interval.rockGroup,
+        fromDepth: f.fromDepth,
+        toDepth: f.toDepth,
+        inSlab,
+      };
+    });
+  }, [flat, axis, depth, thickness]);
+
+  const visible = useMemo(() => segments.filter((s) => s.inSlab), [segments]);
+
+  const bounds = useMemo(() => {
+    const src = visible.length > 0 ? visible : segments;
+    if (src.length === 0) return { umin: -100, umax: 100, vmin: -100, vmax: 100 };
+    let umin = Infinity, umax = -Infinity, vmin = Infinity, vmax = -Infinity;
+    src.forEach((s) => {
+      umin = Math.min(umin, s.u1, s.u2);
+      umax = Math.max(umax, s.u1, s.u2);
+      vmin = Math.min(vmin, s.v1, s.v2);
+      vmax = Math.max(vmax, s.v1, s.v2);
+    });
+    const padU = (umax - umin) * 0.08 + 5;
+    const padV = (vmax - vmin) * 0.08 + 5;
+    return { umin: umin - padU, umax: umax + padU, vmin: vmin - padV, vmax: vmax + padV };
+  }, [segments, visible]);
+
+  const uRange = bounds.umax - bounds.umin || 1;
+  const vRange = bounds.vmax - bounds.vmin || 1;
+  const sxScale = (W - 2 * M) / uRange;
+  const syScale = (H - 2 * M) / vRange;
+  const scale = Math.min(sxScale, syScale);
+  const offU = (W - 2 * M - uRange * scale) / 2;
+  const offV = (H - 2 * M - vRange * scale) / 2;
+  const toX = (u: number) => M + offU + (u - bounds.umin) * scale;
+  const vIsElev = axis !== 'horizontal';
+  const toY = (v: number) =>
+    vIsElev
+      ? H - M - offV - (v - bounds.vmin) * scale
+      : M + offV + (v - bounds.vmin) * scale;
+
+  const uLabel = axis === 'ns' ? 'Z (norte, m)' : axis === 'ew' ? 'X (este, m)' : 'X (este, m)';
+  const vLabel = vIsElev ? 'Elevación Y (m)' : 'Z (norte, m)';
+  const title =
+    axis === 'ns'
+      ? `Sección N-S @ X = ${depth.toFixed(1)} m${thickness > 0 ? ` · slab ±${(thickness / 2).toFixed(1)} m` : ''}`
+      : axis === 'ew'
+      ? `Sección E-W @ Z = ${depth.toFixed(1)} m${thickness > 0 ? ` · slab ±${(thickness / 2).toFixed(1)} m` : ''}`
+      : `Plano horizontal @ Y = ${depth.toFixed(1)} m${thickness > 0 ? ` · slab ±${(thickness / 2).toFixed(1)} m` : ''}`;
+
+  const collars = useMemo(() => {
+    const map = new Map<string, { u: number; v: number; label: string }>();
+    flat.forEach((f) => {
+      if (map.has(f.hole.id)) return;
+      const cx = f.collar.x, cy = f.collar.y, cz = f.collar.z;
+      let u: number, v: number;
+      if (axis === 'ns') { u = cz; v = cy; }
+      else if (axis === 'ew') { u = cx; v = cy; }
+      else { u = cx; v = cz; }
+      map.set(f.hole.id, { u, v, label: f.hole.holeId });
+    });
+    return [...map.values()];
+  }, [flat, axis]);
+
+  const onExportPng = useCallback(async () => {
+    const svg = document.getElementById('cross-section-svg') as SVGSVGElement | null;
+    if (!svg) return;
+    const xml = new XMLSerializer().serializeToString(svg);
+    const blob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error('img load'));
+        img.src = url;
+      });
+      const canvas = document.createElement('canvas');
+      canvas.width = W * 2;
+      canvas.height = H * 2;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.fillStyle = '#0b1220';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      await new Promise<void>((resolve) => {
+        canvas.toBlob(async (pngBlob) => {
+          if (!pngBlob) return resolve();
+          const ts = new Date().toISOString().replace(/[:.]/g, '-');
+          const filename = `geoagent-section-${axis}-${projectId ?? 'scene'}-${ts}.png`;
+          try { await saveFile(filename, pngBlob); } catch {}
+          resolve();
+        }, 'image/png');
+      });
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }, [axis, projectId]);
+
+  const onExportSvg = useCallback(async () => {
+    const svg = document.getElementById('cross-section-svg') as SVGSVGElement | null;
+    if (!svg) return;
+    const xml = new XMLSerializer().serializeToString(svg);
+    const blob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' });
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    const filename = `geoagent-section-${axis}-${projectId ?? 'scene'}-${ts}.svg`;
+    try { await saveFile(filename, blob); } catch {}
+  }, [axis, projectId]);
+
+  const scaleBarMeters = useMemo(() => {
+    const targetPx = 120;
+    const meters = targetPx / scale;
+    const tiers = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000];
+    let best = tiers[0];
+    for (const t of tiers) if (t <= meters) best = t;
+    return best;
+  }, [scale]);
+
+  const uTicks = 6;
+  const vTicks = 6;
+
+  return (
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-2 sm:p-4">
+      <div className="bg-[#0b1220] border border-cyan-700/40 rounded-lg shadow-2xl w-full h-full sm:w-auto sm:h-auto sm:max-w-[97vw] sm:max-h-[97vh] flex flex-col overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 p-2 sm:p-3 border-b border-cyan-700/30 shrink-0">
+          <div className="min-w-0">
+            <h3 className="text-cyan-200 text-xs sm:text-sm font-medium font-mono truncate">{title}</h3>
+            <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
+              {visible.length} de {segments.length} intervalos · {collars.length} sondajes
+            </p>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <button
+              onClick={onExportSvg}
+              className="flex-1 sm:flex-none min-h-[40px] sm:min-h-0 px-3 py-2 sm:py-1.5 text-xs sm:text-[11px] font-mono bg-cyan-700/30 hover:bg-cyan-700/50 active:bg-cyan-700/70 text-cyan-100 rounded border border-cyan-700/40"
+            >
+              SVG
+            </button>
+            <button
+              onClick={onExportPng}
+              className="flex-1 sm:flex-none min-h-[40px] sm:min-h-0 px-3 py-2 sm:py-1.5 text-xs sm:text-[11px] font-mono bg-cyan-700/30 hover:bg-cyan-700/50 active:bg-cyan-700/70 text-cyan-100 rounded border border-cyan-700/40"
+            >
+              PNG
+            </button>
+            <button
+              onClick={onClose}
+              className="flex-1 sm:flex-none min-h-[40px] sm:min-h-0 px-3 py-2 sm:py-1.5 text-xs sm:text-[11px] font-mono bg-red-700/30 hover:bg-red-700/50 active:bg-red-700/70 text-red-100 rounded border border-red-700/40"
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+        <div className="flex-1 min-h-0 overflow-auto p-1 sm:p-2 flex items-center justify-center">
+        <svg
+          id="cross-section-svg"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox={`0 0 ${W} ${H}`}
+          preserveAspectRatio="xMidYMid meet"
+          style={{ background: '#0b1220', display: 'block', width: '100%', height: '100%', maxWidth: '100%', maxHeight: '100%' }}
+        >
+          <g stroke="#1e293b" strokeWidth="0.5">
+            {Array.from({ length: uTicks + 1 }).map((_, i) => {
+              const u = bounds.umin + (i / uTicks) * uRange;
+              const x = toX(u);
+              return <line key={`gx${i}`} x1={x} y1={M} x2={x} y2={H - M} />;
+            })}
+            {Array.from({ length: vTicks + 1 }).map((_, i) => {
+              const v = bounds.vmin + (i / vTicks) * vRange;
+              const y = toY(v);
+              return <line key={`gy${i}`} x1={M} y1={y} x2={W - M} y2={y} />;
+            })}
+          </g>
+
+          <g stroke="#475569" strokeWidth="1" fill="none">
+            <line x1={M} y1={H - M} x2={W - M} y2={H - M} />
+            <line x1={M} y1={M} x2={M} y2={H - M} />
+          </g>
+
+          <g fill="#94a3b8" fontSize="10" fontFamily="monospace">
+            {Array.from({ length: uTicks + 1 }).map((_, i) => {
+              const u = bounds.umin + (i / uTicks) * uRange;
+              const x = toX(u);
+              return (
+                <text key={`tx${i}`} x={x} y={H - M + 16} textAnchor="middle">
+                  {u.toFixed(0)}
+                </text>
+              );
+            })}
+            {Array.from({ length: vTicks + 1 }).map((_, i) => {
+              const v = bounds.vmin + (i / vTicks) * vRange;
+              const y = toY(v);
+              return (
+                <text key={`ty${i}`} x={M - 8} y={y + 3} textAnchor="end">
+                  {v.toFixed(0)}
+                </text>
+              );
+            })}
+          </g>
+
+          <text x={W / 2} y={H - 14} fill="#cbd5e1" fontSize="11" fontFamily="monospace" textAnchor="middle">
+            {uLabel}
+          </text>
+          <text
+            x={18}
+            y={H / 2}
+            fill="#cbd5e1"
+            fontSize="11"
+            fontFamily="monospace"
+            textAnchor="middle"
+            transform={`rotate(-90 18 ${H / 2})`}
+          >
+            {vLabel}
+          </text>
+
+          <g>
+            {segments.map((s, i) => (
+              <line
+                key={i}
+                x1={toX(s.u1)}
+                y1={toY(s.v1)}
+                x2={toX(s.u2)}
+                y2={toY(s.v2)}
+                stroke={s.color}
+                strokeWidth={s.inSlab ? 4.5 : 1.2}
+                strokeOpacity={s.inSlab ? 1 : 0.18}
+                strokeLinecap="round"
+              >
+                <title>{`${s.holeLabel} · ${s.rockType ?? s.rockGroup ?? ''} · ${s.fromDepth.toFixed(1)}–${s.toDepth.toFixed(1)} m`}</title>
+              </line>
+            ))}
+          </g>
+
+          <g>
+            {collars.map((c, i) => (
+              <g key={i}>
+                <circle cx={toX(c.u)} cy={toY(c.v)} r={4.5} fill="#10b981" stroke="#0b1220" strokeWidth={1.5} />
+                <text
+                  x={toX(c.u) + 8}
+                  y={toY(c.v) - 6}
+                  fill="#a7f3d0"
+                  fontSize="10"
+                  fontFamily="monospace"
+                  fontWeight="600"
+                >
+                  {c.label}
+                </text>
+              </g>
+            ))}
+          </g>
+
+          <g transform={`translate(${W - M - 140}, ${H - M - 24})`}>
+            <line x1={0} y1={0} x2={scaleBarMeters * scale} y2={0} stroke="#cbd5e1" strokeWidth={2.5} />
+            <line x1={0} y1={-5} x2={0} y2={5} stroke="#cbd5e1" strokeWidth={2} />
+            <line
+              x1={scaleBarMeters * scale}
+              y1={-5}
+              x2={scaleBarMeters * scale}
+              y2={5}
+              stroke="#cbd5e1"
+              strokeWidth={2}
+            />
+            <text
+              x={(scaleBarMeters * scale) / 2}
+              y={-8}
+              fill="#cbd5e1"
+              fontSize="10"
+              fontFamily="monospace"
+              textAnchor="middle"
+            >
+              {scaleBarMeters} m
+            </text>
+          </g>
+
+          {vIsElev && (
+            <g transform={`translate(${W - M - 30}, ${M + 30})`}>
+              <line x1={0} y1={0} x2={0} y2={-22} stroke="#cbd5e1" strokeWidth={1.5} markerEnd="url(#arrow)" />
+              <text x={0} y={-26} fill="#cbd5e1" fontSize="10" fontFamily="monospace" textAnchor="middle">
+                +Y
+              </text>
+            </g>
+          )}
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#cbd5e1" />
+            </marker>
+          </defs>
+        </svg>
+        </div>
+      </div>
+    </div>
+  );
+}

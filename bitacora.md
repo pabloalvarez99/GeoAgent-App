@@ -2205,3 +2205,49 @@ React 19 + lucide-react: `React.ElementType` resuelve `className` a `never` por 
 - #7 Heatmap interpolación voxels RQD entre intervalos.
 - Optimizar: cachear DEM tiles en sessionStorage para evitar re-fetch en re-toggle Grid → Topo.
 - Cuando terreno DEM falla (CORS/404 silente), no bloquear scene — ya hay fallback pero verificar UX en zonas sin cobertura.
+
+---
+
+## 2026-05-02 — Cross-section 2D + responsive mobile/tablet
+
+### Qué cambió
+- **Cross-section 2D modal** (#2 pendientes): proyección plana de slab a SVG full-screen.
+- **Responsive mobile/tablet**: HUD reorganizado, hamburger menu, bottom-sheets, tap targets ≥40px.
+- **CLAUDE.md**: nueva regla "Ciclo de cierre" — bitácora + tsc + tests + commit + push + deploy + bitácora segunda pasada.
+
+### Archivos creados
+- `src/components/drillhole/drillhole-3d-viewer/cross-section-2d.tsx` — modal SVG fluid, viewBox 1100×720, preserveAspectRatio. Proyección ortogonal según axis (NS→YZ, EW→XY, horizontal→XZ). Slab filter: dentro `thickness/2` opaco grueso, fuera atenuado 0.18 op. Ejes grid+ticks español. Collares verdes con holeId labels. Scale bar nice-tier dinámica. Export SVG + PNG (2× resolution) via `saveFile()` Electron-aware. Tooltip nativo `<title>` por segmento.
+
+### Archivos modificados
+- `hooks.ts`: nuevo `useIsMobile(breakpoint=768)` — matchMedia `max-width: 767px` OR `pointer:coarse AND max-width:1024px`.
+- `hud.tsx`:
+  - Prop `onOpenSection2D` + botón "2D" condicional cuando `sectionEnabled`.
+  - `useIsMobile()` + state `mobileMenuOpen`.
+  - Hamburger top-right z-30 (mobile only) toggle drawer.
+  - Drawer mobile: fixed top-[4.25rem] right-3, w-[min(88vw,22rem)], `[&_button]:min-h-[42px]`, sliders `h-3`, scroll-y interno.
+  - Toolbar actions row: `flex-wrap` siempre.
+  - Section panel: bottom full-width sheet en mobile (vs 256px sidebar desktop).
+  - Pinned interval/station: bottom-sheet full-width mobile.
+  - Drillhole list: stacked top-14 left-3 mobile (vs offset 30vw desktop), botones 40px.
+  - Compass + scale bar + legend: hidden mobile (declutter).
+  - Hint footer keys: hidden mobile.
+- `cross-section-2d.tsx` ya creado responsive: full-screen mobile (`w-full h-full`), header stack vertical mobile, botones SVG/PNG/Cerrar 40px tap targets.
+- `index.tsx`: state `showSection2D`, render `<CrossSection2D />` condicional, prop `onOpenSection2D` a HUD.
+- `CLAUDE.md`: APPEND sección "Ciclo de cierre — Regla Obligatoria" con 6 pasos obligatorios.
+
+### Decisiones técnicas
+- 2D modal usa SVG nativo (no canvas) → export SVG vector lossless + PNG raster opcional.
+- viewBox-based scaling vs fixed-pixel → fluid en cualquier viewport sin re-render.
+- Hamburger en mobile en lugar de retrofit individual cada button class → una sola condición controla drawer entero.
+- `[&_button]:min-h-[42px]` arbitrary descendant variant Tailwind → tap targets sin tocar ~40 buttons individuales.
+- `pointer:coarse` media query incluye iPad (touch) además de phones.
+
+### Verificación
+- `npx tsc --noEmit` → clean.
+- `npm test -- --run` → 166/166 verde, 11s.
+- Pablo prueba browser desktop + DevTools mobile emulation.
+
+### Pendientes próxima sesión
+- #1 Section ribbon multi-corte N≥3 sin clipping intersect.
+- #3 Drillhole thumbnails en list panel (offscreen WebGL render por hole + cache).
+- Verificar mobile real (iPhone/Android) — DevTools emulación no captura todo (touch latencia, pinch-zoom canvas, scroll bounce).

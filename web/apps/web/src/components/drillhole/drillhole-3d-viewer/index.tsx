@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import type { CameraRigHandle } from './camera-rig';
 import { Hud } from './hud';
 import { Scene } from './scene';
+import { CrossSection2D } from './cross-section-2d';
 import type { DrillHole3DViewerProps, FlatInstance, HoverInfo } from './types';
 import type { GeoStation } from '@geoagent/geo-shared/types';
 
@@ -46,6 +47,7 @@ export default function DrillHole3DViewer({
   const [measureMode, setMeasureMode] = useState(false);
   const [measurePoints, setMeasurePoints] = useState<THREE.Vector3[]>([]);
   const [measureHover, setMeasureHover] = useState<THREE.Vector3 | null>(null);
+  const [showSection2D, setShowSection2D] = useState(false);
   useEffect(() => {
     setInternalFocusId(highlightId ?? null);
   }, [highlightId]);
@@ -473,7 +475,19 @@ export default function DrillHole3DViewer({
         setHeatmapOpacity={setHeatmapOpacity}
         heatmapMinRqd={heatmapMinRqd}
         setHeatmapMinRqd={setHeatmapMinRqd}
+        onOpenSection2D={() => setShowSection2D(true)}
       />
+
+      {showSection2D && (
+        <CrossSection2D
+          flat={flat}
+          axis={sectionAxis}
+          depth={sectionDepth}
+          thickness={sectionThickness}
+          onClose={() => setShowSection2D(false)}
+          projectId={projectId}
+        />
+      )}
     </div>
   );
 }
