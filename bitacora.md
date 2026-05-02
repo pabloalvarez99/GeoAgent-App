@@ -2390,3 +2390,7 @@ React 19 + lucide-react: `React.ElementType` resuelve `className` a `never` por 
 - Ribbons thickness propio por ribbon.
 - Fence: scroll horizontal automático si totalW > viewport.
 - Fence: añadir leyenda de litología compartida abajo.
+
+### Deploy
+- CLI `vercel --prod --yes` → `dpl_EWNXoNj5Uikwce4HggAD8zZmA1Rx` Ready.
+- Alias: **https://geoagent-app.vercel.app** ✅
