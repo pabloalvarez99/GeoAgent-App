@@ -54,14 +54,30 @@ export default function DrillHole3DViewer({
   const [ribbons, setRibbons] = useState<SectionRibbon[]>([]);
   const ribbonPalette = ['#06b6d4', '#a78bfa', '#f59e0b', '#ec4899', '#10b981', '#f43f5e', '#84cc16'];
   const addRibbon = useCallback(() => {
+    const raw = typeof window !== 'undefined'
+      ? window.prompt('Nombre del corte (opcional)', '')
+      : null;
+    const name = raw?.trim() || undefined;
     setRibbons((prev) => {
       const id = `rb-${Date.now().toString(36)}-${prev.length}`;
       const color = ribbonPalette[prev.length % ribbonPalette.length];
-      return [...prev, { id, axis: sectionAxis, depth: sectionDepth, color }];
+      return [...prev, { id, axis: sectionAxis, depth: sectionDepth, color, name }];
     });
   }, [sectionAxis, sectionDepth]);
   const removeRibbon = useCallback((id: string) => {
     setRibbons((prev) => prev.filter((r) => r.id !== id));
+  }, []);
+  const renameRibbon = useCallback((id: string) => {
+    setRibbons((prev) => {
+      const rb = prev.find((r) => r.id === id);
+      if (!rb) return prev;
+      const raw = typeof window !== 'undefined'
+        ? window.prompt('Nombre del corte', rb.name ?? '')
+        : null;
+      if (raw === null) return prev;
+      const name = raw.trim() || undefined;
+      return prev.map((r) => (r.id === id ? { ...r, name } : r));
+    });
   }, []);
   const clearRibbons = useCallback(() => setRibbons([]), []);
   const activateRibbon = useCallback((rb: SectionRibbon) => {
@@ -501,6 +517,7 @@ export default function DrillHole3DViewer({
         ribbons={ribbons}
         addRibbon={addRibbon}
         removeRibbon={removeRibbon}
+        renameRibbon={renameRibbon}
         clearRibbons={clearRibbons}
         activateRibbon={activateRibbon}
         onOpenFence={() => setShowFence(true)}

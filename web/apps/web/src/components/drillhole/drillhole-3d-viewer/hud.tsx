@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import * as THREE from 'three';
-import { Bookmark, BookmarkCheck, Box, Camera, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Compass, Crosshair, Drill, Eye, EyeOff, Flame, Layers, Maximize2, Minimize2, Mountain, Pin, Ruler, Satellite, Scissors, Grid3x3, X } from 'lucide-react';
+import { Bookmark, BookmarkCheck, Box, Camera, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Compass, Crosshair, Drill, Eye, EyeOff, Flame, Layers, Maximize2, Minimize2, Mountain, Pencil, Pin, Ruler, Satellite, Scissors, Grid3x3, X } from 'lucide-react';
 import type { CameraRigHandle } from './camera-rig';
 import type { SectionRibbon } from './section-plane';
 import type { FlatInstance, HoverInfo, Preset, SceneItem } from './types';
@@ -79,6 +79,7 @@ interface Props {
   ribbons: SectionRibbon[];
   addRibbon: () => void;
   removeRibbon: (id: string) => void;
+  renameRibbon: (id: string) => void;
   clearRibbons: () => void;
   activateRibbon: (rb: SectionRibbon) => void;
   onOpenFence: () => void;
@@ -147,6 +148,7 @@ export function Hud(props: Props) {
     ribbons,
     addRibbon,
     removeRibbon,
+    renameRibbon,
     clearRibbons,
     activateRibbon,
     onOpenFence,
@@ -825,35 +827,54 @@ export function Hud(props: Props) {
               <p className="text-[9px] font-mono text-muted-foreground italic">Sin ribbons. Configura corte y pulsa +Add para fijarlo.</p>
             ) : (
               <ul className="space-y-1 max-h-32 overflow-y-auto">
-                {ribbons.map((rb, i) => (
-                  <li key={rb.id} className="flex items-center gap-1.5 text-[10px] font-mono">
-                    <span className="h-2.5 w-2.5 rounded-sm shrink-0" style={{ backgroundColor: rb.color }} />
-                    <button
-                      onClick={() => activateRibbon(rb)}
-                      className="flex-1 text-left text-foreground hover:text-cyan-200 truncate"
-                      title="Activar este corte como sección actual"
-                    >
-                      <span className="text-muted-foreground">#{i + 1}</span> {rb.axis === 'horizontal' ? 'H' : rb.axis === 'ns' ? 'N-S' : 'E-W'} @ {rb.depth.toFixed(0)} m
-                    </button>
-                    <button
-                      onClick={() => {
-                        activateRibbon(rb);
-                        onOpenSection2D();
-                      }}
-                      className="px-1.5 py-0.5 text-[9px] font-mono rounded text-cyan-200 hover:bg-cyan-700/30 shrink-0"
-                      title="Ver este ribbon en vista 2D"
-                    >
-                      2D
-                    </button>
-                    <button
-                      onClick={() => removeRibbon(rb.id)}
-                      className="text-muted-foreground hover:text-rose-300 shrink-0"
-                      title="Quitar ribbon"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </li>
-                ))}
+                {ribbons.map((rb, i) => {
+                  const axisLabel = rb.axis === 'horizontal' ? 'H' : rb.axis === 'ns' ? 'N-S' : 'E-W';
+                  const meta = `${axisLabel} @ ${rb.depth.toFixed(0)} m`;
+                  return (
+                    <li key={rb.id} className="flex items-center gap-1.5 text-[10px] font-mono">
+                      <span className="h-2.5 w-2.5 rounded-sm shrink-0" style={{ backgroundColor: rb.color }} />
+                      <button
+                        onClick={() => activateRibbon(rb)}
+                        className="flex-1 min-w-0 text-left text-foreground hover:text-cyan-200 truncate"
+                        title="Activar este corte como sección actual"
+                      >
+                        <span className="text-muted-foreground">#{i + 1}</span>{' '}
+                        {rb.name ? (
+                          <>
+                            <span className="text-foreground font-medium">{rb.name}</span>
+                            <span className="text-muted-foreground"> · {meta}</span>
+                          </>
+                        ) : (
+                          <span>{meta}</span>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => renameRibbon(rb.id)}
+                        className="text-muted-foreground hover:text-cyan-200 shrink-0"
+                        title="Renombrar ribbon"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          activateRibbon(rb);
+                          onOpenSection2D();
+                        }}
+                        className="px-1.5 py-0.5 text-[9px] font-mono rounded text-cyan-200 hover:bg-cyan-700/30 shrink-0"
+                        title="Ver este ribbon en vista 2D"
+                      >
+                        2D
+                      </button>
+                      <button
+                        onClick={() => removeRibbon(rb.id)}
+                        className="text-muted-foreground hover:text-rose-300 shrink-0"
+                        title="Quitar ribbon"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>

@@ -7,6 +7,7 @@ export interface SectionRibbon {
   axis: SectionAxis;
   depth: number;
   color: string;
+  name?: string;
 }
 
 export function SectionPlaneVisual({

@@ -169,7 +169,9 @@ export function FenceDiagram2D({ flat, ribbons, thickness, onClose, projectId }:
                     fontWeight="600"
                     textAnchor="middle"
                   >
-                    #{idx + 1} · {axisLabel} @ {p.ribbon.depth.toFixed(0)} m
+                    {p.ribbon.name
+                      ? `#${idx + 1} · ${p.ribbon.name} · ${axisLabel} @ ${p.ribbon.depth.toFixed(0)} m`
+                      : `#${idx + 1} · ${axisLabel} @ ${p.ribbon.depth.toFixed(0)} m`}
                   </text>
                   <text
                     x={xOff + PANEL_W / 2}

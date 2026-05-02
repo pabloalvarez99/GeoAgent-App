@@ -4,6 +4,25 @@
 
 ---
 
+## 2026-05-02 — Visor 3D: ribbons custom name (rename + display)
+
+### Cambios
+- **`section-plane.tsx`**: `SectionRibbon` gana campo `name?: string` opcional.
+- **`index.tsx`**: `addRibbon` ahora pide nombre via `window.prompt('Nombre del corte (opcional)', '')`. Trim + empty string → `undefined` (cae a label automático). Nuevo `renameRibbon(id)` con prompt prellenado del nombre actual; cancel preserva, vacío borra el nombre.
+- **`hud.tsx`**: lista ribbon muestra nombre en negrita + meta `axis @ depth m` en gris si tiene nombre, o solo meta si no. Nuevo botón ✏ Pencil entre activate/2D para renombrar in-place. Tap targets 36px+ mantenidos.
+- **`fence-diagram-2d.tsx`**: header panel muestra `#i · <name> · axis @ depth m` si `ribbon.name` está, fallback a label original.
+
+### UX
+- Identificación rápida en proyectos con 5+ cortes (ej. "Veta principal", "Falla regional NW")
+- Headers fence diagram legibles en exports SVG/PNG con nombres descriptivos
+- Sin migración: ribbons existentes funcionan sin nombre (campo opcional)
+
+### Verificación
+- `npx tsc --noEmit`: clean
+- `npm test -- --run`: 166/166 verde
+
+---
+
 ## 2026-05-02 — Visor 3D: refactor utils-section (extracción projection logic)
 
 ### Cambios
