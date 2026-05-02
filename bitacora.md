@@ -2258,3 +2258,14 @@ React 19 + lucide-react: `React.ElementType` resuelve `className` a `never` por 
 - Alias prod: **https://geoagent-app.vercel.app** ✅
 - Otros aliases: `web-pablo-figueroas-projects-015bb2fb.vercel.app`, `web-git-master-...`.
 - Nota CLI: `vercel --prod` desde repo root deploya proyecto incorrecto (`vercel-deploy-bay-rho`). El proyecto correcto (`web`) auto-deploya vía push a master. Si requiere CLI manual, deploy directo no funciona por path doubling de rootDirectory remoto — usar push o Vercel UI redeploy.
+
+### Fix Vercel CLI deploy (post-mortem)
+- **Problema**: `vercel --prod` desde repo root deployaba proyecto incorrecto (`vercel-deploy-bay-rho`). Desde `web/` o `web/apps/web/` fallaba con path doubling (`~\...\web\apps\web\web\apps\web`).
+- **Causa root**: 3 `.vercel/` directorios — repo root linkeado al proyecto wrong, `web/.vercel` y `web/apps/web/.vercel` linkeados al proyecto correcto pero ejecutar desde ahí + `rootDirectory: web/apps/web` remoto = path appended dos veces.
+- **Fix aplicado**:
+  1. `rm -rf .vercel` (repo root, proyecto incorrecto)
+  2. `vercel link --yes --project web` (relink repo root → "web")
+  3. `rm -rf web/.vercel web/apps/web/.vercel` (cleanup links redundantes)
+  4. `.vercel` ya está en `.gitignore` — no commit needed
+- **Verificación**: `vercel --prod --yes` desde repo root → `dpl_5aYv2WsLXtwGDWYMQeJDbhK6FE93` Ready, alias `geoagent-app.vercel.app` ✅.
+- **Regla**: solo mantener `.vercel/` en repo root. Si reaparece en subdirs, eliminar.
