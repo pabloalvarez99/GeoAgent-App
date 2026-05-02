@@ -2439,3 +2439,9 @@ React 19 + lucide-react: `React.ElementType` resuelve `className` a `never` por 
 ### Deploy
 - CLI `vercel --prod --yes` → `dpl_EWNXoNj5Uikwce4HggAD8zZmA1Rx` Ready.
 - Alias: **https://geoagent-app.vercel.app** ✅
+
+### Deploy
+- URL: https://web-bsfgbvz1o-pablo-figueroas-projects-015bb2fb.vercel.app
+- Estado: READY (prod)
+- Alias prod: https://geoagent-app.vercel.app
+- ⚠ Gotcha repetido: corrí `vercel --prod --yes` desde `web/apps/web/` y creó `.vercel/` local → path doubling (`web/apps/web/web/apps/web`). Fix: `rm -rf .vercel` y redeploy desde repo root. Confirma regla CLAUDE.md: solo `.vercel/` en repo root.
