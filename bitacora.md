@@ -2528,3 +2528,8 @@ TS clean · 166/166 tests verde.
 3. Cross-section drag/zoom/DXF
 4. Ribbons drag&drop + color picker + duplicate
 5. Project list "Ver en 3D" button
+
+### Deploy fence polish
+- URL: https://web-nh1cpqvij-pablo-figueroas-projects-015bb2fb.vercel.app
+- Estado: READY (prod)
+- Alias: https://geoagent-app.vercel.app
