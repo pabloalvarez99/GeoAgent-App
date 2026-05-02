@@ -2355,3 +2355,7 @@ React 19 + lucide-react: `React.ElementType` resuelve `className` a `never` por 
 - Cross-section 2D fence diagram (multi-ribbon overlay/unfold).
 - Ribbons custom name + slab thickness propio.
 - Export pack: bundle multi-ribbon SVG (ZIP).
+
+### Deploy
+- CLI `vercel --prod --yes` → `dpl_HgN4mSMoqevH1GJ18iepNGM55fWf` Ready.
+- Alias: **https://geoagent-app.vercel.app** ✅
