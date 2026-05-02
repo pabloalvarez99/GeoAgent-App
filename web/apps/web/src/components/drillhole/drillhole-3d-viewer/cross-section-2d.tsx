@@ -4,6 +4,7 @@ import { useCallback, useMemo } from 'react';
 import { saveFile } from '@/lib/electron';
 import type { FlatInstance } from './types';
 import type { SectionAxis } from './section-plane';
+import { buildSection } from './utils-section';
 
 interface Props {
   flat: FlatInstance[];
@@ -19,57 +20,11 @@ const H = 720;
 const M = 70;
 
 export function CrossSection2D({ flat, axis, depth, thickness, onClose, projectId }: Props) {
-  const segments = useMemo(() => {
-    return flat.map((f) => {
-      const sx = f.collar.x + f.direction.x * f.fromDepth;
-      const sy = f.collar.y + f.direction.y * f.fromDepth;
-      const sz = f.collar.z + f.direction.z * f.fromDepth;
-      const ex = f.collar.x + f.direction.x * f.toDepth;
-      const ey = f.collar.y + f.direction.y * f.toDepth;
-      const ez = f.collar.z + f.direction.z * f.toDepth;
-      let u1: number, v1: number, u2: number, v2: number, perp1: number, perp2: number;
-      if (axis === 'ns') {
-        u1 = sz; v1 = sy; u2 = ez; v2 = ey;
-        perp1 = sx - depth; perp2 = ex - depth;
-      } else if (axis === 'ew') {
-        u1 = sx; v1 = sy; u2 = ex; v2 = ey;
-        perp1 = sz - depth; perp2 = ez - depth;
-      } else {
-        u1 = sx; v1 = sz; u2 = ex; v2 = ez;
-        perp1 = sy - depth; perp2 = ey - depth;
-      }
-      const half = thickness > 0 ? thickness / 2 : Infinity;
-      const inSlab = thickness > 0 ? Math.min(Math.abs(perp1), Math.abs(perp2)) <= half : true;
-      return {
-        u1, v1, u2, v2,
-        color: f.color,
-        holeId: f.hole.id,
-        holeLabel: f.hole.holeId,
-        rockType: f.interval.rockType,
-        rockGroup: f.interval.rockGroup,
-        fromDepth: f.fromDepth,
-        toDepth: f.toDepth,
-        inSlab,
-      };
-    });
-  }, [flat, axis, depth, thickness]);
-
-  const visible = useMemo(() => segments.filter((s) => s.inSlab), [segments]);
-
-  const bounds = useMemo(() => {
-    const src = visible.length > 0 ? visible : segments;
-    if (src.length === 0) return { umin: -100, umax: 100, vmin: -100, vmax: 100 };
-    let umin = Infinity, umax = -Infinity, vmin = Infinity, vmax = -Infinity;
-    src.forEach((s) => {
-      umin = Math.min(umin, s.u1, s.u2);
-      umax = Math.max(umax, s.u1, s.u2);
-      vmin = Math.min(vmin, s.v1, s.v2);
-      vmax = Math.max(vmax, s.v1, s.v2);
-    });
-    const padU = (umax - umin) * 0.08 + 5;
-    const padV = (vmax - vmin) * 0.08 + 5;
-    return { umin: umin - padU, umax: umax + padU, vmin: vmin - padV, vmax: vmax + padV };
-  }, [segments, visible]);
+  const section = useMemo(
+    () => buildSection(flat, axis, depth, thickness),
+    [flat, axis, depth, thickness],
+  );
+  const { segments, visible, collars, bounds, vIsElev } = section;
 
   const uRange = bounds.umax - bounds.umin || 1;
   const vRange = bounds.vmax - bounds.vmin || 1;
@@ -79,7 +34,6 @@ export function CrossSection2D({ flat, axis, depth, thickness, onClose, projectI
   const offU = (W - 2 * M - uRange * scale) / 2;
   const offV = (H - 2 * M - vRange * scale) / 2;
   const toX = (u: number) => M + offU + (u - bounds.umin) * scale;
-  const vIsElev = axis !== 'horizontal';
   const toY = (v: number) =>
     vIsElev
       ? H - M - offV - (v - bounds.vmin) * scale
@@ -93,20 +47,6 @@ export function CrossSection2D({ flat, axis, depth, thickness, onClose, projectI
       : axis === 'ew'
       ? `Sección E-W @ Z = ${depth.toFixed(1)} m${thickness > 0 ? ` · slab ±${(thickness / 2).toFixed(1)} m` : ''}`
       : `Plano horizontal @ Y = ${depth.toFixed(1)} m${thickness > 0 ? ` · slab ±${(thickness / 2).toFixed(1)} m` : ''}`;
-
-  const collars = useMemo(() => {
-    const map = new Map<string, { u: number; v: number; label: string }>();
-    flat.forEach((f) => {
-      if (map.has(f.hole.id)) return;
-      const cx = f.collar.x, cy = f.collar.y, cz = f.collar.z;
-      let u: number, v: number;
-      if (axis === 'ns') { u = cz; v = cy; }
-      else if (axis === 'ew') { u = cx; v = cy; }
-      else { u = cx; v = cz; }
-      map.set(f.hole.id, { u, v, label: f.hole.holeId });
-    });
-    return [...map.values()];
-  }, [flat, axis]);
 
   const onExportPng = useCallback(async () => {
     const svg = document.getElementById('cross-section-svg') as SVGSVGElement | null;

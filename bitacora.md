@@ -4,6 +4,20 @@
 
 ---
 
+## 2026-05-02 — Visor 3D: refactor utils-section (extracción projection logic)
+
+### Cambios
+- **`utils-section.ts` nuevo**: extrae `projectAxis(axis,x,y,z) → [u,v,perp]` + `buildSection(flat,axis,depth,thickness) → {segments,visible,collars,bounds,vIsElev}`. Tipos exportados: `SectionSegment`, `SectionCollar`, `SectionBounds`, `SectionData`. Lógica idéntica a la duplicada antes en `cross-section-2d.tsx` y `fence-diagram-2d.tsx`.
+- **`cross-section-2d.tsx`**: reemplaza ~60 líneas de proyección/bounds inline por `buildSection()` único. Mantiene scaling, ticks, scale bar, exports SVG/PNG sin cambios.
+- **`fence-diagram-2d.tsx`**: elimina `projectAxis` y `buildPanel` locales. `panels = ribbons.map(rb => ({ribbon: rb, ...buildSection(flat, rb.axis, rb.depth, thickness)}))`. `PanelData extends SectionData & {ribbon}`.
+- **Resultado**: una única fuente de verdad para projection logic. Si añade axis nuevo o cambia padding/slab semantics, cambia en un solo sitio. Setup para pendientes #2 (ribbon name) y #3 (thickness propio per-ribbon).
+
+### Verificación
+- `npx tsc --noEmit`: clean
+- `npm test -- --run`: 166/166 verde
+
+---
+
 ## 2026-05-01 — Visor 3D: stations clickables + acceso desde home + sessionStorage DEM cache + heatmap RQD voxels
 
 ### Cambios
