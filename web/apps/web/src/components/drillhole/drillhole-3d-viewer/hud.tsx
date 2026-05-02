@@ -82,6 +82,8 @@ interface Props {
   renameRibbon: (id: string) => void;
   clearRibbons: () => void;
   activateRibbon: (rb: SectionRibbon) => void;
+  setRibbonThickness: (id: string, value: number) => void;
+  sectionRangeSpan: number;
   onOpenFence: () => void;
 }
 
@@ -151,8 +153,11 @@ export function Hud(props: Props) {
     renameRibbon,
     clearRibbons,
     activateRibbon,
+    setRibbonThickness,
+    sectionRangeSpan,
     onOpenFence,
   } = props;
+  const ribbonThicknessMax = Math.max(50, Math.round(sectionRangeSpan / 4));
 
   const isMobile = useIsMobile();
   const [statsOpen, setStatsOpen] = useState(false);
@@ -830,8 +835,10 @@ export function Hud(props: Props) {
                 {ribbons.map((rb, i) => {
                   const axisLabel = rb.axis === 'horizontal' ? 'H' : rb.axis === 'ns' ? 'N-S' : 'E-W';
                   const meta = `${axisLabel} @ ${rb.depth.toFixed(0)} m`;
+                  const thk = rb.thickness ?? 0;
                   return (
-                    <li key={rb.id} className="flex items-center gap-1.5 text-[10px] font-mono">
+                    <li key={rb.id} className="flex flex-col gap-0.5 text-[10px] font-mono">
+                      <div className="flex items-center gap-1.5">
                       <span className="h-2.5 w-2.5 rounded-sm shrink-0" style={{ backgroundColor: rb.color }} />
                       <button
                         onClick={() => activateRibbon(rb)}
@@ -872,6 +879,23 @@ export function Hud(props: Props) {
                       >
                         <X className="h-3 w-3" />
                       </button>
+                      </div>
+                      <div className="flex items-center gap-1.5 pl-4">
+                        <span className="text-[9px] text-muted-foreground shrink-0">slab</span>
+                        <input
+                          type="range"
+                          min={0}
+                          max={ribbonThicknessMax}
+                          step={1}
+                          value={thk}
+                          onChange={(e) => setRibbonThickness(rb.id, Number(e.target.value))}
+                          className="flex-1 accent-cyan-500 h-1"
+                          title="Grosor slab por ribbon"
+                        />
+                        <span className="text-[9px] text-foreground/80 tabular-nums w-10 text-right">
+                          {thk === 0 ? '–' : `${thk.toFixed(0)} m`}
+                        </span>
+                      </div>
                     </li>
                   );
                 })}

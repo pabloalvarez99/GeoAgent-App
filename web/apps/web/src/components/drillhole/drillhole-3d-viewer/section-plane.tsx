@@ -8,6 +8,7 @@ export interface SectionRibbon {
   depth: number;
   color: string;
   name?: string;
+  thickness?: number;
 }
 
 export function SectionPlaneVisual({

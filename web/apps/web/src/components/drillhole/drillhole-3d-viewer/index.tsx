@@ -61,9 +61,12 @@ export default function DrillHole3DViewer({
     setRibbons((prev) => {
       const id = `rb-${Date.now().toString(36)}-${prev.length}`;
       const color = ribbonPalette[prev.length % ribbonPalette.length];
-      return [...prev, { id, axis: sectionAxis, depth: sectionDepth, color, name }];
+      return [...prev, { id, axis: sectionAxis, depth: sectionDepth, color, name, thickness: sectionThickness }];
     });
-  }, [sectionAxis, sectionDepth]);
+  }, [sectionAxis, sectionDepth, sectionThickness]);
+  const setRibbonThickness = useCallback((id: string, value: number) => {
+    setRibbons((prev) => prev.map((r) => (r.id === id ? { ...r, thickness: value } : r)));
+  }, []);
   const removeRibbon = useCallback((id: string) => {
     setRibbons((prev) => prev.filter((r) => r.id !== id));
   }, []);
@@ -83,6 +86,7 @@ export default function DrillHole3DViewer({
   const activateRibbon = useCallback((rb: SectionRibbon) => {
     setSectionAxis(rb.axis);
     setSectionDepth(rb.depth);
+    if (typeof rb.thickness === 'number') setSectionThickness(rb.thickness);
     setSectionEnabled(true);
   }, []);
   useEffect(() => {
@@ -520,6 +524,8 @@ export default function DrillHole3DViewer({
         renameRibbon={renameRibbon}
         clearRibbons={clearRibbons}
         activateRibbon={activateRibbon}
+        setRibbonThickness={setRibbonThickness}
+        sectionRangeSpan={sectionRange.max - sectionRange.min}
         onOpenFence={() => setShowFence(true)}
       />
 
@@ -538,7 +544,7 @@ export default function DrillHole3DViewer({
         <FenceDiagram2D
           flat={flat}
           ribbons={ribbons}
-          thickness={sectionThickness}
+          fallbackThickness={sectionThickness}
           onClose={() => setShowFence(false)}
           projectId={projectId}
         />

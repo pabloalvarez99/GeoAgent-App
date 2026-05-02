@@ -13,7 +13,7 @@ interface PanelData extends SectionData {
 interface Props {
   flat: FlatInstance[];
   ribbons: SectionRibbon[];
-  thickness: number;
+  fallbackThickness: number;
   onClose: () => void;
   projectId?: string;
 }
@@ -24,10 +24,14 @@ const PANEL_M = 50;
 const GAP = 16;
 const HEADER_H = 64;
 
-export function FenceDiagram2D({ flat, ribbons, thickness, onClose, projectId }: Props) {
+export function FenceDiagram2D({ flat, ribbons, fallbackThickness, onClose, projectId }: Props) {
   const panels = useMemo<PanelData[]>(
-    () => ribbons.map((rb) => ({ ribbon: rb, ...buildSection(flat, rb.axis, rb.depth, thickness) })),
-    [flat, ribbons, thickness],
+    () =>
+      ribbons.map((rb) => ({
+        ribbon: rb,
+        ...buildSection(flat, rb.axis, rb.depth, rb.thickness ?? fallbackThickness),
+      })),
+    [flat, ribbons, fallbackThickness],
   );
 
   // shared vertical scale across panels (uniform vertical exaggeration)
@@ -99,10 +103,9 @@ export function FenceDiagram2D({ flat, ribbons, thickness, onClose, projectId }:
           <div className="min-w-0">
             <h3 className="text-cyan-200 text-xs sm:text-sm font-medium font-mono truncate">
               Fence diagram · {panels.length} cortes
-              {thickness > 0 ? ` · slab ±${(thickness / 2).toFixed(1)} m` : ''}
             </h3>
             <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
-              Escala compartida entre paneles
+              Escala compartida · slab por ribbon
             </p>
           </div>
           <div className="flex gap-2 shrink-0">
@@ -147,6 +150,8 @@ export function FenceDiagram2D({ flat, ribbons, thickness, onClose, projectId }:
                   : HEADER_H + PANEL_M + offV + (v - p.bounds.vmin) * sharedScale;
               const axisLabel =
                 p.ribbon.axis === 'ns' ? 'N-S' : p.ribbon.axis === 'ew' ? 'E-W' : 'H';
+              const panelThk = p.ribbon.thickness ?? fallbackThickness;
+              const thkLabel = panelThk > 0 ? ` · slab ±${(panelThk / 2).toFixed(1)} m` : '';
               return (
                 <g key={p.ribbon.id}>
                   {/* panel header */}
@@ -170,8 +175,8 @@ export function FenceDiagram2D({ flat, ribbons, thickness, onClose, projectId }:
                     textAnchor="middle"
                   >
                     {p.ribbon.name
-                      ? `#${idx + 1} · ${p.ribbon.name} · ${axisLabel} @ ${p.ribbon.depth.toFixed(0)} m`
-                      : `#${idx + 1} · ${axisLabel} @ ${p.ribbon.depth.toFixed(0)} m`}
+                      ? `#${idx + 1} · ${p.ribbon.name} · ${axisLabel} @ ${p.ribbon.depth.toFixed(0)} m${thkLabel}`
+                      : `#${idx + 1} · ${axisLabel} @ ${p.ribbon.depth.toFixed(0)} m${thkLabel}`}
                   </text>
                   <text
                     x={xOff + PANEL_W / 2}
