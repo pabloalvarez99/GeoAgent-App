@@ -2466,3 +2466,8 @@ Native `<title>` SVG es lento + no estilizable. Custom tooltip con la misma data
 
 ### Resultado
 TS clean · 166/166 tests verde.
+
+### Deploy
+- URL: https://web-8pn5k8erk-pablo-figueroas-projects-015bb2fb.vercel.app
+- Estado: READY (prod)
+- Alias prod: https://geoagent-app.vercel.app
