@@ -2297,3 +2297,7 @@ React 19 + lucide-react: `React.ElementType` resuelve `className` a `never` por 
 - Cross-section 2D: añadir overlay multi-ribbon (renderizar todos los ribbons en una sola vista 2D superpuesta — fence diagram).
 - Ribbons: nombrar/etiquetar custom (input al agregar).
 - Ribbons: thickness propio por ribbon (slab varying).
+
+### Deploy
+- CLI: `vercel --prod --yes` desde repo root → `web-rbtld3ep1` Ready, ~30s.
+- Alias: **https://geoagent-app.vercel.app** ✅
