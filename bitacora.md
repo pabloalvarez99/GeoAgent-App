@@ -2560,3 +2560,9 @@ TS clean · 166/166 verde.
 3. Cross-section drag/zoom/DXF
 4. Ribbons drag&drop + color picker + duplicate
 5. ~~Project list "Ver en 3D"~~ ✅
+
+### Deploy project list 3D button
+- URL: https://web-cjh360qgc-pablo-figueroas-projects-015bb2fb.vercel.app
+- Estado: READY (prod)
+- Alias: https://geoagent-app.vercel.app
+- Nota: primer intento `vercel --prod` devolvió "Deployment not found" (transitorio Vercel API), retry inmediato OK.
