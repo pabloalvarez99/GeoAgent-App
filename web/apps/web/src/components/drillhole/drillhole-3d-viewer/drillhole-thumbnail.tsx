@@ -20,6 +20,29 @@ function DrillholeThumbnailImpl({ intervals, totalDepth, width = 26, height = 64
     }));
   }, [intervals, totalDepth, height]);
 
+  const tooltip = useMemo(() => {
+    if (intervals.length === 0) return `${totalDepth.toFixed(0)} m · sin intervalos`;
+    const rqdVals = intervals.map((i) => i.rqd).filter((v): v is number => v != null);
+    const recVals = intervals.map((i) => i.recovery).filter((v): v is number => v != null);
+    const meanRqd = rqdVals.length ? rqdVals.reduce((a, b) => a + b, 0) / rqdVals.length : null;
+    const meanRec = recVals.length ? recVals.reduce((a, b) => a + b, 0) / recVals.length : null;
+    const groupCounts = new Map<string, number>();
+    intervals.forEach((iv) => {
+      const g = iv.rockGroup || 'Otro';
+      groupCounts.set(g, (groupCounts.get(g) ?? 0) + (iv.toDepth - iv.fromDepth));
+    });
+    const groupPct = [...groupCounts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([g, m]) => `${g} ${Math.round((m / totalDepth) * 100)}%`)
+      .slice(0, 3)
+      .join(' · ');
+    const lines = [`${totalDepth.toFixed(0)} m · ${intervals.length} intervalos`];
+    if (groupPct) lines.push(groupPct);
+    if (meanRqd != null) lines.push(`RQD prom ${meanRqd.toFixed(0)}%`);
+    if (meanRec != null) lines.push(`Rec prom ${meanRec.toFixed(0)}%`);
+    return lines.join('\n');
+  }, [intervals, totalDepth]);
+
   return (
     <svg
       width={width}
@@ -28,6 +51,7 @@ function DrillholeThumbnailImpl({ intervals, totalDepth, width = 26, height = 64
       style={{ display: 'block', flexShrink: 0 }}
       aria-hidden
     >
+      <title>{tooltip}</title>
       <rect x={0} y={0} width={width} height={height} fill="#0b1220" rx={2} />
       <rect
         x={0.5}

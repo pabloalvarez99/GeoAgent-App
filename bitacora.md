@@ -2334,3 +2334,24 @@ React 19 + lucide-react: `React.ElementType` resuelve `className` a `never` por 
 ### Deploy
 - CLI `vercel --prod --yes` → `web-c6zc97xvc` Ready.
 - Alias: **https://geoagent-app.vercel.app** ✅
+
+---
+
+## 2026-05-02 — Ribbon → 2D shortcut + thumbnail tooltips
+
+### Qué cambió
+- **Botón 2D por ribbon**: en lista de ribbons, click "2D" activa ese corte + abre modal cross-section 2D directamente. UX mining: viste varios planes superpuestos en 3D, eliges uno, lo abres a 2D vector.
+- **Thumbnail tooltip**: hover thumbnail SVG → native tooltip multi-línea con depth, # intervalos, top 3 grupos litológicos %, RQD prom, Rec prom.
+
+### Archivos modificados
+- `hud.tsx`: ribbon list item ahora tiene 3 acciones (label activate / 2D shortcut / X remove).
+- `drillhole-thumbnail.tsx`: useMemo `tooltip` calcula stats. `<title>` SVG inside.
+
+### Verificación
+- `npx tsc --noEmit` → clean.
+- `npm test -- --run` → 166/166 verde, 12s.
+
+### Pendientes próxima sesión
+- Cross-section 2D fence diagram (multi-ribbon overlay/unfold).
+- Ribbons custom name + slab thickness propio.
+- Export pack: bundle multi-ribbon SVG (ZIP).

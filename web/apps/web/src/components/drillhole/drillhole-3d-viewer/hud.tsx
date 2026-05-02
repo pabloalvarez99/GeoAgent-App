@@ -825,6 +825,16 @@ export function Hud(props: Props) {
                       <span className="text-muted-foreground">#{i + 1}</span> {rb.axis === 'horizontal' ? 'H' : rb.axis === 'ns' ? 'N-S' : 'E-W'} @ {rb.depth.toFixed(0)} m
                     </button>
                     <button
+                      onClick={() => {
+                        activateRibbon(rb);
+                        onOpenSection2D();
+                      }}
+                      className="px-1.5 py-0.5 text-[9px] font-mono rounded text-cyan-200 hover:bg-cyan-700/30 shrink-0"
+                      title="Ver este ribbon en vista 2D"
+                    >
+                      2D
+                    </button>
+                    <button
                       onClick={() => removeRibbon(rb.id)}
                       className="text-muted-foreground hover:text-rose-300 shrink-0"
                       title="Quitar ribbon"
