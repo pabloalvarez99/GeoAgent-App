@@ -5,6 +5,7 @@ import { saveFile } from '@/lib/electron';
 import type { FlatInstance } from './types';
 import type { SectionRibbon } from './section-plane';
 import { buildSection, type SectionData } from './utils-section';
+import { useIsMobile } from './hooks';
 
 interface PanelData extends SectionData {
   ribbon: SectionRibbon;
@@ -23,8 +24,11 @@ const PANEL_H = 600;
 const PANEL_M = 50;
 const GAP = 16;
 const HEADER_H = 64;
+const LEGEND_ROW_H = 18;
+const LEGEND_PAD = 14;
 
 export function FenceDiagram2D({ flat, ribbons, fallbackThickness, onClose, projectId }: Props) {
+  const isMobile = useIsMobile();
   const panels = useMemo<PanelData[]>(
     () =>
       ribbons.map((rb) => ({
@@ -33,6 +37,19 @@ export function FenceDiagram2D({ flat, ribbons, fallbackThickness, onClose, proj
       })),
     [flat, ribbons, fallbackThickness],
   );
+
+  // shared lithology legend across all panels (unique rockType + color)
+  const lithoLegend = useMemo(() => {
+    const map = new Map<string, string>();
+    panels.forEach((p) =>
+      p.segments.forEach((s) => {
+        const key = (s.rockType ?? '').trim();
+        if (!key) return;
+        if (!map.has(key)) map.set(key, s.color);
+      }),
+    );
+    return Array.from(map.entries()).map(([rockType, color]) => ({ rockType, color }));
+  }, [panels]);
 
   // shared vertical scale across panels (uniform vertical exaggeration)
   const sharedScale = useMemo(() => {
@@ -48,7 +65,12 @@ export function FenceDiagram2D({ flat, ribbons, fallbackThickness, onClose, proj
   }, [panels]);
 
   const totalW = panels.length === 0 ? PANEL_W : panels.length * PANEL_W + (panels.length - 1) * GAP;
-  const totalH = PANEL_H + HEADER_H;
+  // legend wraps in rows based on item width estimate (~140px per item incl swatch)
+  const LEGEND_ITEM_W = 150;
+  const legendCols = Math.max(1, Math.floor((totalW - PANEL_M) / LEGEND_ITEM_W));
+  const legendRows = lithoLegend.length === 0 ? 0 : Math.ceil(lithoLegend.length / legendCols);
+  const LEGEND_H = legendRows === 0 ? 0 : legendRows * LEGEND_ROW_H + LEGEND_PAD * 2 + 18;
+  const totalH = PANEL_H + HEADER_H + LEGEND_H;
 
   const onExportSvg = useCallback(async () => {
     const svg = document.getElementById('fence-svg') as SVGSVGElement | null;
@@ -129,13 +151,19 @@ export function FenceDiagram2D({ flat, ribbons, fallbackThickness, onClose, proj
             </button>
           </div>
         </div>
-        <div className="flex-1 min-h-0 overflow-auto p-1 sm:p-2 flex items-center justify-center">
+        <div className={`flex-1 min-h-0 overflow-auto p-1 sm:p-2 ${isMobile ? '' : 'flex items-center justify-center'}`}>
           <svg
             id="fence-svg"
             xmlns="http://www.w3.org/2000/svg"
             viewBox={`0 0 ${totalW} ${totalH}`}
             preserveAspectRatio="xMidYMid meet"
-            style={{ background: '#0b1220', display: 'block', maxWidth: '100%', maxHeight: '100%' }}
+            width={isMobile ? totalW : undefined}
+            height={isMobile ? totalH : undefined}
+            style={
+              isMobile
+                ? { background: '#0b1220', display: 'block' }
+                : { background: '#0b1220', display: 'block', maxWidth: '100%', maxHeight: '100%' }
+            }
           >
             {panels.map((p, idx) => {
               const xOff = idx * (PANEL_W + GAP);
@@ -265,7 +293,7 @@ export function FenceDiagram2D({ flat, ribbons, fallbackThickness, onClose, proj
               );
             })}
 
-            {/* shared scale bar bottom-left */}
+            {/* shared scale bar bottom-left of panels (above legend) */}
             {panels.length > 0 && sharedScale > 0 && (() => {
               const targetPx = 100;
               const meters = targetPx / sharedScale;
@@ -274,7 +302,7 @@ export function FenceDiagram2D({ flat, ribbons, fallbackThickness, onClose, proj
               for (const t of tiers) if (t <= meters) best = t;
               const px = best * sharedScale;
               return (
-                <g transform={`translate(${PANEL_M / 2 + 8}, ${totalH - 12})`}>
+                <g transform={`translate(${PANEL_M / 2 + 8}, ${HEADER_H + PANEL_H - 12})`}>
                   <line x1={0} y1={0} x2={px} y2={0} stroke="#cbd5e1" strokeWidth={2} />
                   <line x1={0} y1={-4} x2={0} y2={4} stroke="#cbd5e1" strokeWidth={2} />
                   <line x1={px} y1={-4} x2={px} y2={4} stroke="#cbd5e1" strokeWidth={2} />
@@ -284,6 +312,48 @@ export function FenceDiagram2D({ flat, ribbons, fallbackThickness, onClose, proj
                 </g>
               );
             })()}
+
+            {/* shared lithology legend bottom band */}
+            {lithoLegend.length > 0 && (
+              <g transform={`translate(0, ${HEADER_H + PANEL_H})`}>
+                <rect
+                  x={PANEL_M / 2}
+                  y={LEGEND_PAD - 4}
+                  width={totalW - PANEL_M}
+                  height={LEGEND_H - LEGEND_PAD}
+                  fill="#0f172a"
+                  stroke="#1e293b"
+                  strokeWidth={0.8}
+                  rx={4}
+                />
+                <text
+                  x={PANEL_M / 2 + 10}
+                  y={LEGEND_PAD + 10}
+                  fill="#cbd5e1"
+                  fontSize="11"
+                  fontFamily="monospace"
+                  fontWeight="600"
+                >
+                  Litología
+                </text>
+                <g transform={`translate(${PANEL_M / 2 + 10}, ${LEGEND_PAD + 22})`}>
+                  {lithoLegend.map((l, i) => {
+                    const col = i % legendCols;
+                    const row = Math.floor(i / legendCols);
+                    const x = col * LEGEND_ITEM_W;
+                    const y = row * LEGEND_ROW_H;
+                    return (
+                      <g key={l.rockType} transform={`translate(${x}, ${y})`}>
+                        <rect width={14} height={10} y={-9} fill={l.color} stroke="#0b1220" strokeWidth={0.5} />
+                        <text x={20} y={0} fill="#e2e8f0" fontSize="10" fontFamily="monospace">
+                          {l.rockType.length > 22 ? l.rockType.slice(0, 21) + '…' : l.rockType}
+                        </text>
+                      </g>
+                    );
+                  })}
+                </g>
+              </g>
+            )}
           </svg>
         </div>
       </div>

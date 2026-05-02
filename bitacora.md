@@ -2502,3 +2502,29 @@ TS clean · 166/166 verde.
 - URL: https://web-rf98jpq7n-pablo-figueroas-projects-015bb2fb.vercel.app
 - Estado: READY (prod)
 - Acceso demo: `/dev/seed` → "Crear demo SE (Coquimbo)" → redirect automático a visor 3D
+
+---
+
+## 2026-05-02 — Fence diagram polish (scroll-x mobile + leyenda lito)
+
+### Cambio
+Pendiente #1 fence: scroll horizontal automático en mobile + leyenda de litología compartida en banda inferior.
+
+- `fence-diagram-2d.tsx`:
+  - `useIsMobile()` → en mobile el SVG usa `width={totalW}` `height={totalH}` intrínsecos sin `maxWidth`, wrapper `overflow-auto` → scroll-x natural cuando `totalW > viewport`. Desktop conserva fit con `maxWidth/maxHeight: 100%`.
+  - `lithoLegend` recolectado de todos los panels (unique `rockType + color`, primer match gana).
+  - `LEGEND_H` reservado en `totalH`; banda inferior con grid de items (`LEGEND_ITEM_W=150`, columnas calculadas según ancho disponible, swatch + label truncado a 22 chars).
+  - Scale bar reubicado a `HEADER_H + PANEL_H - 12` (justo bajo paneles, antes chocaba con leyenda).
+
+### Por qué
+En mobile/tablet con 3+ ribbons el SVG entero se aplastaba a ancho de viewport perdiendo legibilidad. Ahora scroll lateral mantiene escala real. Leyenda compartida elimina ambigüedad de colores entre panels (antes solo tooltip por segmento).
+
+### Resultado
+TS clean · 166/166 tests verde.
+
+### Pendiente próx sesión
+1. ~~Fence scroll-x + leyenda~~ ✅
+2. Thumbnails 3D WebGL offscreen
+3. Cross-section drag/zoom/DXF
+4. Ribbons drag&drop + color picker + duplicate
+5. Project list "Ver en 3D" button
