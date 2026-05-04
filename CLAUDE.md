@@ -1,3 +1,36 @@
+## 💸 Ahorro de tokens — Handoff entre sesiones (OBLIGATORIO)
+
+**Cuando el contexto se acerque al límite (~70% lleno, o antes si la sesión es densa), NO seguir trabajando en la misma sesión.** En su lugar:
+
+1. **Detener trabajo activo** en un punto seguro (task/step terminada, no a mitad de un edit).
+2. **Generar prompt de handoff** con todo lo necesario para que una sesión nueva continúe sin contexto previo. Guardarlo en `tasks/handoff-YYYY-MM-DD-HHMM.md` con:
+   - **Estado actual:** qué task/step del plan está completa, cuál sigue
+   - **Archivos tocados en esta sesión** (paths absolutos + qué cambió)
+   - **Commits hechos** (SHA + mensaje corto)
+   - **Pendiente inmediato:** próximo paso concreto, comando exacto a correr
+   - **Bloqueos/decisiones abiertas** si las hay
+   - **Plan/spec activo:** path al `.md` en `docs/superpowers/{plans,specs}/`
+   - **Prompt copy-paste** para arrancar nueva sesión: "Lee `docs/superpowers/plans/<plan>.md` + `tasks/handoff-<file>.md`, continúa desde Task N Step M."
+3. **Commit del handoff:** `git commit -m "docs(handoff): pause sesión <fecha> en task N step M"`
+4. **Avisar al usuario:** entregar el path del handoff + prompt listo para pegar en sesión nueva.
+5. **Cerrar sesión actual** sin seguir trabajando.
+
+Razón: tokens caros. Sesiones largas inflan input cost cada turno (cache miss + history). Mejor cortar limpio + reanudar fresh con contexto comprimido en handoff que arrastrar 100k tokens muertos.
+
+Trigger señales para cortar:
+- Conversación >40 turnos
+- Más de 3 archivos grandes (>500 líneas) leídos
+- `/context` reporta >60% usado
+- Sensación de "ya leí mucho de esto antes" → cortar
+- Antes de empezar task pesada nueva si contexto ya alto
+
+NO cortar a mitad de:
+- Edit en progreso
+- Test corriendo
+- Commit/push en flight
+
+---
+
 ## ⚠️ PRIORIDAD DEL PROYECTO — LEER PRIMERO
 
 **WEB + ELECTRON.** Plataformas activas: web (`web/`) y desktop Electron. Android **DESACTIVADO** (2026-04-29).
