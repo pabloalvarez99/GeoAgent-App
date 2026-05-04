@@ -2566,3 +2566,36 @@ TS clean · 166/166 verde.
 - Estado: READY (prod)
 - Alias: https://geoagent-app.vercel.app
 - Nota: primer intento `vercel --prod` devolvió "Deployment not found" (transitorio Vercel API), retry inmediato OK.
+
+---
+
+## 2026-05-04 — F0+F1 Geology Superintendent Cockpit
+
+**Qué cambió:**
+- Tipos `Org/Member/Faena/Yacimiento/ResourceModel/Reconciliacion/QAQCBatch` (`web/apps/web/src/types/{org,reconc}.ts`)
+- RBAC matrix (`lib/auth/rbac.ts`) + tests 8 casos cubriendo 6 roles
+- Reconciliación calc (`lib/data/reconc.ts`): factors, classify, outliers
+- QA/QC calc (`lib/data/qaqc.ts`): HARD ±10/20%, bias, Shewhart bands
+- Firestore rules multi-org RBAC + composite indexes (reconc/qaqc/resourceModel)
+- OrgContext provider + Firestore subscriptions (`lib/firebase/orgs.ts`, `lib/auth/org-context.tsx`)
+- Cockpit `/super` con tiles KPI (reconc, qaqc, recursos, sondajes)
+- Deep pages: `/super/reconc` (factor + cumulative), `/super/qaqc` (Shewhart + dup scatter + bias), `/super/recursos` (JORC pyramid), `/super/sondajes` (productivity bar stub F2)
+- Admin org: `/admin/org/{members,faenas}` solo super_geol
+- Push rules `lib/notifications/push-rules.ts` (delivery deferred F2)
+- Seed `scripts/seed-cmsg-org.ts` + migración `scripts/migrate-to-org-rbac.ts`
+
+**Por qué:** habilita uso multi-usuario nivel ERP geológico para Héctor Figueroa (super geol CMSG) y su equipo en 4 yacimientos (21 Mayo, San Antonio, Tugal, Lambert).
+
+**Verificación:**
+- `npm run type-check`: clean
+- `npm test`: 204/204 verde (lib reconc/qaqc/rbac + suite previa)
+- Browser smoke `/super/*`: pendiente — Pablo verifica.
+
+**Pendiente:**
+- Despliegue firebase rules + indexes (Pablo confirma cuando quiera).
+- Ejecutar seed + migration con UID real Héctor (requiere `service-account.json`).
+- Cargar datos demo reconc/qaqc últimos 6 meses Talcuna.
+- F2 workflow approvals; F3 Mineral Forecast IA visor.
+
+**Modo:** sesión autónoma post-handoff 15:54 — Pablo pidió continuar sin checkpoints. Subagent-driven se relajó a inline para velocidad.
+
