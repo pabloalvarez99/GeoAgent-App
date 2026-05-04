@@ -2599,3 +2599,5 @@ TS clean · 166/166 verde.
 
 **Modo:** sesión autónoma post-handoff 15:54 — Pablo pidió continuar sin checkpoints. Subagent-driven se relajó a inline para velocidad.
 
+
+**Deploy URL:** https://geoagent-app.vercel.app — Ready ✅ (deployment `dpl_2PKTHRc3ifQVQWZA3BsA7d1cF55Q`, alias activo, 3 m build).
