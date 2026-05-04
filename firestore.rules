@@ -1,8 +1,79 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Legacy single-tenant retained until migration
     match /users/{userId}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Helpers
+    function signedIn() { return request.auth != null; }
+    function memberDoc(orgId) {
+      return get(/databases/$(database)/documents/orgs/$(orgId)/members/$(request.auth.uid));
+    }
+    function isMember(orgId) {
+      return signedIn() && exists(/databases/$(database)/documents/orgs/$(orgId)/members/$(request.auth.uid))
+        && memberDoc(orgId).data.activo == true;
+    }
+    function role(orgId) { return memberDoc(orgId).data.role; }
+    function isSuper(orgId) { return isMember(orgId) && role(orgId) == 'super_geol'; }
+    function hasYac(orgId, yacId) {
+      return isMember(orgId) && (
+        role(orgId) in ['super_geol', 'qaqc', 'geotec'] ||
+        yacId in memberDoc(orgId).data.yacimientoIds
+      );
+    }
+
+    match /orgs/{orgId} {
+      allow read: if isMember(orgId);
+      allow write: if isSuper(orgId);
+
+      match /members/{uid} {
+        allow read: if isMember(orgId);
+        allow write: if isSuper(orgId);
+      }
+
+      match /faenas/{faenaId} {
+        allow read: if isMember(orgId);
+        allow write: if isSuper(orgId);
+
+        match /yacimientos/{yacId} {
+          allow read: if isMember(orgId);
+          allow write: if isSuper(orgId);
+
+          match /resourceModel/{docId} {
+            allow read: if isMember(orgId) && hasYac(orgId, yacId);
+            allow create, update: if isMember(orgId)
+              && (role(orgId) == 'super_geol'
+                  || (role(orgId) == 'geol_senior' && hasYac(orgId, yacId)));
+            allow delete: if isSuper(orgId);
+          }
+
+          match /reconciliacion/{docId} {
+            allow read: if isMember(orgId) && hasYac(orgId, yacId);
+            allow write: if isSuper(orgId);
+          }
+
+          match /qaqc/{docId} {
+            allow read: if isMember(orgId);
+            allow create, update: if isMember(orgId)
+              && role(orgId) in ['super_geol', 'qaqc'];
+            allow delete: if isSuper(orgId);
+          }
+
+          match /sondajes_plan/{docId} {
+            allow read: if isMember(orgId) && hasYac(orgId, yacId);
+            allow write: if isMember(orgId)
+              && role(orgId) in ['super_geol', 'geol_senior'];
+          }
+        }
+      }
+
+      match /alertas/{alertId} {
+        allow read: if isMember(orgId);
+        allow write: if isSuper(orgId);
+      }
     }
   }
 }

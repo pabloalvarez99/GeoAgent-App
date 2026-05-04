@@ -63,6 +63,30 @@
       "fields": [
         { "fieldPath": "updatedAt", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "reconciliacion",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "yacId", "order": "ASCENDING" },
+        { "fieldPath": "mes", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "resourceModel",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "yacId", "order": "ASCENDING" },
+        { "fieldPath": "periodo", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "qaqc",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "yacId", "order": "ASCENDING" },
+        { "fieldPath": "fecha", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
