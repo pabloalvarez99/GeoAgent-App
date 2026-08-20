@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import * as THREE from 'three';
-import { Bookmark, BookmarkCheck, Box, Camera, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Compass, Crosshair, Drill, Eye, EyeOff, Flame, Layers, Maximize2, Minimize2, Mountain, Pencil, Pin, Ruler, Satellite, Scissors, Grid3x3, X } from 'lucide-react';
+import { Bookmark, BookmarkCheck, Box, Camera, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Compass, Copy, Crosshair, Drill, Eye, EyeOff, Flame, GripVertical, Layers, Maximize2, Minimize2, Mountain, Pencil, Pin, Ruler, Satellite, Scissors, Grid3x3, X } from 'lucide-react';
 import type { CameraRigHandle } from './camera-rig';
 import type { SectionRibbon } from './section-plane';
 import type { FlatInstance, HoverInfo, Preset, SceneItem } from './types';
@@ -83,6 +83,9 @@ interface Props {
   clearRibbons: () => void;
   activateRibbon: (rb: SectionRibbon) => void;
   setRibbonThickness: (id: string, value: number) => void;
+  setRibbonColor: (id: string, color: string) => void;
+  duplicateRibbon: (id: string) => void;
+  reorderRibbons: (fromIdx: number, toIdx: number) => void;
   sectionRangeSpan: number;
   onOpenFence: () => void;
 }
@@ -154,9 +157,14 @@ export function Hud(props: Props) {
     clearRibbons,
     activateRibbon,
     setRibbonThickness,
+    setRibbonColor,
+    duplicateRibbon,
+    reorderRibbons,
     sectionRangeSpan,
     onOpenFence,
   } = props;
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [overIdx, setOverIdx] = useState<number | null>(null);
   const ribbonThicknessMax = Math.max(50, Math.round(sectionRangeSpan / 4));
 
   const isMobile = useIsMobile();
@@ -836,10 +844,42 @@ export function Hud(props: Props) {
                   const axisLabel = rb.axis === 'horizontal' ? 'H' : rb.axis === 'ns' ? 'N-S' : 'E-W';
                   const meta = `${axisLabel} @ ${rb.depth.toFixed(0)} m`;
                   const thk = rb.thickness ?? 0;
+                  const isOver = overIdx === i && dragIdx !== null && dragIdx !== i;
                   return (
-                    <li key={rb.id} className="flex flex-col gap-0.5 text-[10px] font-mono">
+                    <li
+                      key={rb.id}
+                      className={`flex flex-col gap-0.5 text-[10px] font-mono rounded transition-colors ${isOver ? 'bg-cyan-700/20 ring-1 ring-cyan-500/50' : ''} ${dragIdx === i ? 'opacity-50' : ''}`}
+                      onDragOver={(e) => { e.preventDefault(); setOverIdx(i); }}
+                      onDragLeave={() => { if (overIdx === i) setOverIdx(null); }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        if (dragIdx !== null && dragIdx !== i) reorderRibbons(dragIdx, i);
+                        setDragIdx(null);
+                        setOverIdx(null);
+                      }}
+                    >
                       <div className="flex items-center gap-1.5">
-                      <span className="h-2.5 w-2.5 rounded-sm shrink-0" style={{ backgroundColor: rb.color }} />
+                      <span
+                        draggable
+                        onDragStart={() => setDragIdx(i)}
+                        onDragEnd={() => { setDragIdx(null); setOverIdx(null); }}
+                        className="text-muted-foreground/60 hover:text-cyan-200 shrink-0 cursor-grab active:cursor-grabbing"
+                        title="Arrastrar para reordenar"
+                      >
+                        <GripVertical className="h-3 w-3" />
+                      </span>
+                      <label
+                        className="relative h-2.5 w-2.5 rounded-sm shrink-0 cursor-pointer ring-1 ring-white/20 hover:ring-cyan-300"
+                        style={{ backgroundColor: rb.color }}
+                        title="Cambiar color"
+                      >
+                        <input
+                          type="color"
+                          value={rb.color}
+                          onChange={(e) => setRibbonColor(rb.id, e.target.value)}
+                          className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                        />
+                      </label>
                       <button
                         onClick={() => activateRibbon(rb)}
                         className="flex-1 min-w-0 text-left text-foreground hover:text-cyan-200 truncate"
@@ -861,6 +901,13 @@ export function Hud(props: Props) {
                         title="Renombrar ribbon"
                       >
                         <Pencil className="h-3 w-3" />
+                      </button>
+                      <button
+                        onClick={() => duplicateRibbon(rb.id)}
+                        className="text-muted-foreground hover:text-cyan-200 shrink-0"
+                        title="Duplicar ribbon (offset +10 m en profundidad)"
+                      >
+                        <Copy className="h-3 w-3" />
                       </button>
                       <button
                         onClick={() => {

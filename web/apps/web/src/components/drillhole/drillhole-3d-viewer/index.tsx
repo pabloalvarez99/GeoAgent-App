@@ -67,6 +67,36 @@ export default function DrillHole3DViewer({
   const setRibbonThickness = useCallback((id: string, value: number) => {
     setRibbons((prev) => prev.map((r) => (r.id === id ? { ...r, thickness: value } : r)));
   }, []);
+  const setRibbonColor = useCallback((id: string, color: string) => {
+    setRibbons((prev) => prev.map((r) => (r.id === id ? { ...r, color } : r)));
+  }, []);
+  const duplicateRibbon = useCallback((id: string) => {
+    setRibbons((prev) => {
+      const idx = prev.findIndex((r) => r.id === id);
+      if (idx < 0) return prev;
+      const src = prev[idx];
+      const offset = 10;
+      const newId = `rb-${Date.now().toString(36)}-${prev.length}`;
+      const dup: SectionRibbon = {
+        ...src,
+        id: newId,
+        depth: src.depth + offset,
+        name: src.name ? `${src.name} (copia)` : undefined,
+      };
+      const next = [...prev];
+      next.splice(idx + 1, 0, dup);
+      return next;
+    });
+  }, []);
+  const reorderRibbons = useCallback((fromIdx: number, toIdx: number) => {
+    setRibbons((prev) => {
+      if (fromIdx === toIdx || fromIdx < 0 || toIdx < 0 || fromIdx >= prev.length || toIdx >= prev.length) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, moved);
+      return next;
+    });
+  }, []);
   const removeRibbon = useCallback((id: string) => {
     setRibbons((prev) => prev.filter((r) => r.id !== id));
   }, []);
@@ -525,6 +555,9 @@ export default function DrillHole3DViewer({
         clearRibbons={clearRibbons}
         activateRibbon={activateRibbon}
         setRibbonThickness={setRibbonThickness}
+        setRibbonColor={setRibbonColor}
+        duplicateRibbon={duplicateRibbon}
+        reorderRibbons={reorderRibbons}
         sectionRangeSpan={sectionRange.max - sectionRange.min}
         onOpenFence={() => setShowFence(true)}
       />
